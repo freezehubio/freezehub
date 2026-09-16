@@ -2720,3 +2720,30 @@ load-bearing property and it is about not trusting a client, not about Stripe.
 hand (`13-validation.md` §3), which is the reason no payment rail is on the critical path.
 This becomes due at the first self-serve payment, and it is cheaper to decide with a real
 customer in front of you than to guess now.
+
+### FZ-150 — The README Still Argued for the NAT
+**Status:** DONE
+
+`D-28` removed the NAT gateway. `infra/README.md` did not follow, and it is the document an
+operator reads immediately before `terraform apply`.
+
+It listed the NAT at ~$32 in a table totalling ~$100, named it among the "deliberate cost
+choices for beta", and closed with a paragraph arguing that removing it *"would weaken that
+boundary"* — **the opposite of the decision already recorded.** A wrong figure is a
+nuisance; a paragraph arguing against a settled decision, at the point of applying it, is how
+somebody re-adds a $32 line believing they are being careful.
+
+Corrected to the decided posture: two tasks in a public subnet, no NAT, **~$64/month**. The
+reasoning is now `D-28`'s — the boundary moves from the subnet to the security group rather
+than disappearing, the database stays private either way, and the trade is right for a
+pre-customer beta and worth revisiting when there is something to protect.
+
+**The IPv4 charge is stated rather than buried.** Removing the NAT means paying for a public
+address on each task — about $3.65 a month each, roughly $7 the private-subnet posture did not
+pay. Whether the load balancer's own addresses are billed the same way is flagged as worth
+confirming, because at this scale it is the difference between ~$64 and ~$71.
+
+**Not `FZ-123`'s work, though it was twice deferred there.** That story applies the
+infrastructure; this only makes a document match a decision taken weeks earlier. Leaving them
+disagreed until `FZ-123` runs would mean the wrong number sat in front of every reader in the
+meantime, and `FZ-123` is blocked on an AWS account that does not exist yet.

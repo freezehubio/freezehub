@@ -129,26 +129,46 @@ a rebuild and hope.
   but the service will not come up until that ships. This is deliberate sequencing
   (decision `D-4`), not an oversight.
 - **The state bucket holds secrets.** Treat access to it as access to the database.
-- **Single NAT gateway and single-AZ RDS**, both deliberate cost choices for beta. Neither
-  is appropriate behind an availability commitment.
+- **Tasks in a public subnet and single-AZ RDS**, both deliberate cost choices for beta
+  (`D-28`). The task's boundary is its security group rather than its subnet, and neither
+  choice is appropriate behind an availability commitment.
 - **Nothing here has been applied.** The configuration validates and is formatted; it has
   never been run against an AWS account, so plan-time and apply-time errors are still
   possible. Read the first plan carefully.
 
 ## Rough monthly cost
 
-Order of magnitude, us-east-1, beta scale, before data transfer:
+Order of magnitude, us-east-1, beta scale, before data transfer. This is the posture `D-28`
+decided, not the one `FZ-063` wrote: **two tasks in a public subnet, and no NAT gateway.**
 
 | | |
 |---|---|
-| ECS Fargate, 2 × 0.5 vCPU / 1 GB, ARM | ~$30 |
-| RDS `db.t4g.micro`, single-AZ, 20 GB | ~$15 |
-| NAT gateway | ~$32 + data |
+| ECS Fargate, 2 × 0.5 vCPU / 1 GB, ARM | ~$29 |
 | ALB | ~$16 |
-| CloudFront, S3, Secrets Manager, ECR | ~$5 |
+| RDS `db.t4g.micro`, single-AZ, 20 GB | ~$14 |
+| Route 53, Secrets Manager, ECR, CloudWatch, S3 | ~$5 |
+| CloudFront | free tier: 1 TB out, 10M requests |
 | Cognito Lite | free to 10,000 MAU |
-| **Total** | **~$100/month** |
+| **Total** | **~$64/month** |
 
-The NAT gateway is the one that looks disproportionate at this scale. It exists so the
-application and database sit in private subnets; putting tasks in public subnets with
-public IPs would remove it and weaken that boundary.
+**The NAT gateway is gone, and it was the largest line.** It cost about $32 a month plus data
+processing, and it existed only so tasks in *private* subnets could reach the internet. A
+Fargate task in a **public** subnet with a public IP reaches it through the internet gateway
+and needs no NAT at all. The database stays private and is reached over the VPC either way,
+and the task's port stays closed to everything but the load balancer's security group — so
+the boundary moves from the subnet to the security group rather than disappearing.
+
+For a pre-customer beta that is the right trade, and it is worth revisiting when there is
+something to protect. A security review asking for tasks off public addressing is exactly
+that moment, and the NAT going back in is priced as the last rung of the ladder.
+
+**It is not free, and the cost is easy to miss.** AWS charges for public IPv4 addresses in
+use — roughly $0.005 an hour, about $3.65 a month each — so two tasks add about $7 that the
+private-subnet posture did not pay. Whether the load balancer's own addresses are billed the
+same way is worth confirming before the first invoice; at this scale it is the difference
+between ~$64 and ~$71.
+
+**Every figure here is list-price arithmetic.** `OI-15`'s original $96 baseline came from AWS
+Cost Explorer over four months and reconciles exactly, including the ARM64 discount that makes
+two Fargate tasks $29 rather than $36. Nothing else in this table has been invoiced: `FZ-123`
+records the first real bill against it, which is the only number that settles it.
