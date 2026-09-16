@@ -193,6 +193,14 @@ At fewer than roughly twenty customers, provisioning happens rarely enough that 
 
 ## 6. Billing
 
+### The rail is not settled — Stripe is unavailable to the operator
+
+**Checked in `FZ-148`, and it changes who can be paid rather than how.** Stripe does not support businesses in Colombia: its availability page lists Brazil and Mexico for Latin America and omits Colombia entirely, and its support material states that payments are not supported there. Everything below describes an integration that is built, tested and correct — and that currently has no account to point at.
+
+Nothing in it needs redesigning. **The webhook stays the only thing that may change entitlement** whatever rail is chosen; that rule is about trusting a browser redirect, not about Stripe. A merchant of record would replace the integration; a US entity would keep it exactly as written.
+
+It does not block validation: `13-validation.md` §3 invoices the first customers by hand, deliberately, so that no payment rail sits on the critical path. The decision is due before the first *self-serve* payment. See `OI-31`.
+
 ### Stripe, with entitlement staying in FreezeHub
 
 - **Stripe Checkout** hosts the payment page. Card details never reach FreezeHub, so FreezeHub is never in PCI scope.
