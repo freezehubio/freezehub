@@ -186,24 +186,11 @@ What it costs to leave alone: a security questionnaire asks whether production i
 
 The fix is an AWS Organization with the existing account as management and a new member account for production — free, and worth checking for free-tier eligibility, since `OI-15` records that the current account's expired in 2023.
 
-### OI-33 — `deploy.yml` and `verify.yml` still run actions targeting Node 20
-**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-099`
-
-GitHub has deprecated the Node 20 runtime and is force-running actions that target it on Node 24. `FZ-099` bumped the actions in `publish-connectors.yml` because that was the workflow it was already changing and could verify with a dry run. The other two were left alone:
-
-- `deploy.yml` — `checkout@v4`, `setup-node@v4`, `setup-qemu-action@v3`, `setup-buildx-action@v3`, `build-push-action@v6`
-- `verify.yml` — `checkout@v4` (five times), `setup-java@v4`, `setup-node@v4`
-
-Not urgent, because forcing onto a newer runtime is what GitHub is doing rather than failing the run. It becomes urgent on whatever date that forcing stops.
-
-**`verify.yml` is the one that wants care.** It runs the whole suite against Testcontainers, so bumping `setup-java` and `setup-node` there is a change that has to be proved by a green run rather than by reading the diff — which is exactly why it was not folded into a story about publishing an image.
-
-Worth pairing with `OI-30`, which is the same question asked about Dockerfiles: what this repository pins, and how tightly. Actions here use floating major tags by the file's existing convention; SHA-pinning is the hardened alternative and is a decision rather than a bump.
-
 ## Resolved
 
 | Issue | Found in | Resolved by |
 |---|---|---|
+| **`deploy.yml` and `verify.yml` still ran actions targeting Node 20** — GitHub had deprecated that runtime and was force-running those actions on a newer one, so the workflows were relying on a compatibility shim with an end date | `FZ-099` | `FZ-140` — every `uses:` resolved to the runtime its own `action.yml` declares, which found two the issue had missed; the eight on node20 bumped, the ones already on node24 left alone, and the pinning question answered: actions stay on major tags, base images do not (`FZ-139`) |
 | **The Dockerfiles followed floating tags, so what shipped changed without a commit** — `eclipse-temurin:21-jre` moved from Ubuntu 24.04 to 26.04 under the project, which is how eight HIGH findings appeared in CI while a local scan of the same tag was clean | `FZ-127` | `FZ-139` — all three `FROM` lines pinned by digest, both backend stages moved to the variant that does not ship `/usr/bin/pebble`, and the scanner now reads the refs out of the Dockerfiles. The baseline is empty |
 | **Rate limiting covered only the unauthenticated endpoints** — nothing limited failed API-key attempts, the Stripe webhook, or authenticated traffic, leaving `/api/policy/**` unmetered: the endpoint whose unavailability blocks every customer's deployments, because the connector fails closed | `FZ-125` | `FZ-130` — four limits, the authenticated one counted per API key so that the defence cannot become the outage, and a client that sits out a `429` rather than failing the build (`D-31`) |
 | **The dependency tree carried 39 known HIGH/CRITICAL vulnerabilities** — Spring Boot 3.3.4, with seven CRITICALs in the HTTP connector alone. Found the day a scanner was first pointed at it | `FZ-127` | `FZ-136` — Spring Boot 4.1.1 and Tomcat pinned to 11.0.25: 39 to 0, with 468 tests unchanged |

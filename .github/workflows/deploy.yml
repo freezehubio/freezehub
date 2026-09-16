@@ -6,6 +6,14 @@
 #
 # Manual rather than automatic on merge: deploying is a decision, and the product this
 # repository builds exists because deploying at the wrong moment is a real problem.
+#
+# **The action versions here are the only ones in the repository no run has proved**
+# (`FZ-140`, `OI-33`). They were bumped off the deprecated node20 runtime with the rest,
+# and `verify.yml` demonstrates the shared ones — but nothing can execute this file until
+# an AWS account exists (`FZ-138`, `FZ-123`), so the first dispatch is still the first
+# time it runs. The one behaviour change that had to be read rather than watched is
+# `configure-aws-credentials` v5 altering how invalid *boolean* inputs are handled; this
+# workflow passes none, only `role-to-assume` and `aws-region`.
 name: Deploy
 
 on:
@@ -38,9 +46,9 @@ jobs:
     environment: ${{ inputs.environment }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -54,13 +62,13 @@ jobs:
         id: image
         run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
 
       # linux/arm64 because the Fargate task runs ARM64 — cheaper per vCPU-hour, and an
       # amd64 image would simply fail to start there.
       - name: Build and push the image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: backend
           platforms: linux/arm64
@@ -102,7 +110,7 @@ jobs:
           service: ${{ vars.ECS_SERVICE }}
           wait-for-service-stability: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm

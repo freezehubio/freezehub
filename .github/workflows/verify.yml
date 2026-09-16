@@ -2,6 +2,17 @@
 #
 # Four jobs rather than one, so a frontend lint failure does not hide a backend test
 # failure — the point of CI is finding every problem in one run, not the first one.
+#
+# **Actions stay on floating major tags, deliberately** (`FZ-140`, `OI-33`) — the opposite
+# of the rule the Dockerfiles follow (`FZ-139`), because they are opposite things. A base
+# image is what ships to customers, so it is pinned and its contents reviewed; an action is
+# what inspects what ships, and freezing the inspector means it quietly stops learning
+# about new vulnerabilities. `aquasecurity/trivy-action` is the one exception, pinned by
+# SHA since `FZ-127`: it is third-party, runs on every pull request, and is a composite
+# action, so the Node runtime bumps below do not touch it.
+#
+# Every major named here targets node24. GitHub deprecated node20 and is force-running it
+# on a newer runtime; these moved before the day that forcing stops, not after.
 name: Verify
 
 on:
@@ -22,9 +33,9 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -41,9 +52,9 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm
@@ -72,9 +83,9 @@ jobs:
   infrastructure:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: '1.9.8'
 
@@ -99,7 +110,7 @@ jobs:
   connectors:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The deployment gate customers run. A change here changes what every one of their
       # pipelines does, so this job checks behaviour and not only that the file parses.
@@ -136,7 +147,7 @@ jobs:
   github-action:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Start a stub Policy API
         run: |
@@ -212,9 +223,9 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'

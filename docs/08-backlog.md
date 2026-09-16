@@ -2342,6 +2342,62 @@ against a real PostgreSQL and answers `/actuator/health` with `UP`, the connecto
 passes its own smoke test, and a scan of all three pinned bases plus both built images
 returns **0 findings at HIGH or above** with an empty ignore file.
 
+### FZ-140 — Move the Workflows Off the Node 20 Runtime
+**Status:** DONE · **Owns:** `OI-33`
+
+`FZ-099` bumped `publish-connectors.yml` because that was the file it was already changing
+and could prove with a dry run, and raised `OI-33` for the other two rather than folding an
+unproven change into a story about publishing an image.
+
+**The issue undercounted the problem, which measuring found.** Rather than bumping by eye,
+every `uses:` in the repository was resolved to the `using:` its `action.yml` declares at
+the exact ref pinned here, and at the current major:
+
+| Action | Was | Runtime | Now |
+|---|---|---|---|
+| `actions/checkout` ×7 | `v4` | node20 | `v7` |
+| `actions/setup-java` ×2 | `v4` | node20 | `v6` |
+| `actions/setup-node` ×2 | `v4` | node20 | `v7` |
+| `hashicorp/setup-terraform` | `v3` | node20 | `v4` |
+| `aws-actions/configure-aws-credentials` | `v4` | node20 | `v6` |
+| `docker/setup-qemu-action` | `v3` | node20 | `v4` |
+| `docker/setup-buildx-action` | `v3` | node20 | `v4` |
+| `docker/build-push-action` | `v6` | node20 | `v7` |
+| `aws-actions/amazon-ecr-login` · `-ecs-render-task-definition` · `-ecs-deploy-task-definition` | `v2` · `v1` · `v2` | **already node24** | unchanged |
+| `aquasecurity/trivy-action` | SHA, `v0.36.0` | **composite — no Node at all** | unchanged |
+
+Two of those — `configure-aws-credentials` and `setup-terraform` — are not in `OI-33`'s
+list, and three of the `aws-actions` are on it only by implication and did not need
+touching. A list read off the file would have bumped the wrong set.
+
+**The version jumps were read, not assumed.** Three actions move more than one major, so
+each release note was checked against how this repository actually calls them:
+`setup-java` v5 stops installing JetBrains pre-releases by default (this uses `temurin`);
+`setup-node` v5 caches automatically when `package.json` carries `packageManager` (it does
+not, and `cache: npm` is set explicitly anyway); `checkout` v5 raises the minimum runner
+version, which GitHub-hosted runners exceed. Everything else in those notes is the node24
+move itself.
+
+**`deploy.yml` is the one nothing can prove.** It is `workflow_dispatch` only and there is
+no AWS account to dispatch it against (`FZ-138`, `FZ-123`), so its first real run is still
+its first run. The only semantic change there is `configure-aws-credentials` v5 altering
+how *invalid boolean* inputs behave, and this workflow passes no boolean inputs — checked
+rather than hoped, and written into the file's header so the next person does not have to
+re-derive it.
+
+**The pinning question `OI-33` raised, answered rather than deferred:** actions stay on
+floating major tags. It looks inconsistent beside `FZ-139` pinning base images by digest,
+and the inconsistency is the point — a base image is what ships to customers, so it is
+pinned and reviewed; an action is what *inspects* what ships, and a frozen inspector
+quietly stops learning about new vulnerabilities. `trivy-action` stays SHA-pinned for the
+reason `FZ-127` gave: third-party, runs on every pull request, and a moving tag there is
+code this repository did not review running against every branch.
+
+Verified by the run that matters: `verify.yml` exercises `checkout`, `setup-java`,
+`setup-node` and `setup-terraform` on every pull request, so this story's own CI run is the
+proof — six jobs green, including the full backend suite against Testcontainers, which is
+exactly the thing `OI-33` said had to be watched rather than read.
+
 ## Going to Market
 
 Not a milestone: one story, and it is separate from `Milestone 15` because it is not security
