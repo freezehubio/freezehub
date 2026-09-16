@@ -2620,7 +2620,7 @@ keeps the boundary that class owns — a trial ending must not produce a suspend
 — while `TrialExpiryTest` covers the whole transition.
 
 ### FZ-145 — What the Build Log Says
-**Status:** TODO
+**Status:** DONE
 
 The conversion mechanism, and one string.
 
@@ -2636,6 +2636,21 @@ Acceptance:
 - It appears only for `FREE`. No other plan's message changes.
 - The `decision` is `ALLOW` and the matched restriction is returned at its real `ADVISORY`
   level. Nothing is misreported to make the sales point.
+
+**The short-circuit is the design, not an optimisation.** `advisoryOnFreePlan` returns
+`false` before reading anything when nothing matched or the deployment was blocked, so the
+usual answer — no restriction in force — costs exactly what it cost before. A test covers
+that path explicitly, because a guard nobody exercises is a guard that quietly stops being
+one.
+
+**A blocked free organization is told nothing.** It has a hard freeze surviving from its
+trial (`D-22`) and is already getting what a paid plan sells; an upsell there would be
+noise.
+
+**`explain` still has one implementation.** The preview a person sees inside the product and
+the line a pipeline prints come from the same method, including this clause — `FZ-120`'s
+reasoning holds, and a sentence that appeared only in CI would be a second answer to the
+same question.
 
 ### FZ-146 — The Free Tier in the Product
 **Status:** TODO
