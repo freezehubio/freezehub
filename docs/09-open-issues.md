@@ -161,6 +161,17 @@ What it costs to leave alone: a security questionnaire asks whether production i
 
 The fix is an AWS Organization with the existing account as management and a new member account for production — free, and worth checking for free-tier eligibility, since `OI-15` records that the current account's expired in 2023.
 
+### OI-34 — Free organizations never expire, and nothing bounds them
+**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-142`
+
+Every organization today either converts or is purged: a trial ends, and `11-commercial.md` §4 already deletes anything still `PENDING_VERIFICATION` after seven days. The `FREE` plan introduced by `FZ-142` has no such bound — a free organization is `ACTIVE` indefinitely, and they accumulate.
+
+The infrastructure cost is genuinely small, and that is not the point. Seven-day deployment-check retention bounds a free organization's storage at a fraction of a paying one's, so a thousand of them cost close to nothing. What is unbounded is the number of Cognito identities, notification destinations holding encrypted credentials, and API keys reaching the Policy API — none of which any signed-in human is watching.
+
+**The shape of the answer is probably an inactivity policy** — no sign-in and no policy evaluation for twelve months triggers an email, then deactivation after thirty days — following the purge and the lifecycle reconciler that already exist. It is deliberately not decided here: the right window is a product judgement nobody can make before seeing how a real free organization behaves.
+
+Recorded now because the repository's own rule is that "no owner" is not a status, and because a tier with no exit is the kind of thing that is invisible until somebody runs a query.
+
 ## Resolved
 
 | Issue | Found in | Resolved by |

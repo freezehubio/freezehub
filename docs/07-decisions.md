@@ -848,3 +848,37 @@ At the first EU prospect whose security review asks where data lives — which
 `13-validation.md` §4 predicts will arrive with the first foreign price test, not the first
 local design partner. Revisit **before** `FZ-046` if that happens sooner, because the pool is
 the expensive part.
+
+---
+
+## D-33 — A free plan announces freezes; it cannot create one that blocks
+
+**Date:** 2026-09-15 · **Specified by:** `FZ-142` · **Supersedes part of:** `D-21`
+
+### Decision
+
+The `FREE` plan may not create `HARD_FREEZE` restrictions. Its restrictions are `ADVISORY`, and the refusal happens at `POST /api/restrictions` with the `402` machinery `FZ-081` already built. A trial that expires with no subscription moves to `FREE`/`ACTIVE`; **non-payment still moves to `SUSPENDED`**, and a paying organization never falls to `FREE`.
+
+### Why this shape and not the obvious one
+
+The obvious way to make enforcement paid is to let free organizations create blocking freezes and have evaluation decline to honour them. `D-21` already rejected exactly that, as "the silent-`ALLOW` failure wearing a disguise" — and it was right.
+
+Gating the **level at creation** avoids the whole problem rather than mitigating it:
+
+- **Domain rule 3 stays unconditionally true.** *Any matching active `HARD_FREEZE` means `BLOCK`* needs no clause about billing, because a free organization has none to match.
+- **`PolicyService` is untouched** and consults no subscription. Evaluation stays deterministic (rule 5), and `D-21` holds verbatim: for identical persisted state, a billing state still never changes a policy answer.
+- **The refusal is never mid-flight.** It lands in a form, on an administrator, at creation. `freeze-check.sh` fails closed, so a refusal inside a running pipeline would be an organization-wide deploy outage — the failure `D-21` exists to prevent.
+
+**What is superseded is narrow and must stay narrow.** `D-21` rejected *degrading a restriction that already exists*, as a punishment applied to a customer who stopped paying. This is *published plan behaviour*, known before signup, where nobody's freeze is ever downgraded because no blocking freeze was ever created. The distinction is the whole decision: if a later change ever downgrades an existing `HARD_FREEZE` for a billing reason, it has re-broken `D-21` and this entry does not authorise it.
+
+### The commercial argument
+
+`PolicyEvaluationResponse.message` is already "the line worth printing in a build log" and `freeze-check.sh` prints it verbatim on `ALLOW`. So the entire free-to-paid pitch is one server-composed string, delivered on every deploy during every free organization's freeze, to the engineer who feels the pain and cannot sign the invoice. That is a stronger conversion trigger than any limit counter, and it costs one sentence.
+
+### Cost
+
+**An organization that only wants people *told* never needs blocking**, and can sit on `FREE` for ever. Accepted, in the same shape as `D-20`'s accepted cost; the application, channel and retention limits are the backstop, and the gate is not the only wall.
+
+**Free at five applications sits close to Starter at ten**, which makes Starter's value the capability rather than the volume. That is the intent, but whether $99 for "it actually blocks" holds up is a question for the first ten conversations.
+
+**Trial-issued hard freezes survive the drop to `FREE`** (`D-22`), so the paywall leaks for as long as those restrictions run. They are time-bounded and complete on their own, so it self-heals; a scheduled restriction far in the future is the exception worth watching.

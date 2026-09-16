@@ -2515,3 +2515,111 @@ Changed: `D-32`, `FZ-135` to DONE, `OI-20` resolved, and `terraform.tfvars.examp
 carries `us-east-1` with the decision referenced beside it.
 
 **Nothing is applied.** This unblocks `FZ-046` and `FZ-123`; it does not do either.
+
+## Milestone 16 — The Free Tier
+
+`FZ-080` built a commercial model that begins at $99 and ends a trial in a read-only account.
+This milestone adds the plan below it, and the one capability that separates them.
+
+**Order.** `FZ-142` first — it is the specification the rest read. `FZ-143` before everything
+after it, because the `FREE` constant is what they all reference.
+
+```text
+FZ-142 ── FZ-143 ──┬── FZ-144
+                   ├── FZ-145
+                   └── FZ-146
+```
+
+Nothing here needs AWS. Every story runs against Testcontainers.
+
+### FZ-142 — Freemium Packaging
+**Status:** DONE · **Owns:** `OI-34`
+
+Specification only, no code: `docs/11-commercial.md` §3 and §4, plus `D-33`.
+
+**The decision that shapes everything else: gate the *level*, not the answer.** A free
+organization cannot create a `HARD_FREEZE`, so the row never exists — rather than existing
+and being ignored at evaluation time, which `D-21` already rejected as the silent-`ALLOW`
+failure in disguise. `PolicyService`, `01-domain.md` and every connector are untouched, and
+that is the point rather than a happy accident.
+
+**`D-33` supersedes `D-21` narrowly and says so.** `D-21` rejected degrading a restriction
+that already exists, as a punishment for non-payment. This is published plan behaviour where
+no blocking freeze is ever created in the first place. If a later change downgrades an
+existing `HARD_FREEZE` for a billing reason, it has re-broken `D-21` and `D-33` does not
+authorise it.
+
+Three choices inside the plan that are easy to get wrong, with reasons: freezes announced
+stay **unlimited** (capping them caps what sells the product), the one destination may be
+**Slack** (email-only sends announcements where they go to die), and applications are **five,
+not three** (a squad needs to be able to succeed, and `D-14` makes the limit self-enforcing).
+
+### FZ-143 — The FREE Plan and Its Capability Gate
+**Status:** TODO
+
+`Plan.FREE(5, 1, 1, 7)` plus a capability the enum does not yet have.
+
+Acceptance:
+
+- `Plan` gains a `hardFreeze()` capability. Every existing plan returns true; `FREE` false.
+- Creating a `HARD_FREEZE` restriction on `FREE` is refused with `402`, Problem Details.
+- **The refusal names a capability, not a count.** Reusing `PlanLimitExceededException`
+  renders *"your FREE plan allows 0 blocking freezes, and you are using 0"*, which is worse
+  than the truth. A sibling exception on the same `@ExceptionHandler` says what happened.
+- Creating an `ADVISORY` restriction on `FREE` succeeds.
+- Changing an existing restriction's level to `HARD_FREEZE` is refused the same way — the
+  guard belongs on the write path, not only on create.
+- `PolicyService` is not modified, and there is a test asserting a `FREE` organization's
+  evaluation is byte-for-byte what the same persisted state produces on any other plan.
+
+### FZ-144 — Trial Expires Into Free
+**Status:** TODO
+
+`TrialExpiryScheduler` currently sends an expired trial to `SUSPENDED`. It sends it to plan
+`FREE`, status `ACTIVE`.
+
+Acceptance:
+
+- An expired trial becomes `FREE`/`ACTIVE`, and the organization keeps working.
+- **A paid subscription that stops paying still becomes `SUSPENDED`**, and there is an
+  explicit test for it. This is the criterion the story exists for: a paying customer falling
+  to `FREE` would silently stop enforcing their hard freezes, which is the failure `D-21`
+  calls worse than an outage arriving as a side effect of billing.
+- Per `D-22`, nothing is retroactive: trial-created hard freezes keep their level, trial
+  API keys keep working, and the organization keeps applications above the `FREE` limit.
+- The transition is audited, as every other subscription change is.
+
+### FZ-145 — What the Build Log Says
+**Status:** TODO
+
+The conversion mechanism, and one string.
+
+When a `FREE` organization's advisory restriction matches, `PolicyEvaluationResponse.message`
+says the freeze is active *and* that this deployment would be refused on a paid plan.
+`freeze-check.sh` prints it verbatim on `ALLOW`, so no connector changes.
+
+Acceptance:
+
+- The clause appears only when a restriction actually matched, so the common
+  allow-with-nothing-matched path takes **no additional query**. The Policy API is the one
+  endpoint that must not get slower.
+- It appears only for `FREE`. No other plan's message changes.
+- The `decision` is `ALLOW` and the matched restriction is returned at its real `ADVISORY`
+  level. Nothing is misreported to make the sales point.
+
+### FZ-146 — The Free Tier in the Product
+**Status:** TODO
+
+Frontend. `FZ-085` already renders plan, limits, usage and the trial countdown from
+`GET /api/billing/subscription`, and composes a `402` into a sentence at the point the error
+is built — so most of this is the new refusal rendering correctly rather than new screens.
+
+Acceptance:
+
+- The Billing section shows `FREE` as a plan rather than as an absent subscription.
+- The capability refusal from `FZ-143` renders as what it is, with the upgrade path — not as
+  a generic error.
+- **The create-restriction form does not hide the blocking option on `FREE`.** It shows it,
+  refused, with the reason. Hiding it hides the product's best sales argument at the exact
+  moment somebody wants it.
+- Nothing in the UI decides entitlement; every limit shown comes from the backend.
