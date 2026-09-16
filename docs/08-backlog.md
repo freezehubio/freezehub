@@ -2178,7 +2178,7 @@ tasks mean twice the limit (`CLAUDE.md` §4 keeps shared state out of the MVP), 
 spread across many addresses still needs a WAF above the application.
 
 ### FZ-135 — Decide the Region Before Anything Is Applied
-**Status:** BLOCKED · **Owns** `OI-20` · **Blocks** `FZ-046`, `FZ-123`
+**Status:** DONE · **Owns** `OI-20` · **Decided in** `D-32`
 
 `OI-20` recorded that `us-east-1` was chosen by being the `variables.tf` default, with the
 residency question knowingly deferred. This story does the part that is not a decision —
@@ -2485,3 +2485,33 @@ who has production access, which is the point of the change.
 **`OI-32` arrived with `FZ-137`** (PR #42), which landed first; this branch was cut from
 `master` before it. Merging `master` in brought the entry, and its **Owner** now reads
 `FZ-138` rather than *needs a story*.
+
+### FZ-141 — The Region Is `us-east-1`
+**Status:** DONE · **Resolves** `OI-20` · **Unblocks** `FZ-046`, `FZ-123`
+
+`FZ-135` did everything about the region that was not the decision — it removed the default
+so nobody could inherit a region by accident, and it priced what the choice costs. The
+decision itself was the operator's, and it has been made: **`us-east-1`**, recorded as
+`D-32`.
+
+**It goes against `FZ-135`'s own recommendation**, which was `eu-west-1`, and the decision
+record says so rather than smoothing it over. The asymmetry that story argued — EU buyers
+frequently require EU residency, US buyers rarely require US residency — is still true. It
+was outweighed by sequencing: `13-validation.md` §4 expects the first design partners to be
+Colombian or US, and validation is about finding out whether anyone wires a pipeline at all,
+not about passing a review no prospect has asked for.
+
+**The cost is accepted, not deferred.** An EU buyer's questionnaire now gets the answer
+"United States", and a later change is a migration of identities rather than of data: a
+Cognito user pool is region-bound and `users.external_subject` stores the `sub` it issues.
+That cost is near zero today and becomes real the moment `FZ-046` creates the pool — which
+is why `D-32` says to revisit *before* that story if an EU prospect appears sooner.
+
+One convenient consequence worth noting: every cost figure in `infra/README.md` was measured
+against `us-east-1`, so they stay honest. Choosing `eu-west-1` would have meant re-taking
+them.
+
+Changed: `D-32`, `FZ-135` to DONE, `OI-20` resolved, and `terraform.tfvars.example` now
+carries `us-east-1` with the decision referenced beside it.
+
+**Nothing is applied.** This unblocks `FZ-046` and `FZ-123`; it does not do either.

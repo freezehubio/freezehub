@@ -9,9 +9,9 @@
 # the database and re-creating every identity — a user pool is region-bound, and the `sub`
 # it issues is what `users.external_subject` stores. Decide it once, here, before applying.
 #
-# eu-west-1 answers an EU buyer's residency question; us-east-1 is the cheapest and the
-# one the cost estimate in README.md was made against.
-region = "eu-west-1"
+# Decided: us-east-1 (`D-32`). eu-west-1 would answer an EU buyer's residency question;
+# us-east-1 is the cheapest and the one the cost estimate in README.md was made against.
+region = "us-east-1"
 
 # The domain the product is served from. The API is served from api.<domain_name>.
 domain_name = "freezehub.example.com"

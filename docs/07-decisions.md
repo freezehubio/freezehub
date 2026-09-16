@@ -792,3 +792,59 @@ Two things, it turns out, and neither is the number.
 - **Two tasks mean twice the limit.** The counters are in memory, per instance. Shared state is out of scope for the MVP (`CLAUDE.md` §4), and the number is a ceiling on abuse rather than a quota anyone is billed against.
 - **`curl --retry` covers 5xx and timeouts too**, not only `429`. One retry before declaring an outage is an improvement for a gate that fails closed, but it does change what a transient `503` costs: roughly a second, and a second request the server may have already acted on.
 - **A pipeline can still be refused** — 60 evaluations in ten seconds from one key is far beyond any real deployment, but it is not infinity. The failure is visible and bounded rather than silent.
+
+---
+
+## D-32 — The region is `us-east-1`, and the residency question is answered "United States"
+
+**Date:** 2026-09-15 · **Asked by:** `FZ-135` · **Decided by:** the operator · **Recorded by:** `FZ-141`
+
+### Decision
+
+`var.region` is `us-east-1`. Every store that holds customer data — the database, the Cognito
+user pool, the CloudWatch log groups, the Secrets Manager entries — lives there. The
+CloudFront certificate already lived in `us-east-1` because AWS accepts it from nowhere else,
+so there is now exactly one region in the picture.
+
+### Why
+
+**It is chosen against `FZ-135`'s own recommendation**, which was `eu-west-1`, and that is
+worth recording rather than smoothing over. `FZ-135` argued `OI-20`'s asymmetry: EU buyers
+frequently require EU residency, US buyers rarely require US residency, so a single EU region
+answers more questionnaires. The argument still holds; it was outweighed.
+
+What outweighed it: `13-validation.md` §4 expects the first design partners to be Colombian
+or US, and validation is about finding out whether anyone wires a pipeline at all — not about
+passing a compliance review that no prospect has yet asked for. `us-east-1` is also the
+cheapest region, carries every service this uses, and is the one **every cost figure in
+`infra/README.md` was measured against**, so choosing it keeps the estimates honest rather
+than requiring them to be re-taken.
+
+### Cost
+
+**An EU buyer's security questionnaire now gets the answer "United States".** That is the
+whole of `OI-20`, accepted deliberately rather than deferred again.
+
+**And changing it later is not only the database.** A Cognito user pool is region-bound and
+cannot be moved, and the `sub` it issues is what `users.external_subject` stores — so a
+region change after `FZ-046` means a new pool, new subjects for every user, and a re-mapping
+of that column. It is a migration of who people are, not just of what they own.
+
+That cost is near zero today, because no pool exists and there are no identities. It becomes
+real the moment `FZ-046` runs, and it only grows. Anyone revisiting this should price it as a
+customer-visible migration with a forced password reset, not as a Terraform variable.
+
+### Alternatives
+
+- **`eu-west-1` (Ireland).** `FZ-135`'s recommendation, and the better answer for a European
+  buyer. Rejected for now on the sequencing above, not on its merits.
+- **`sa-east-1` (São Paulo).** The nearest region to Bogotá. Rejected: the Policy API is one
+  POST per deploy, so the latency it buys is latency this product does not need, and it is
+  among the more expensive regions with a thinner service catalogue.
+
+### Revisit
+
+At the first EU prospect whose security review asks where data lives — which
+`13-validation.md` §4 predicts will arrive with the first foreign price test, not the first
+local design partner. Revisit **before** `FZ-046` if that happens sooner, because the pool is
+the expensive part.

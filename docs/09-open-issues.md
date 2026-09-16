@@ -95,31 +95,6 @@ Discoverability — a Marketplace or Catalog listing — is a separate and lesse
 
 Nothing is urgent while nothing is deployed. It becomes urgent the day someone outside the team needs a URL.
 
-### OI-20 — EU data residency is deferred by choosing us-east-1
-**Severity:** Decision · **Owner:** `FZ-135` · **Raised:** 2026-09-08
-
-The deployment region was decided as `us-east-1` (the `variables.tf` default) with the residency question knowingly deferred. Latency is not the issue — the Policy API is one HTTPS POST per deploy, and 250 ms from Sydney is nothing against a pipeline step measured in minutes. Residency is.
-
-FreezeHub is sold to companies with a compliance function, and an EU buyer's security review routinely asks where customer data lives. The asymmetry is what makes this worth recording: EU buyers frequently require EU residency, US buyers rarely require US residency, so a single region in the EU would have answered both and cost the same. Changing it before the first apply is a variable; changing it after is a migration of live data.
-
-The seam is in good shape, which is why this is a decision rather than a gap: the backend has no AWS coupling at all — no SDK, nothing in `pom.xml`, nothing in `application.yml` — so a second region is a Terraform workspace rather than a redesign.
-
-**Corrected by `FZ-135`: it becomes urgent at the first `apply`, not at the first EU deal.**
-Two things were understated above.
-
-"A migration of live data" is the database, and it is not the expensive half. **A Cognito
-user pool is region-bound and cannot be moved**, and the `sub` it issues is what
-`users.external_subject` stores — so moving region after `FZ-046` creates the pool means a
-new pool, a new subject for every user, and a re-mapping of that column. It is a migration
-of who people are, not only of what they own. The pool does not exist yet, which is the
-whole of the window.
-
-And the cost of choosing now is smaller than "a Terraform workspace": the configuration is
-already parameterised end to end — availability zones are read and sliced rather than
-named, and the only pinned `us-east-1` is the CloudFront certificate, which AWS accepts
-from nowhere else and which holds no customer data. It is one variable, until it is applied.
-
-
 ### OI-21 — Actuator is on the application's own port, reachable by any administrator of any tenant
 **Severity:** Gap · **Owner:** `FZ-123` · **Raised:** 2026-09-09
 
@@ -189,6 +164,7 @@ The fix is an AWS Organization with the existing account as management and a new
 ## Resolved
 
 | Issue | Found in | Resolved by |
+| **EU data residency was deferred by letting a default choose the region** — `us-east-1` was never decided, it was the `variables.tf` default, and a region cannot be changed after the first apply without moving the database *and* re-creating every identity | `FZ-080` | `FZ-135` removed the default and priced the choice; `FZ-141` records the decision (`D-32`): `us-east-1`, knowingly, with the EU answer accepted as a cost |
 |---|---|---|
 | **`deploy.yml` and `verify.yml` still ran actions targeting Node 20** — GitHub had deprecated that runtime and was force-running those actions on a newer one, so the workflows were relying on a compatibility shim with an end date | `FZ-099` | `FZ-140` — every `uses:` resolved to the runtime its own `action.yml` declares, which found two the issue had missed; the eight on node20 bumped, the ones already on node24 left alone, and the pinning question answered: actions stay on major tags, base images do not (`FZ-139`) |
 | **The Dockerfiles followed floating tags, so what shipped changed without a commit** — `eclipse-temurin:21-jre` moved from Ubuntu 24.04 to 26.04 under the project, which is how eight HIGH findings appeared in CI while a local scan of the same tag was clean | `FZ-127` | `FZ-139` — all three `FROM` lines pinned by digest, both backend stages moved to the variant that does not ship `/usr/bin/pebble`, and the scanner now reads the refs out of the Dockerfiles. The baseline is empty |
