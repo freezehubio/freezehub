@@ -137,25 +137,6 @@ The specific hazard is that **Cognito issues ID tokens and access tokens from th
 
 `FZ-125` wrote the rules into `06-security.md` § Token validation rules. This entry stays open until something enforces them, with a test that watches each rejected shape fail.
 
-### OI-31 — Stripe cannot be used from Colombia, and `FZ-084` assumes it can
-**Severity:** Decision · **Owner:** `FZ-148` · **Raised:** 2026-09-15 · **Answered:** 2026-09-16
-
-`FZ-084` is DONE and the whole commercial model rests on it: Checkout, the Customer Portal, and a signature-verified webhook that is the only thing allowed to change entitlement. Every one of those assumes a Stripe account that can accept payments.
-
-**Checked, rather than assumed.** Stripe's own availability page lists Brazil and Mexico for Latin America; **Colombia, Chile and Peru are absent**, with no preview or beta status. Stripe's support material says it plainly: *"Payments are not supported yet in Colombia."* A Colombian business cannot hold a Stripe account that accepts payments.
-
-**So `FZ-084` is not wrong — it is unreachable.** Nothing about the implementation needs changing: the webhook is still the only thing that may alter entitlement, the idempotency is still right, and the four defects it found are still fixed. What is missing is an account it can point at.
-
-**It still does not block validation.** `13-validation.md` §3 invoices the first customers by hand precisely so that no payment rail is on the critical path, and that remains true. This is the decision that has to be made before the *first self-serve payment*, not before the first customer.
-
-The routes, none of them chosen here:
-
-- **A US entity holding a US Stripe account** — Stripe Atlas is the well-worn path for Latin American founders selling into the US. Keeps `FZ-084` exactly as built. Costs an incorporation and a US tax filing obligation.
-- **A merchant of record** — Paddle or Lemon Squeezy become the seller, which also absorbs US sales tax and EU VAT registration rather than leaving them to a solo founder. Costs a higher percentage and a rewrite of `FZ-084`'s integration.
-- **A Latin American processor** — dLocal or Mercado Pago. Sensible if the first customers are Colombian and paying in COP; wrong if they are foreign, which `13-validation.md` §4 expects for the price test.
-
-Which one depends on an answer this repository does not have yet: whether the paying customers are local or foreign. That is the same question `§4` frames and `D-32` already leaned on.
-
 ### OI-32 — Production would run in a personal AWS account
 **Severity:** Gap · **Owner:** `FZ-138` · **Raised:** 2026-09-15
 
@@ -183,6 +164,7 @@ Recorded now because the repository's own rule is that "no owner" is not a statu
 ## Resolved
 
 | Issue | Found in | Resolved by |
+| **Stripe cannot be used from Colombia, and `FZ-084` assumes it can** — Stripe supports Brazil and Mexico in Latin America and not Colombia, so a built, tested and correct billing integration had no account to point at | `FZ-137` | `FZ-148` verified it against Stripe's own availability page, and `D-34` chose Paddle as merchant of record. Implementation is `FZ-149` |
 | **EU data residency was deferred by letting a default choose the region** — `us-east-1` was never decided, it was the `variables.tf` default, and a region cannot be changed after the first apply without moving the database *and* re-creating every identity | `FZ-080` | `FZ-135` removed the default and priced the choice; `FZ-141` records the decision (`D-32`): `us-east-1`, knowingly, with the EU answer accepted as a cost |
 |---|---|---|
 | **`deploy.yml` and `verify.yml` still ran actions targeting Node 20** — GitHub had deprecated that runtime and was force-running those actions on a newer one, so the workflows were relying on a compatibility shim with an end date | `FZ-099` | `FZ-140` — every `uses:` resolved to the runtime its own `action.yml` declares, which found two the issue had missed; the eight on node20 bumped, the ones already on node24 left alone, and the pinning question answered: actions stay on major tags, base images do not (`FZ-139`) |

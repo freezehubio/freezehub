@@ -882,3 +882,37 @@ Gating the **level at creation** avoids the whole problem rather than mitigating
 **Free at five applications sits close to Starter at ten**, which makes Starter's value the capability rather than the volume. That is the intent, but whether $99 for "it actually blocks" holds up is a question for the first ten conversations.
 
 **Trial-issued hard freezes survive the drop to `FREE`** (`D-22`), so the paywall leaks for as long as those restrictions run. They are time-bounded and complete on their own, so it self-heals; a scheduled restriction far in the future is the exception worth watching.
+
+---
+
+## D-34 — Paddle is the merchant of record; FreezeHub is not the seller
+
+**Date:** 2026-09-16 · **Asked by:** `FZ-148` · **Decided by:** the operator · **Answers:** `OI-31`
+
+### Decision
+
+Payments go through **Paddle**, as merchant of record. Paddle is the seller the customer contracts with and pays; FreezeHub receives a payout. `FZ-084`'s Stripe integration is superseded and will be replaced by `FZ-149`; it is not deleted until that lands.
+
+### Why
+
+Stripe was the plan and is unavailable: it supports Brazil and Mexico in Latin America and not Colombia, where the operator is (`OI-31`). That forced a choice between incorporating in the United States to keep Stripe, using a merchant of record, or a Latin American processor.
+
+**A merchant of record is the one that removes work rather than adding an entity.** Paddle registers for and remits US sales tax and EU VAT itself, handles invoicing, dunning, refunds and chargebacks, and is the party of record on the customer's receipt. The alternative — a US Stripe account — keeps `FZ-084` exactly as written and hands a solo founder tax registration in every jurisdiction a customer happens to be in. For a product sold internationally by one person, that is the larger cost by far, and it is recurring rather than one-off.
+
+**Colombia is not excluded.** Paddle publishes a list of countries it cannot support suppliers from — Afghanistan, Belarus, Burma, Cuba, Iran, Iraq, Libya, North Korea, Russia, Syria, Venezuela, Yemen, Zimbabwe — and Colombia is not on it. Worth stating precisely: that is *absence from an exclusion list*, not an explicit statement of support, and Paddle vets suppliers before approving an account. **The account should be opened and approved before `FZ-149` is scheduled**, so this is not discovered twice.
+
+### Cost
+
+**Roughly double the transaction fee.** Paddle Billing charges about 5% + $0.50 against Stripe's 2.9% + $0.30. On the Stage 3 projection in the infrastructure plan — 75 paying customers, $21,675 MRR — that is about **$1,120 a month rather than $650**. The difference buys tax registration, filing and liability in every jurisdiction the product sells into, which is not otherwise free and is not work a founder can safely defer.
+
+**The customer's receipt says Paddle.** Some enterprise buyers care who they are contracting with, and a merchant of record is a third party in that relationship. It has never been a problem at this scale and it is worth knowing before an Enterprise deal, not during one.
+
+**`FZ-084` is rewritten, not adapted.** Checkout sessions, the Customer Portal, event shapes and the `stripe-java` dependency all go.
+
+### What survives, and must
+
+**Entitlement changes only from a signature-verified webhook**, never from a redirect a browser can forge. That is `FZ-084`'s load-bearing property, it is about not trusting a client, and it is rail-agnostic. So are the rest of that story's findings: idempotency by stored event id, its own security chain matching the webhook path only, and no CORS on it.
+
+Paddle signs with `Paddle-Signature` — HMAC-SHA256 over timestamp and body — which is the same construction as Stripe's pointed inward and the same one FreezeHub already uses outbound (`D-2`). The verification code is a rewrite of about the same size, not a new idea.
+
+**One incidental improvement:** Paddle publishes no official Java SDK, so the integration is plain HTTP plus an HMAC this codebase already knows how to compute. `stripe-java` leaves `pom.xml` and nothing replaces it.
