@@ -2691,32 +2691,62 @@ Billing now states the distinction in words, which nothing did before: the count
 visible and the one capability separating `FREE` from Starter was not mentioned anywhere.
 
 ### FZ-148 — Which Rail Takes the Money
-**Status:** TODO · **Owns:** `OI-31` · **Blocked on:** a commercial decision
+**Status:** DONE · **Answered:** `OI-31` · **Decided in:** `D-34`
 
 `FZ-084` built Checkout, the Customer Portal and a signature-verified webhook, and it is
-correct. It also assumes a Stripe account that can accept payments, and **the operator
-cannot have one**: Stripe supports Brazil and Mexico in Latin America and not Colombia, which
-`FZ-148` verified against Stripe's own availability page and support material rather than
-assuming either way.
+correct. It also assumes a Stripe account that can accept payments, and **the operator cannot
+have one** — verified against Stripe's own availability page rather than assumed either way:
+Brazil and Mexico are supported in Latin America, Colombia is absent, and Stripe's support
+material states that payments are not supported there.
 
-**This story is the decision, not the implementation**, and the decision needs an input the
-repository does not have: whether the first paying customers are local or foreign.
-`13-validation.md` §4 frames that question and deliberately leaves it open until design
-partners exist.
+**Decided: Paddle, as merchant of record** (`D-34`). Of the three routes, it is the one that
+removes work rather than adding an entity — Paddle registers for and remits US sales tax and
+EU VAT itself, and is the seller on the customer's receipt. A US Stripe account would have
+kept `FZ-084` untouched and handed a solo founder tax registration wherever a customer
+happens to be.
 
-The three routes, with what each costs the code:
+**Checked before recommending, because this entry exists to correct exactly that mistake.**
+Paddle publishes the countries it cannot support suppliers from and Colombia is not among
+them. That is absence from an exclusion list rather than an explicit statement of support,
+and Paddle vets suppliers — so the account wants opening and approving **before** `FZ-149` is
+scheduled, or the same class of surprise happens twice.
 
-| Route | `FZ-084` | Costs |
-|---|---|---|
-| US entity holding a US Stripe account | unchanged | an incorporation, and a US tax filing obligation |
-| Merchant of record (Paddle, Lemon Squeezy) | rewritten | a higher percentage — and it absorbs US sales tax and EU VAT, which a solo founder otherwise registers for |
-| Latin American processor (dLocal, Mercado Pago) | rewritten | right for COP-paying Colombian customers, wrong for the foreign price test |
+The cost is roughly double the transaction fee — about 5% + $0.50 against 2.9% + $0.30, which
+on the Stage 3 projection is ~$1,120 a month rather than ~$650. That buys tax liability in
+every jurisdiction the product sells into.
 
-**Whatever is chosen, one rule survives it.** Entitlement changes only from a
-signature-verified webhook, never from a redirect the browser can forge. That is `FZ-084`'s
-load-bearing property and it is about not trusting a client, not about Stripe.
+**Nothing was implemented here.** The decision needed an input, has one, and the code is
+`FZ-149`.
 
-**Not urgent, and worth saying why.** Nothing is blocked: the first customers are invoiced by
-hand (`13-validation.md` §3), which is the reason no payment rail is on the critical path.
-This becomes due at the first self-serve payment, and it is cheaper to decide with a real
-customer in front of you than to guess now.
+### FZ-149 — Paddle Replaces Stripe
+**Status:** TODO · **Decided by:** `D-34` · **Not scheduled:** see below
+
+Replaces `FZ-084`'s integration. Checkout sessions, the Customer Portal, the event shapes and
+the `stripe-java` dependency all go; `pom.xml` loses a dependency and nothing replaces it,
+because Paddle publishes no official Java SDK and the integration is plain HTTP plus an HMAC
+this codebase already computes in two other places.
+
+**What must survive, verbatim in behaviour if not in code:**
+
+- **Entitlement changes only from a signature-verified webhook.** Never from the redirect the
+  browser follows after paying, which anyone can forge. `FZ-084` has a test that forges the
+  redirect and proves it grants nothing; that test is rewritten, not dropped.
+- **Its own security chain**, matching the webhook path and nothing else, with no CORS. A
+  credential that works on one boundary must not work on another (`FZ-052`).
+- **Deliveries are idempotent** by stored event id. Paddle retries like Stripe does.
+- **Every subscription change is audited**, with the provider as the actor.
+
+Paddle signs with `Paddle-Signature` — HMAC-SHA256 over timestamp and body — the same
+construction as `D-2` pointed inward, so the verification is a rewrite of similar size rather
+than a new idea. The four defects `FZ-084` found are worth re-reading before starting: a null
+signature header arriving as `500`, `@PrePersist` not firing on an assigned id, idempotency
+by caught constraint violation failing inside a transaction, and an SDK deserialiser silently
+returning empty on an API-version mismatch. Three of those four are not Stripe-specific.
+
+**Deliberately not scheduled.** `13-validation.md` §3 invoices the first customers by hand so
+that no payment rail sits on the critical path, and that is still the plan. This becomes due
+at the **first self-serve payment** — which needs `FZ-082`, which needs `FZ-046`. Building it
+now would be building against an account that does not exist yet for a flow nobody can reach.
+
+**Blocked on one human action first:** a Paddle account, opened and approved. `D-34` says why
+that comes before the code rather than after it.
