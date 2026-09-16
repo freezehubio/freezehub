@@ -2689,3 +2689,34 @@ frontend deciding entitlement — the thing every other limit on that endpoint a
 
 Billing now states the distinction in words, which nothing did before: the counts were all
 visible and the one capability separating `FREE` from Starter was not mentioned anywhere.
+
+### FZ-148 — Which Rail Takes the Money
+**Status:** TODO · **Owns:** `OI-31` · **Blocked on:** a commercial decision
+
+`FZ-084` built Checkout, the Customer Portal and a signature-verified webhook, and it is
+correct. It also assumes a Stripe account that can accept payments, and **the operator
+cannot have one**: Stripe supports Brazil and Mexico in Latin America and not Colombia, which
+`FZ-148` verified against Stripe's own availability page and support material rather than
+assuming either way.
+
+**This story is the decision, not the implementation**, and the decision needs an input the
+repository does not have: whether the first paying customers are local or foreign.
+`13-validation.md` §4 frames that question and deliberately leaves it open until design
+partners exist.
+
+The three routes, with what each costs the code:
+
+| Route | `FZ-084` | Costs |
+|---|---|---|
+| US entity holding a US Stripe account | unchanged | an incorporation, and a US tax filing obligation |
+| Merchant of record (Paddle, Lemon Squeezy) | rewritten | a higher percentage — and it absorbs US sales tax and EU VAT, which a solo founder otherwise registers for |
+| Latin American processor (dLocal, Mercado Pago) | rewritten | right for COP-paying Colombian customers, wrong for the foreign price test |
+
+**Whatever is chosen, one rule survives it.** Entitlement changes only from a
+signature-verified webhook, never from a redirect the browser can forge. That is `FZ-084`'s
+load-bearing property and it is about not trusting a client, not about Stripe.
+
+**Not urgent, and worth saying why.** Nothing is blocked: the first customers are invoiced by
+hand (`13-validation.md` §3), which is the reason no payment rail is on the critical path.
+This becomes due at the first self-serve payment, and it is cheaper to decide with a real
+customer in front of you than to guess now.
