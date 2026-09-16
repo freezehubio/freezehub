@@ -18,6 +18,7 @@ import com.freezhub.policy.PolicyEvaluationResponse.MatchedRestriction;
 import com.freezhub.restriction.ChangeRestriction;
 import com.freezhub.restriction.ChangeRestrictionRepository;
 import com.freezhub.restriction.RestrictionLevel;
+import com.freezhub.subscription.SubscriptionService;
 import com.freezhub.restriction.RestrictionStatus;
 import com.freezhub.shared.security.ApiKeyPrincipal;
 import java.time.Instant;
@@ -56,6 +57,7 @@ public class PolicyService {
     private final AuditTrail auditTrail;
     private final PolicyMetrics metrics;
     private final DeploymentCheckRecorder deploymentChecks;
+    private final SubscriptionService subscriptions;
 
     public PolicyService(ChangeRestrictionRepository changeRestrictionRepository,
                          ApplicationRepository applicationRepository,
@@ -63,7 +65,8 @@ public class PolicyService {
                          TeamApplicationRepository teamApplicationRepository,
                          AuditTrail auditTrail,
                          PolicyMetrics metrics,
-                         DeploymentCheckRecorder deploymentChecks) {
+                         DeploymentCheckRecorder deploymentChecks,
+                         SubscriptionService subscriptions) {
         this.changeRestrictionRepository = changeRestrictionRepository;
         this.applicationRepository = applicationRepository;
         this.environmentRepository = environmentRepository;
@@ -71,6 +74,7 @@ public class PolicyService {
         this.auditTrail = auditTrail;
         this.metrics = metrics;
         this.deploymentChecks = deploymentChecks;
+        this.subscriptions = subscriptions;
     }
 
     /**
@@ -172,7 +176,8 @@ public class PolicyService {
                 request.application(),
                 request.environment(),
                 now,
-                explain(outcome, request.application(), request.environment()),
+                explain(outcome, request.application(), request.environment(),
+                        advisoryOnFreePlan(organizationId, outcome)),
                 List.of(),
                 matched.stream().map(MatchedRestriction::from).toList());
     }
@@ -200,7 +205,8 @@ public class PolicyService {
                 applicationName,
                 environmentName,
                 now,
-                explain(outcome, applicationName, environmentName),
+                explain(outcome, applicationName, environmentName,
+                        advisoryOnFreePlan(organizationId, outcome)),
                 outcome.unregistered(),
                 outcome.matched().stream().map(MatchedRestriction::from).toList());
     }
@@ -258,9 +264,25 @@ public class PolicyService {
                 request.application(),
                 request.environment(),
                 now,
-                explain(outcome, request.application(), request.environment()),
+                explain(outcome, request.application(), request.environment(), false),
                 outcome.unregistered(),
                 List.of());
+    }
+
+    /**
+     * Whether this answer is an advisory that a paid plan would have blocked (FZ-145, D-33).
+     *
+     * <p><strong>Short-circuits before the query.</strong> The usual answer is that nothing
+     * matched, and the Policy API is the one endpoint that must not get slower — so the
+     * subscription is read only when a restriction actually matched and the deployment was
+     * allowed anyway. A free organization that is blocked has a hard freeze surviving from
+     * its trial ({@code D-22}) and wants no upsell.
+     */
+    private boolean advisoryOnFreePlan(Long organizationId, PolicyOutcome outcome) {
+        if (outcome.matched().isEmpty() || outcome.blocked()) {
+            return false;
+        }
+        return !subscriptions.of(organizationId).getPlan().hardFreeze();
     }
 
     /**
@@ -270,7 +292,8 @@ public class PolicyService {
      * agreed with the pipeline on ALLOW or BLOCK but described it differently would still
      * be two answers to the same question.
      */
-    private String explain(PolicyOutcome outcome, String applicationName, String environmentName) {
+    private String explain(PolicyOutcome outcome, String applicationName, String environmentName,
+                           boolean advisoryOnFreePlan) {
         if (outcome.isUnregistered()) {
             String detail = outcome.unregistered().stream()
                     .map(dimension -> dimension == ScopeDimension.APPLICATION
@@ -296,8 +319,16 @@ public class PolicyService {
             return "Blocked by a change restriction in force: " + names + ".";
         }
 
-        return "Allowed, but " + matched.size() + " advisory restriction"
+        String advisory = "Allowed, but " + matched.size() + " advisory restriction"
                 + (matched.size() == 1 ? " is" : "s are") + " in force for this deployment.";
+
+        // The whole free-to-paid pitch, delivered by freeze-check.sh printing this verbatim
+        // in the engineer's own build log (D-33). Nothing above it is dressed up to make the
+        // point: the decision is ALLOW and the advisory is still an advisory.
+        return advisoryOnFreePlan
+                ? advisory + " Your FREE plan announces freezes; it does not block them."
+                        + " This deployment would be refused on a paid plan."
+                : advisory;
     }
 
 }
