@@ -2653,7 +2653,7 @@ reasoning holds, and a sentence that appeared only in CI would be a second answe
 same question.
 
 ### FZ-146 — The Free Tier in the Product
-**Status:** TODO
+**Status:** DONE
 
 Frontend. `FZ-085` already renders plan, limits, usage and the trial countdown from
 `GET /api/billing/subscription`, and composes a `402` into a sentence at the point the error
@@ -2668,3 +2668,24 @@ Acceptance:
   refused, with the reason. Hiding it hides the product's best sales argument at the exact
   moment somebody wants it.
 - Nothing in the UI decides entitlement; every limit shown comes from the backend.
+
+**Most of this was already true, and saying so is the honest part of the story.** `FZ-085`
+renders the plan, its limits and its usage from the backend, and composes a `402` into a
+sentence where the error is built — so `FREE` already appeared as a plan, the create form
+already showed the blocking option rather than hiding it, and the refusal already rendered
+as its own message rather than a generic error. Three of the four acceptance criteria needed
+no code.
+
+**What was actually missing was narrower and worth finding.** `planLimitFrom` requires
+`typeof body.limit === 'number'`, and a capability refusal deliberately sends no numbers
+(`FZ-143`) — so it fell past the composition that appends *"Upgrade under Settings →
+Billing"*. **The one `402` a free organization actually meets was the only one in the product
+with no way out on it.** A sibling parse fixes it, and keeps refusing to invent a count:
+`planLimit` stays null, so nothing can render a usage bar for something with no usage.
+
+**The capability comes from the backend, not from the plan's name.** `SubscriptionView`
+gained `blocksDeployments`, because a UI deriving it from `plan === 'FREE'` would be the
+frontend deciding entitlement — the thing every other limit on that endpoint avoids.
+
+Billing now states the distinction in words, which nothing did before: the counts were all
+visible and the one capability separating `FREE` from Starter was not mentioned anywhere.

@@ -22,6 +22,14 @@ public record SubscriptionView(
         Plan plan,
         SubscriptionStatus status,
         boolean canUpgradeSelfServe,
+        /**
+         * Whether this plan's freezes actually block a deployment (FZ-146, D-33).
+         *
+         * <p>A component rather than something the UI derives from the plan's name: the
+         * frontend must not decide entitlement, and this is the one capability that
+         * separates FREE from every paid plan.
+         */
+        boolean blocksDeployments,
         boolean hasBillingAccount,
         Instant trialEndsAt,
         Long trialDaysRemaining,
@@ -56,6 +64,7 @@ public record SubscriptionView(
                 plan,
                 subscription.getStatus(),
                 plan.isSelfServe() && subscription.getStatus() != SubscriptionStatus.CANCELLED,
+                plan.hardFreeze(),
                 subscription.getStripeCustomerId() != null,
                 subscription.getTrialEndsAt(),
                 trialDaysRemaining(subscription, now),
