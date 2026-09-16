@@ -57,9 +57,9 @@ public class TrialExpiryScheduler {
     }
 
     private void sweep() {
-        int suspended = subscriptions.suspendExpiredTrials(Instant.now());
-        if (suspended > 0) {
-            log.info("Suspended {} organization(s) whose trial ended", suspended);
+        int expired = subscriptions.expireTrials(Instant.now());
+        if (expired > 0) {
+            log.info("Moved {} organization(s) to the FREE plan; trial ended", expired);
         }
     }
 }

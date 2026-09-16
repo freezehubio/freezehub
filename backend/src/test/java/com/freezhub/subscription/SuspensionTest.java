@@ -195,22 +195,20 @@ class SuspensionTest {
     }
 
     @Test
-    void anExpiredTrialIsSuspendedAndAudited() {
+    void anExpiredTrialIsNoLongerSuspended() {
+        // Moved here from an assertion that a trial expires to SUSPENDED. That was the
+        // behaviour until FZ-144; D-33 changed it, and the full transition is covered by
+        // TrialExpiryTest. What this class still owns is the boundary: a trial ending must
+        // not produce a suspended organization.
         Instant now = Instant.now();
-        Subscription trial = subscriptionRepository.saveAndFlush(
+        subscriptionRepository.saveAndFlush(
                 Subscription.startTrial(organizationId, now.minus(Duration.ofDays(20))));
-        assertThat(trial.getStatus()).isEqualTo(SubscriptionStatus.TRIALING);
 
-        int suspended = subscriptionService.suspendExpiredTrials(now);
+        subscriptionService.expireTrials(now);
 
-        assertThat(suspended).isGreaterThanOrEqualTo(1);
         assertThat(subscriptionRepository.findByOrganizationId(organizationId))
                 .get().extracting(Subscription::getStatus)
-                .isEqualTo(SubscriptionStatus.SUSPENDED);
-        assertThat(auditRepository.findAll().stream()
-                .filter(event -> event.getOrganizationId().equals(organizationId))
-                .map(event -> event.getAction()))
-                .contains(AuditAction.SUBSCRIPTION_SUSPENDED);
+                .isNotEqualTo(SubscriptionStatus.SUSPENDED);
     }
 
     @Test
@@ -218,7 +216,7 @@ class SuspensionTest {
         Instant now = Instant.now();
         subscriptionRepository.saveAndFlush(Subscription.startTrial(organizationId, now));
 
-        subscriptionService.suspendExpiredTrials(now);
+        subscriptionService.expireTrials(now);
 
         assertThat(subscriptionRepository.findByOrganizationId(organizationId))
                 .get().extracting(Subscription::getStatus)
