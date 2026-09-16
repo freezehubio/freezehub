@@ -45,3 +45,5 @@ databaseChangeLog:
       file: db/changelog/022-scheduler-lock.yaml
   - include:
       file: db/changelog/023-users-external-subject.yaml
+  - include:
+      file: db/changelog/024-subscription-free-plan.yaml

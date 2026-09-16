@@ -2555,7 +2555,7 @@ stay **unlimited** (capping them caps what sells the product), the one destinati
 not three** (a squad needs to be able to succeed, and `D-14` makes the limit self-enforcing).
 
 ### FZ-143 — The FREE Plan and Its Capability Gate
-**Status:** TODO
+**Status:** DONE
 
 `Plan.FREE(5, 1, 1, 7)` plus a capability the enum does not yet have.
 
@@ -2571,6 +2571,18 @@ Acceptance:
   guard belongs on the write path, not only on create.
 - `PolicyService` is not modified, and there is a test asserting a `FREE` organization's
   evaluation is byte-for-byte what the same persisted state produces on any other plan.
+
+**Found by the tests, not by reading: the plan set is enforced in the database too.**
+`018-subscription.yaml` puts a `CHECK (plan IN (...))` on the column, so adding an enum
+constant is a schema change and not only a Java one. Every test failed on
+`chk_subscription_plan` before `024-subscription-free-plan.yaml` existed. Nothing else would
+have caught it — the enum compiles, the service is correct, and the row is simply refused at
+insert. This is the reason the check is worth having and the reason the test came first.
+
+**The guard sits in `validateRequest`**, which both `create` and `update` already call, so
+the write path is covered once rather than twice. `update` re-validates in full by design
+(its own comment says an update can never leave a restriction in a state creation would have
+rejected), and that property is what made this a one-line change instead of two.
 
 ### FZ-144 — Trial Expires Into Free
 **Status:** TODO

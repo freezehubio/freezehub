@@ -131,6 +131,21 @@ public class SubscriptionService {
         }
     }
 
+    /**
+     * Refuses a blocking freeze on a plan that does not carry the capability (FZ-143, D-33).
+     *
+     * <p>The gate is here, at creation, and not in policy evaluation. A FREE organization
+     * therefore never has a HARD_FREEZE row, which is what keeps domain rule 3
+     * unconditionally true and keeps every billing state out of a policy answer (D-21).
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void requireHardFreezeAllowed(Long organizationId) {
+        Plan plan = of(organizationId).getPlan();
+        if (!plan.hardFreeze()) {
+            throw new PlanFeatureUnavailableException(plan, "blocking freezes");
+        }
+    }
+
     /** Null is unlimited, and unlimited never counts — the query is not even run. */
     private void enforce(Plan plan, String resource, Integer limit, LongSupplier currentCount) {
         if (limit == null) {

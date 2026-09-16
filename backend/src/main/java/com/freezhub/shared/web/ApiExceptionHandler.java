@@ -2,6 +2,7 @@ package com.freezhub.shared.web;
 
 import com.freezhub.shared.ratelimit.RateLimitExceededException;
 import com.freezhub.subscription.OrganizationSuspendedException;
+import com.freezhub.subscription.PlanFeatureUnavailableException;
 import com.freezhub.subscription.PlanLimitExceededException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
@@ -62,6 +63,22 @@ public class ApiExceptionHandler {
         problem.setProperty("resource", exception.resource());
         problem.setProperty("limit", exception.limit());
         problem.setProperty("current", exception.current());
+        return problem;
+    }
+
+    /**
+     * A capability the plan does not carry at all (FZ-143).
+     *
+     * <p>Same {@code 402} as a limit, and deliberately no {@code limit} or {@code current}
+     * extension: there is no count to show, and inventing one would invite a usage bar for
+     * something that has no usage.
+     */
+    @ExceptionHandler(PlanFeatureUnavailableException.class)
+    ProblemDetail handlePlanFeature(PlanFeatureUnavailableException exception, HttpServletRequest request) {
+        ProblemDetail problem = problem(HttpStatus.PAYMENT_REQUIRED.value(),
+                exception.getMessage(), request);
+        problem.setProperty("plan", exception.plan().name());
+        problem.setProperty("feature", exception.feature());
         return problem;
     }
 

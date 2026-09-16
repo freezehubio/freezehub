@@ -1,0 +1,26 @@
+databaseChangeLog:
+  # FZ-143: the FREE plan (D-33).
+  #
+  # Plan limits are an enum with constants as code (FZ-081), but the set of *names* is
+  # enforced here as well, so adding a constant is a schema change rather than only a
+  # Java one. Found by a test rather than by reading, which is the reason the check
+  # exists: nothing else would have stopped a plan the database refuses to store.
+  - changeSet:
+      id: 024-subscription-free-plan
+      author: freezehub
+      changes:
+        - sql:
+            sql: >
+              ALTER TABLE subscription DROP CONSTRAINT chk_subscription_plan
+        - sql:
+            sql: >
+              ALTER TABLE subscription ADD CONSTRAINT chk_subscription_plan
+              CHECK (plan IN ('FREE','TRIAL','STARTER','GROWTH','SCALE','ENTERPRISE'))
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE subscription DROP CONSTRAINT chk_subscription_plan
+        - sql:
+            sql: >
+              ALTER TABLE subscription ADD CONSTRAINT chk_subscription_plan
+              CHECK (plan IN ('TRIAL','STARTER','GROWTH','SCALE','ENTERPRISE'))
