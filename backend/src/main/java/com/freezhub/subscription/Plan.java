@@ -25,6 +25,16 @@ public enum Plan {
     /** Full-featured for 14 days. A trial that hides the audit trail hides the product. */
     TRIAL(50, 25, null, 365),
 
+    /**
+     * Announces freezes; cannot create one that blocks (D-33).
+     *
+     * <p>The gate is the level at creation, not the answer: a FREE organization never has a
+     * HARD_FREEZE row, so domain rule 3 stays unconditionally true and {@code PolicyService}
+     * consults no subscription. Seven-day check retention is what keeps a tier nobody pays
+     * for cheap to serve.
+     */
+    FREE(5, 1, 1, 7),
+
     STARTER(10, 5, 3, 90),
     GROWTH(50, 25, null, 365),
     SCALE(200, null, null, 365),
@@ -61,6 +71,17 @@ public enum Plan {
     /** The longest deployment-check retention this plan may configure. */
     public int deploymentCheckRetentionDays() {
         return deploymentCheckRetentionDays;
+    }
+
+    /**
+     * Whether this plan may create a {@code HARD_FREEZE}.
+     *
+     * <p>A capability rather than a count, and deliberately not a limit of zero: "your FREE
+     * plan allows 0 blocking freezes, and you are using 0" is a worse sentence than the
+     * truth. See {@code PlanFeatureUnavailableException}.
+     */
+    public boolean hardFreeze() {
+        return this != FREE;
     }
 
     public boolean isSelfServe() {

@@ -10,6 +10,7 @@ import com.freezhub.audit.AuditTrail;
 import com.freezhub.audit.FieldChanges;
 import com.freezhub.notification.NotificationEvent;
 import com.freezhub.notification.NotificationOutbox;
+import com.freezhub.subscription.SubscriptionService;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -30,19 +31,22 @@ public class ChangeRestrictionService {
     private final EnvironmentRepository environmentRepository;
     private final NotificationOutbox notificationOutbox;
     private final AuditTrail auditTrail;
+    private final SubscriptionService subscriptions;
 
     public ChangeRestrictionService(ChangeRestrictionRepository changeRestrictionRepository,
                                     TeamRepository teamRepository,
                                     ApplicationRepository applicationRepository,
                                     EnvironmentRepository environmentRepository,
                                     NotificationOutbox notificationOutbox,
-                                    AuditTrail auditTrail) {
+                                    AuditTrail auditTrail,
+                                    SubscriptionService subscriptions) {
         this.changeRestrictionRepository = changeRestrictionRepository;
         this.teamRepository = teamRepository;
         this.applicationRepository = applicationRepository;
         this.environmentRepository = environmentRepository;
         this.notificationOutbox = notificationOutbox;
         this.auditTrail = auditTrail;
+        this.subscriptions = subscriptions;
     }
 
     /**
@@ -209,6 +213,10 @@ public class ChangeRestrictionService {
         Set<Long> teamIds = request.scope().teamIds();
         Set<Long> applicationIds = request.scope().applicationIds();
         Set<Long> environmentIds = request.scope().environmentIds();
+
+        if (request.level() == RestrictionLevel.HARD_FREEZE) {
+            subscriptions.requireHardFreezeAllowed(organizationId);
+        }
 
         validatePeriod(request.startsAt(), request.endsAt(), Instant.now());
         validateScopeNotEmpty(teamIds, applicationIds, environmentIds);
