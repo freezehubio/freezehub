@@ -9,6 +9,7 @@ function stubSubscription(overrides: Partial<Subscription>, status = 200) {
     plan: 'TRIAL',
     status: 'TRIALING',
     canUpgradeSelfServe: true,
+    blocksDeployments: true,
     hasBillingAccount: false,
     trialEndsAt: '2026-09-20T00:00:00Z',
     trialDaysRemaining: 14,

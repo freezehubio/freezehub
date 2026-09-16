@@ -100,6 +100,13 @@ export function BillingSection() {
         )}
       </p>
 
+      {!plan.blocksDeployments && (
+        <p className={styles.hint}>
+          Freezes on this plan are <strong>advisory</strong>: a pipeline is told one is in
+          force and deploys anyway. Blocking freezes come with any paid plan.
+        </p>
+      )}
+
       {plan.status === 'PAST_DUE' && (
         <p className={styles.actionError} role="alert">
           A payment did not go through. Your restrictions are still enforced and your team

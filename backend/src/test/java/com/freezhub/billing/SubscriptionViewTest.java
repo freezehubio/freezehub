@@ -196,4 +196,25 @@ class SubscriptionViewTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.deploymentCheckRetentionDays").value(2555));
     }
+
+    @Test
+    void theViewSaysWhetherFreezesActuallyBlock() throws Exception {
+        // FZ-146: the one capability that separates FREE from Starter has to come from the
+        // backend. A UI deciding it from the plan's name would be the frontend deciding
+        // entitlement, which is the thing every other limit on this endpoint avoids.
+        onPlan(Plan.FREE);
+
+        mockMvc.perform(get("/api/billing/subscription").header("Authorization", "Bearer " + tokenFor(UserRole.ADMINISTRATOR, "cap")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.blocksDeployments").value(false));
+    }
+
+    @Test
+    void aPaidPlanSaysItsFreezesBlock() throws Exception {
+        onPlan(Plan.STARTER);
+
+        mockMvc.perform(get("/api/billing/subscription").header("Authorization", "Bearer " + tokenFor(UserRole.ADMINISTRATOR, "cap")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.blocksDeployments").value(true));
+    }
 }

@@ -261,3 +261,64 @@ describe('a server that does not answer', () => {
     }
   })
 })
+
+describe('plan capabilities', () => {
+  test('a capability refusal carries the upgrade path, like a limit does', async () => {
+    // FZ-143 sends `plan` and `feature` and deliberately no numbers -- a capability is not
+    // a count. Before FZ-146 that fell past planLimitFrom, which requires `limit`, so the
+    // one 402 a free organization actually meets was the only one with no way out on it.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              status: 402,
+              detail: 'The FREE plan does not include blocking freezes.',
+              plan: 'FREE',
+              feature: 'blocking freezes',
+            }),
+            { status: 402, headers: { 'Content-Type': 'application/problem+json' } },
+          ),
+        ),
+      ),
+    )
+
+    const caught = await apiRequest('/api/restrictions', { method: 'POST', token: 't' }).catch(
+      (error: unknown) => error,
+    )
+
+    const error = caught as ApiError
+    expect(error.isPlanLimit).toBe(true)
+    expect(error.message).toContain('FREE')
+    expect(error.message).toContain('blocking freezes')
+    expect(error.message).toContain('Settings')
+  })
+
+  test('a capability refusal is not reported as a usage figure', async () => {
+    // There is no count, so nothing may render a usage bar for it. Inventing a zero would
+    // read as "0 of 0 used", which is true and tells the reader nothing.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              status: 402,
+              detail: 'The FREE plan does not include blocking freezes.',
+              plan: 'FREE',
+              feature: 'blocking freezes',
+            }),
+            { status: 402, headers: { 'Content-Type': 'application/problem+json' } },
+          ),
+        ),
+      ),
+    )
+
+    const caught = await apiRequest('/api/restrictions', { method: 'POST', token: 't' }).catch(
+      (error: unknown) => error,
+    )
+
+    expect((caught as ApiError).planLimit).toBeNull()
+  })
+})

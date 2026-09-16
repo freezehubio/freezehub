@@ -203,6 +203,8 @@ export interface Subscription {
   plan: string
   status: "TRIALING" | "ACTIVE" | "PAST_DUE" | "SUSPENDED" | "CANCELLED"
   canUpgradeSelfServe: boolean
+  /** Whether this plan's freezes actually block a deployment (`FZ-146`, `D-33`). */
+  blocksDeployments: boolean
   hasBillingAccount: boolean
   trialEndsAt: string | null
   trialDaysRemaining: number | null
