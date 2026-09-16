@@ -158,24 +158,32 @@ public class SubscriptionService {
     }
 
     /**
-     * Suspends trials that have run out (FZ-081).
+     * Moves trials that have run out onto the free plan (FZ-144, D-33).
      *
-     * <p>Follows the lifecycle reconciler's shape: the logic takes an explicit clock so it
-     * can be tested without waiting fourteen days, and the scheduler that calls it is a
-     * separate, thin class.
+     * <p>Was {@code suspendExpiredTrials}. A trial that ends in a read-only account loses
+     * the customer; one that ends in a working free tier keeps a live account still
+     * announcing freezes, and still telling the engineer on every deploy what a paid plan
+     * would have done.
      *
-     * <p>Suspension is reversible and narrow. What it does not touch is the Policy API —
-     * see {@link OrganizationSuspendedException}.
+     * <p><strong>Only a trial is swept.</strong> {@code findExpiredTrials} filters on
+     * {@code TRIALING}, so a paying subscription cannot be dragged here — and it must not
+     * be. A paying customer on FREE would stop enforcing every hard freeze they have,
+     * because FREE cannot carry one, which is a billing event un-freezing production
+     * ({@code D-21}). Suspension remains where non-payment goes.
+     *
+     * <p>Follows the lifecycle reconciler's shape: an explicit clock so it can be tested
+     * without waiting fourteen days, and a separate thin scheduler that calls it.
      */
     @Transactional
-    public int suspendExpiredTrials(Instant now) {
+    public int expireTrials(Instant now) {
         List<Subscription> expired = subscriptions.findExpiredTrials(now);
         for (Subscription subscription : expired) {
-            subscription.suspend();
+            subscription.expireToFree();
             auditTrail.record(subscription.getOrganizationId(), AuditActor.system(),
-                    AuditAction.SUBSCRIPTION_SUSPENDED, AuditResourceType.ORGANIZATION,
+                    AuditAction.SUBSCRIPTION_PLAN_CHANGED, AuditResourceType.ORGANIZATION,
                     subscription.getOrganizationId());
-            log.info("Trial expired for organization {}; suspended", subscription.getOrganizationId());
+            log.info("Trial expired for organization {}; moved to the FREE plan",
+                    subscription.getOrganizationId());
         }
         return expired.size();
     }

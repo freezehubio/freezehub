@@ -2585,7 +2585,7 @@ the write path is covered once rather than twice. `update` re-validates in full 
 rejected), and that property is what made this a one-line change instead of two.
 
 ### FZ-144 — Trial Expires Into Free
-**Status:** TODO
+**Status:** DONE
 
 `TrialExpiryScheduler` currently sends an expired trial to `SUSPENDED`. It sends it to plan
 `FREE`, status `ACTIVE`.
@@ -2600,6 +2600,24 @@ Acceptance:
 - Per `D-22`, nothing is retroactive: trial-created hard freezes keep their level, trial
   API keys keep working, and the organization keeps applications above the `FREE` limit.
 - The transition is audited, as every other subscription change is.
+
+**`suspendExpiredTrials` is now `expireTrials`**, because it no longer suspends anything and
+a method named for what it used to do is how the next reader gets it wrong.
+
+**The criterion that matters is a query, not a branch.** `findExpiredTrials` filters on
+`TRIALING`, so a paying subscription cannot be swept here at all — there is no code path
+from "stopped paying" to `FREE`. `aPaidSubscriptionIsNeverSweptToFree` pins that by
+activating a subscription onto `GROWTH` with a trial end long past and asserting the sweep
+leaves it alone. It is the test most worth keeping, because a later change to the query is
+what would break it silently.
+
+**The audit action is `SUBSCRIPTION_PLAN_CHANGED`, not `SUBSCRIPTION_SUSPENDED`.** It is
+what happened, and the old value would make the trail claim an outcome that no longer occurs.
+
+**One existing test changed rather than moved.** `SuspensionTest.anExpiredTrialIsSuspendedAndAudited`
+asserted the behaviour this story reverses. It is now `anExpiredTrialIsNoLongerSuspended` and
+keeps the boundary that class owns — a trial ending must not produce a suspended organization
+— while `TrialExpiryTest` covers the whole transition.
 
 ### FZ-145 — What the Build Log Says
 **Status:** TODO

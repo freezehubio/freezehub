@@ -220,6 +220,18 @@ public class Subscription {
         this.status = SubscriptionStatus.CANCELLED;
     }
 
+    /**
+     * A trial that ran out becomes a working free account (FZ-144, D-33).
+     *
+     * <p>Not suspension. A trial ending in a read-only account loses the customer; one
+     * ending in a free tier keeps a live account still announcing freezes. Suspension is
+     * for non-payment by someone who was paying, and nothing here reaches that case.
+     */
+    void expireToFree() {
+        this.plan = Plan.FREE;
+        this.status = SubscriptionStatus.ACTIVE;
+    }
+
     void suspend() {
         this.status = SubscriptionStatus.SUSPENDED;
     }
