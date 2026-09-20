@@ -72,6 +72,38 @@ data "aws_iam_policy_document" "github_deploy" {
     resources = [aws_ecr_repository.backend.arn]
   }
 
+  # Deploy to the single-box beta by SSM Run Command (FZ-154, D-35).
+  #
+  # Scoped two ways rather than one. The instance is named by tag, so this cannot drive an
+  # unrelated box in the account; and the document is restricted to AWS-RunShellScript,
+  # because SendCommand on "*" documents includes ones that can install software or read
+  # arbitrary files — a far larger grant than "restart the stack".
+  statement {
+    sid       = "DeployToTheSingleBox"
+    actions   = ["ssm:SendCommand"]
+    resources = ["arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:instance/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "ssm:ResourceTag/Project"
+      values   = ["freezehub"]
+    }
+  }
+
+  statement {
+    sid       = "OnlyTheShellDocument"
+    actions   = ["ssm:SendCommand"]
+    resources = ["arn:aws:ssm:${var.region}::document/AWS-RunShellScript"]
+  }
+
+  # Without this the workflow can only prove the API accepted the command, which is not
+  # the same as the deploy having worked (FZ-154).
+  statement {
+    sid       = "ReadTheOutcome"
+    actions   = ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
+    resources = ["*"] # invocation ids are not known ahead of time
+  }
+
   # Register a revision and point the service at it. Deliberately no ecs:CreateService or
   # ecs:DeleteService: deploying replaces an image, it does not reshape infrastructure.
   statement {

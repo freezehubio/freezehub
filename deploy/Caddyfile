@@ -1,0 +1,43 @@
+# TLS for the API (FZ-153).
+#
+# Caddy is what removes the load balancer's $16 (D-35): automatic Let's Encrypt,
+# auto-renewing, no certificate in the repository and none to rotate by hand. That is the
+# largest saving in this posture after D-28 removed the NAT.
+
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	# One line per request, so the runbook has something to grep. The backend writes its
+	# own request log with an X-Request-Id (FZ-062); this is the layer in front of it and
+	# answers a different question -- whether the request reached the application at all.
+	log {
+		output file /data/access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+		format json
+	}
+
+	# Passed through so the backend sees the caller rather than the proxy. The rate
+	# limiter reads the remote address and never the header itself, which is what makes
+	# `forward-headers-strategy: framework` safe here and only here: Caddy overwrites
+	# X-Forwarded-For rather than appending to a caller-supplied one (FZ-087).
+	reverse_proxy backend:8080 {
+		header_up X-Real-IP {remote_host}
+
+		# The Policy API is on the path of every customer deployment and freeze-check.sh
+		# fails closed, so a proxy that gives up early turns a slow answer into a blocked
+		# deploy. Generous on purpose.
+		transport http {
+			dial_timeout 5s
+			response_header_timeout 30s
+		}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+}

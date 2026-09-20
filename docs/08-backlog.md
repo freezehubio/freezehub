@@ -2818,7 +2818,7 @@ balancer, which was the largest line left after `D-28` removed the NAT.
 what makes `FZ-157` small — only the compute and database tier moves.
 
 ### FZ-152 — The Box
-**Status:** TODO
+**Status:** DONE · **Not applied** — needs `FZ-138`
 
 Terraform for one instance, in `infra/singlebox/`, separate from `infra/` so neither is
 half-applied by accident and `FZ-157` is a switch rather than a rewrite.
@@ -2837,7 +2837,7 @@ Acceptance:
 - `terraform fmt` and `validate` clean in CI, like the rest of `infra/`.
 
 ### FZ-153 — The Stack
-**Status:** TODO
+**Status:** DONE · **Cannot run until** `FZ-046`
 
 `docker-compose.yml` on the box: Caddy, the backend, PostgreSQL 16.
 
@@ -2856,8 +2856,30 @@ Acceptance:
 - One replica, and the resulting **~15 second gap on deploy is documented, not hidden**. Two
   replicas remove it and need a 4 GB instance; `FZ-121` already made running two safe.
 
+**Confirmed by running it, not by reading the YAML.** The jar was started under
+`SPRING_PROFILES_ACTIVE=beta` with the environment this stack supplies, against a real
+PostgreSQL. Two things came out of it:
+
+- **`FREEZEHUB_SECRETS_ENCRYPTION_KEY` does bind to `freezehub.secrets.encryption-key`.**
+  Spring's relaxed binding handles the underscore-to-hyphen mapping, which was worth
+  proving rather than assuming — `FZ-063`'s ECS task definition uses the same name, so a
+  wrong guess would have been wrong in both postures at once and discovered on a first
+  deploy.
+- **The application then failed exactly where `OI-2` says it will**, on
+  `No qualifying bean of type 'IdentityProvider'`. So the box cannot serve anything until
+  `FZ-046` ships. That was already written down; it is now executed.
+
+**`server.forward-headers-strategy` is deliberately not set here.** It is already `framework`
+in the default document and `none` only under `local`. The rate limiter depends on it
+(`FZ-087`), and configuration that load-bearing belongs in one place rather than two that can
+drift.
+
+**The port is Spring's default 8080, not 8099.** `server.port: ${SERVER_PORT:8099}` lives
+inside the `local` profile document, below the `---` at line 99, so it does not apply here.
+The `EXPOSE 8080` in the Dockerfile is right and the local port is the exception.
+
 ### FZ-154 — Deploy Without SSH
-**Status:** TODO
+**Status:** DONE · **Not executed** — needs `FZ-138`, `FZ-152`
 
 A GitHub Actions job that deploys by **SSM Run Command**, reusing the OIDC role
 `github-oidc.tf` already creates.
@@ -2878,7 +2900,7 @@ Acceptance:
 - Rollback is redeploying an earlier tag, and that is written down.
 
 ### FZ-155 — Backups, and a Restore Somebody Has Run
-**Status:** TODO
+**Status:** TODO · **Script written; the restore drill is what completes it**
 
 Nightly `pg_dump` to S3, with lifecycle expiry.
 
@@ -2895,8 +2917,22 @@ Acceptance:
 - **A documented restore, executed once, with the command and its output recorded in
   `14-operations.md`.**
 
+**The script exists and the story is still open, deliberately.** `deploy/backup.sh` and its
+systemd units are written; the acceptance criterion that matters — *a restore somebody has
+performed* — cannot be met until there is a box with a database on it. Marking this DONE on
+the strength of a script that has never produced a file anyone restored would be exactly the
+failure the criterion exists to prevent.
+
+Two things the script does that a naive `pg_dump | aws s3 cp` does not:
+
+- **It refuses to upload a dump under 1 KiB.** An empty or truncated dump uploads perfectly
+  happily and restores into nothing. The size check is the difference between a backup and
+  a file.
+- **It reports failure to the journal at `user.err`**, not just to stderr. A backup that
+  fails silently is worse than no backup, because it removes the reason to check.
+
 ### FZ-156 — The Operations Runbook
-**Status:** TODO
+**Status:** DONE · **Unverified against a running box** — needs `FZ-138`
 
 `docs/14-operations.md`. Symptom-driven, not tour-driven: somebody reading it is already
 having a bad morning.
@@ -2918,6 +2954,32 @@ is the single most useful thing in the runbook and nothing else in the repositor
 
 Also: where Caddy's access log is, where PostgreSQL's log is, and how to widen the backend's
 log level temporarily without a redeploy.
+
+**Written from the code, not from memory of how systems like this usually behave.** The
+integration shapes were read out of `IntegrationConfigs.validate`, the notification states
+out of `NotificationStatus`, the log pattern out of `application.yml`, and the email
+condition out of the comment that explains why `freezehub.notifications.email.from` is
+deliberately not declared.
+
+**The Slack and email section exercises the real path** — outbox row, dispatcher sweep,
+sender — rather than asserting that configuration looks right. Two failures it names because
+they cost the most time and produce no error:
+
+- **Email with no from-address does nothing, silently.** The sender is
+  `@ConditionalOnProperty` on it, so an unset value means no sender is registered, the
+  notification defers rather than fails, and the outbox looks healthy. Check the environment
+  before the logs.
+- **A revoked Slack webhook and a typo'd one are indistinguishable**, because the path
+  segment of the URL is the secret and both return `404`.
+
+**It also separates "we are down" from "the product said no".** `freeze-check.sh` fails
+closed, so those are identical from the customer's side and are opposite problems — the
+section says to ask for the request id and whether the message said `BLOCK` before
+reassuring anyone.
+
+**Unverified against a running box**, because there is not one. Every command is derived from
+the compose stack in `FZ-153` and the code, and the first real incident will find whatever is
+wrong with it.
 
 ### FZ-157 — Graduating to ECS
 **Status:** DONE · **Documented, not executed**
