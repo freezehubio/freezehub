@@ -49,6 +49,10 @@ resource "aws_iam_role" "github_deploy" {
   assume_role_policy = data.aws_iam_policy_document.github_assume_role.json
 }
 
+# Everything the deploy role needs that does not depend on a compute posture: push an
+# image, publish the SPA, invalidate the cache, and drive the single box through SSM
+# (FZ-154). The ECS statements are attached separately by ../ecs, because that estate may
+# not exist -- which is the whole point of the split (FZ-159).
 data "aws_iam_policy_document" "github_deploy" {
   # Push an image.
   statement {
@@ -72,11 +76,6 @@ data "aws_iam_policy_document" "github_deploy" {
     resources = [aws_ecr_repository.backend.arn]
   }
 
-  # Deploy to the single-box beta by SSM Run Command (FZ-154, D-35).
-  #
-  # Scoped two ways rather than one. The instance is named by tag, so this cannot drive an
-  # unrelated box in the account; and the document is restricted to AWS-RunShellScript,
-  # because SendCommand on "*" documents includes ones that can install software or read
   # arbitrary files — a far larger grant than "restart the stack".
   statement {
     sid       = "DeployToTheSingleBox"
@@ -104,34 +103,6 @@ data "aws_iam_policy_document" "github_deploy" {
     resources = ["*"] # invocation ids are not known ahead of time
   }
 
-  # Register a revision and point the service at it. Deliberately no ecs:CreateService or
-  # ecs:DeleteService: deploying replaces an image, it does not reshape infrastructure.
-  statement {
-    sid       = "RegisterTaskDefinitions"
-    actions   = ["ecs:RegisterTaskDefinition", "ecs:DescribeTaskDefinition"]
-    resources = ["*"] # task definitions are versioned; ARNs are not known ahead of time
-  }
-
-  statement {
-    sid       = "UpdateTheService"
-    actions   = ["ecs:UpdateService", "ecs:DescribeServices"]
-    resources = [aws_ecs_service.backend.id]
-  }
-
-  # A task definition names the execution and task roles, so registering one means passing
-  # them. Scoped to exactly those two, because iam:PassRole on "*" is escalation to
-  # anything either role could ever do.
-  statement {
-    sid       = "PassTheTaskRoles"
-    actions   = ["iam:PassRole"]
-    resources = [aws_iam_role.execution.arn, aws_iam_role.task.arn]
-
-    condition {
-      test     = "StringEquals"
-      variable = "iam:PassedToService"
-      values   = ["ecs-tasks.amazonaws.com"]
-    }
-  }
 
   # Publish the frontend.
   statement {
@@ -146,7 +117,6 @@ data "aws_iam_policy_document" "github_deploy" {
     resources = [aws_cloudfront_distribution.frontend.arn]
   }
 }
-
 resource "aws_iam_role_policy" "github_deploy" {
   name   = "${local.name}-github-deploy"
   role   = aws_iam_role.github_deploy.id

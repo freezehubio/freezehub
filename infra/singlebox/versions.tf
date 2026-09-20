@@ -5,10 +5,10 @@
 # FZ-157 a switch rather than a rewrite: nothing here has to be untangled from the ECS
 # design to leave it behind.
 #
-# What this does NOT create, because both postures share it and neither should own it
-# twice: the SPA bucket and its CloudFront distribution, the Cognito user pool, the ECR
-# repository, the hosted zone, and the GitHub OIDC role. Those live in ../ and are applied
-# from there.
+# What this does NOT create, because ../shared owns it and both postures use it
+# unchanged across a migration: the SPA bucket and its CloudFront distribution, the Cognito
+# user pool, the ECR repository, the hosted zone and the GitHub OIDC role. Apply ../shared
+# first; this module takes what it needs as variables.
 
 terraform {
   required_version = ">= 1.6"
