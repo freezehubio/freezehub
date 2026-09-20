@@ -8,7 +8,7 @@ region = "us-east-1"
 domain_name    = "freezehub.io"
 hosted_zone_id = "Z0123456789ABCDEFGHIJ"
 
-# From the other estate: `terraform -chdir=.. output -raw ecr_repository_arn`.
+# From the other estate: `terraform -chdir=../shared output -raw ecr_repository_arn`.
 # The instance may pull from this repository and no other.
 ecr_repository_arn = "arn:aws:ecr:us-east-1:123456789012:repository/freezehub-beta-backend"
 

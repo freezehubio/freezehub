@@ -1815,7 +1815,7 @@ Acceptance: a measured CPU/memory pair, a `MaxRAMPercentage` value, and a writte
 choice with the egress and architecture questions answered rather than assumed.
 
 ### FZ-123 — Apply the Beta Deployment
-**Status:** TODO · **Blocked by:** `FZ-121`, `FZ-122` · **Resolves:** `OI-15`
+**Status:** TODO · **Blocked on:** `FZ-138` — an AWS account · **Resolves:** `OI-15`, `OI-21`
 
 The first `terraform apply`. Always-on and publicly reachable, at the smallest posture that
 is honestly available, on the platform `FZ-122` chooses and at the size it measures.
@@ -1855,6 +1855,36 @@ half true — the same honesty `FZ-086` chose when its closing summary admitted 
 
 `FZ-065` reviewed the seven areas Milestone 8 named and fixed what it found on the
 backend. This is the part it deliberately did not do in a review.
+
+**Rewritten by `FZ-159`, because `D-35` changed what "the beta deployment" means.** This
+entry described applying `infra/` — the ALB-and-ECS estate. The beta now applies
+`infra/shared/` and `infra/singlebox/`, and somebody picking this up as written would have
+stood up the $64 estate instead of the $18 one.
+
+**Its stated blockers were also stale.** `FZ-121` and `FZ-122` are both DONE; the only thing
+in the way is an AWS account.
+
+What to apply, in order: `bootstrap/`, then `shared/`, then `singlebox/`. Then deploy with
+the `Deploy single-box` workflow (`FZ-154`) and follow `14-operations.md`.
+
+Still true, and still to do:
+
+- **`frontend.tf` moves to `PriceClass_All`.** It reads `PriceClass_100` — North America and
+  Europe — with the comment *"widen when customers are elsewhere."* The bundle sits inside
+  CloudFront's perpetual free tier, so every other market costs approximately nothing. One
+  line, and it now lives in `shared/`.
+- **`terraform destroy` must be able to run** on `ecs/`: `deletion_protection` on RDS,
+  `skip_final_snapshot = false`, and `prevent_destroy` on both secrets block it. Correct for
+  production, wrong for a pre-customer beta. `singlebox/` has none of those blockers and is
+  already destroyable, which is the posture the beta actually uses — so this is no longer
+  urgent, only still true.
+
+No longer applicable: `backend_desired_count` is an `ecs/` variable that the box does not
+use, and `FZ-121` shipped the locking its old note was waiting on.
+
+Acceptance is unchanged in substance — a public URL serving the frontend and the API, with
+certificates valid and Liquibase migrated — and `FZ-153` has already confirmed by execution
+that none of it can serve anything until `FZ-046` exists.
 
 ### FZ-124 — A Request That Never Answers
 **Status:** DONE · **Resolves** `OI-22`
@@ -3057,3 +3087,46 @@ an override the backend honours, so pointing it at RDS is configuration rather t
 What is not automatic is that the box keeps accepting writes until DNS moves — so the dump
 has to be taken *after* it stops serving, which is why the order in the document is stop,
 dump, restore, verify, then move the record.
+
+### FZ-159 — Split the Estate So the Cheap Posture Is Actually Cheap
+**Status:** DONE · **Fixes a flaw in** `D-35` / `FZ-152`
+
+`FZ-152` said it deliberately created no Cognito, SPA bucket, registry or deploy role
+"because `infra/` owns them". **`infra/` could not be applied in part.** It held the ALB,
+the ECS service, RDS, the NAT and the VPC in the same root module, with no toggle — so
+"apply `infra/` for the shared half, then `singlebox/`" meant standing up the entire
+$96 estate *and* the box. The $18 figure in `D-35` only ever held if the shared estate
+could be applied on its own, and it could not.
+
+Found by re-reading `FZ-123` rather than by anything failing, which is the uncomfortable
+part: every document said the estates were separable and none of them was wrong about the
+intent.
+
+Split into three root modules, each applicable whole:
+
+| | Holds | Applied on |
+|---|---|---|
+| `shared/` | Cognito, SPA bucket and distribution, ECR, the GitHub deploy role | both postures, first |
+| `singlebox/` | One instance running Caddy, the backend and PostgreSQL | the beta |
+| `ecs/` | ALB, Fargate, RDS, and their VPC | after `FZ-157` |
+
+**The deploy role was the awkward part.** It needs ECR push (shared), SSM for the box
+(`FZ-154`), the SPA bucket and CloudFront (shared), *and* `ecs:UpdateService` with
+`iam:PassRole` on the task roles. The role now lives in `shared/` with everything
+posture-independent, and `ecs/` attaches a second inline policy to it by name. That is what
+lets the role exist on a posture where no ECS service does.
+
+**Cross-module values are variables, not a `terraform_remote_state` data source.** Reading
+another module's state couples a module to where that state lives and to its schema; these
+are four values pasted from `terraform output`, and being explicit about them is worth more
+than saving the paste.
+
+**Separate state files, deliberately.** One state for the shared and ECS halves would mean
+destroying the compute estate could not be planned without the user pool and the registry in
+the same plan — which is exactly the failure this story exists to fix, in a different shape.
+
+**Timing is the reason this was worth doing immediately.** Nothing is applied, so this is a
+file move. After a first apply it is a `terraform state mv` exercise across three states.
+
+Also rewrote `FZ-123`, which still described applying `infra/` and still named `FZ-121` and
+`FZ-122` as blockers after both shipped.

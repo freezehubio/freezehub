@@ -56,29 +56,56 @@ You need, and Terraform will not create for you:
 4. **A verified SES identity**, if email notifications are wanted. The task role can send;
    SES still has to be out of the sandbox to send anywhere.
 
+## Three modules, and which ones you apply
+
+`FZ-159` split this into root modules that can each be applied whole, because the previous
+single module could not be applied in part — and the single-box posture (`D-35`) needs the
+shared half without the ECS half.
+
+| | What it holds | Applied on |
+|---|---|---|
+| `shared/` | Cognito, the SPA bucket and its distribution, ECR, the GitHub deploy role | **both postures, always first** |
+| `singlebox/` | One EC2 instance running Caddy, the backend and PostgreSQL | the beta (`D-35`) |
+| `ecs/` | ALB, Fargate, RDS, and the VPC they sit in | after graduating (`FZ-157`) |
+
+**Apply `shared/` and exactly one compute module.** Applying both compute estates is not
+forbidden and is what `FZ-157` does during a migration, but it costs both bills at once and
+is a deliberate, temporary state.
+
+The compute modules take what they need from `shared/` as variables rather than by reading
+its state: a remote-state data source couples a module to where that state lives, and these
+are four values a person pastes from `terraform output`.
+
 ## Applying
 
 **Decide the region first, and write it down.** `region` has no default (`FZ-135`): it is
 the one variable that cannot be changed afterwards without moving the database *and*
 re-creating every identity, because a Cognito user pool is region-bound and the `sub` it
 issues is stored in `users.external_subject`. It is also the answer to "where does customer
-data live" — the database, the user pool, the logs and the secrets are all in it. Only the
-CloudFront certificate sits elsewhere, in `us-east-1`, because AWS accepts it from nowhere
-else; it holds no customer data. See `OI-20` for the EU-versus-US argument.
+data live". Only the CloudFront certificate sits elsewhere, in `us-east-1`, because AWS
+accepts it from nowhere else; it holds no customer data. `D-32` records the decision.
 
 ```bash
-# once per account: the bucket that holds state, which contains secrets
+# Once per account: the bucket that holds state, which contains secrets.
 cd bootstrap && terraform init && terraform apply -var region=<the same region>
-# note the bucket name it prints, then uncomment and fill in the backend block in
-# ../versions.tf
+# Note the bucket name it prints, then fill in the backend block in each module's
+# versions.tf. Each uses a different `key`, so the three states stay separate.
 
-cd .. && cp terraform.tfvars.example terraform.tfvars   # set region, domain_name, hosted_zone_id
-terraform init
-terraform plan     # read-only; read it before applying
-terraform apply
+# 1. The shared estate. Always first; both postures need it.
+cd ../shared
+cp ../terraform.tfvars.example terraform.tfvars   # region, domain_name, hosted_zone_id
+terraform init && terraform plan && terraform apply
+
+# 2. The compute estate. For the beta, this is the box.
+cd ../singlebox
+cp terraform.tfvars.example terraform.tfvars
+#    ecr_repository_arn comes from: terraform -chdir=../shared output -raw ecr_repository_arn
+terraform init && terraform plan && terraform apply
 ```
 
-The first apply takes roughly 15–25 minutes, most of it RDS and the CloudFront
+For the ECS posture instead, `cd ../ecs` and pass the four values
+`terraform -chdir=../shared output` prints. `FZ-157` describes the migration in order.
+
 distribution. Certificate validation blocks until the DNS records propagate.
 
 ## Deploying the application
