@@ -2982,7 +2982,7 @@ the compose stack in `FZ-153` and the code, and the first real incident will fin
 wrong with it.
 
 ### FZ-157 — Graduating to ECS
-**Status:** TODO · **Documented, not built**
+**Status:** DONE · **Documented, not executed**
 
 The route off the box, written down while the reasons are fresh rather than discovered under
 pressure. `D-35` names three triggers: the first paying customer, an availability commitment,
@@ -3000,3 +3000,17 @@ The shape, to be written rather than executed:
 
 The `SPRING_DATASOURCE_*` overrides the backend already honours are what make step 2 a
 configuration change rather than a code one.
+
+Written as `docs/15-migration.md`, its own document rather than a section of the runbook.
+`FZ-156` owns that file and was unmerged when this was written, and `CLAUDE.md` §9 says not
+to branch one story from another — so the two merge in either order and neither waits.
+
+**What makes the migration small is what `FZ-152` deliberately did not create.** The SPA
+bucket, CloudFront, Cognito, ECR, the hosted zone and the OIDC role all live in `infra/` and
+are shared by both postures. Only the compute and database tier moves.
+
+**The step that needs care is the cutover, not the data.** `SPRING_DATASOURCE_*` is already
+an override the backend honours, so pointing it at RDS is configuration rather than code.
+What is not automatic is that the box keeps accepting writes until DNS moves — so the dump
+has to be taken *after* it stops serving, which is why the order in the document is stop,
+dump, restore, verify, then move the record.
