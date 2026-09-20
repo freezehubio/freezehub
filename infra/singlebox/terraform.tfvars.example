@@ -1,0 +1,17 @@
+# Copy to terraform.tfvars and fill in.
+
+# No default (FZ-135, D-32). us-east-1 is the decision; stating it here means nobody
+# inherits a region, which cannot be changed later without re-creating every identity.
+region = "us-east-1"
+
+# The API is served from api.<domain_name>, which is what Caddy requests a certificate for.
+domain_name    = "freezehub.io"
+hosted_zone_id = "Z0123456789ABCDEFGHIJ"
+
+# From the other estate: `terraform -chdir=.. output -raw ecr_repository_arn`.
+# The instance may pull from this repository and no other.
+ecr_repository_arn = "arn:aws:ecr:us-east-1:123456789012:repository/freezehub-beta-backend"
+
+# 2 GB carries the measured 353 MiB working set (D-28) plus PostgreSQL. t4g.medium buys a
+# second replica and removes the ~15s deploy gap.
+# instance_type = "t4g.small"
