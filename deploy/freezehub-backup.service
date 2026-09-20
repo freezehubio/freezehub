@@ -1,0 +1,11 @@
+[Unit]
+Description=FreezeHub nightly PostgreSQL dump to S3 (FZ-155)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/freezehub/backup.env
+ExecStart=/opt/freezehub/backup.sh
+StandardOutput=journal
+StandardError=journal

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the FreezeHub backup nightly (FZ-155)
+
+[Timer]
+# 03:17 UTC rather than 03:00: a round hour is when every other cron on every other box
+# runs, and the dump competes with them for the same disk.
+OnCalendar=*-*-* 03:17:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
