@@ -133,6 +133,8 @@ Additional documentation is created just-in-time when implementation requires it
 - `docs/11-commercial.md` — created by FZ-080
 - `docs/12-connectors.md`  — created by FZ-090
 - `docs/13-validation.md`  — created by FZ-137
+- `docs/14-operations.md`  — created by FZ-156
+- `docs/15-migration.md`   — created by FZ-157
 - `backend/CLAUDE.md`
 - `frontend/CLAUDE.md`
 
@@ -218,7 +220,8 @@ sh connectors/test/image-smoke.sh freeze-check:test
 ```
 
 The image is the connector (`D-26`): every CI system in `connectors/README.md` runs it.
-It is not published yet — `FZ-099` — so build it locally to try a guideline.
+It is published: `ghcr.io/freezehubio/freeze-check:v1`, public, `linux/amd64` and
+`linux/arm64`. Build locally only to test a change before publishing it.
 
 ### Scripts (`scripts/`)
 

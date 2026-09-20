@@ -101,6 +101,14 @@ jobs:
           terraform init -backend=false -input=false
           terraform validate
 
+      # The single-box beta (FZ-152). A second root module, so it needs its own init and
+      # validate -- `fmt -check -recursive` above already covers both for formatting.
+      - name: Validate the single-box posture
+        working-directory: infra/singlebox
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
       - name: Validate the state bootstrap
         working-directory: infra/bootstrap
         run: |

@@ -1304,7 +1304,7 @@ Acceptance:
 - The reference implementations stay tested, and the documentation **does not offer them as installable** — they are not, while the repository is private.
 
 ### FZ-099 — Publish the Connector Image
-**Status:** TODO · **Owner of** `OI-13` · **Blocked on one dispatch**
+**Status:** DONE · **Resolves** `OI-13`
 
 `.github/workflows/publish-connectors.yml` builds `linux/amd64` and `linux/arm64`, runs the connector tests first, tags the exact version and moves `v1`, and has a dry-run mode. It refuses a version that is not `vN.N.N`, and there is no `latest` tag — a moving `latest` in a deploy gate is how a pipeline changes behaviour on a day nobody touched it.
 
@@ -1321,6 +1321,30 @@ Then one thing that is easy to miss: **GHCR package visibility is set on the pac
 Only this workflow was bumped. `deploy.yml` and `verify.yml` carry the same deprecated actions and are not this story's to change — `verify.yml` in particular runs the suite, so bumping `setup-java` and `setup-node` there deserves its own run to prove it (`OI-33`).
 
 **What remains is one `workflow_dispatch`** with a version. It stays a human action because it publishes to a real registry under a name customers will pin — the same reasoning that makes `deploy.yml` manual. Until it runs, every guideline in `connectors/README.md` names an image that does not exist, and the README says so.
+
+**Published and verified against the real artifact, not a local build.** `v1.0.0` pushed and
+`v1` moved to match — the two resolve to the same digest. The package was then made public,
+which GHCR does not do on its own: a newly published package is private, and a customer
+pulling one gets `unauthorized` indistinguishably from one that does not exist.
+
+Four things were checked by pulling it anonymously:
+
+- **Both architectures survived into what was pushed.** `linux/amd64` and `linux/arm64` are
+  in the manifest index. The dry runs built both; nobody had confirmed the push kept them.
+- **It refuses cleanly with no configuration** — `FREEZEHUB_URL is not set`, rather than a
+  stack trace or a silent pass.
+- **It fails closed.** With FreezeHub unreachable it retries, reports
+  `refusing to deploy without a policy decision`, and **exits 2**. That exit code is the
+  entire gate: the message without it would be a warning nobody's pipeline acts on.
+- **`FREEZEHUB_ON_ERROR=allow` exits 0**, so the documented escape hatch works and is the
+  only way past a failure.
+
+That is `D-24`'s central property demonstrated on the published artifact rather than
+inferred from the source.
+
+**The `GITHUB_TOKEN` change from the earlier half of this story is also now proven.** The
+dry runs skipped `Log in to GHCR` because it is gated on `inputs.publish`, so the credential
+swap was unexercised until the real publish authenticated with it.
 
 ### FZ-096 — GitHub App and Required Checks
 **Status:** DEFERRED · **Decision required before scheduling**
@@ -2672,7 +2696,7 @@ reasoning holds, and a sentence that appeared only in CI would be a second answe
 same question.
 
 ### FZ-146 — The Free Tier in the Product
-**Status:** TODO
+**Status:** DONE
 
 Frontend. `FZ-085` already renders plan, limits, usage and the trial countdown from
 `GET /api/billing/subscription`, and composes a `402` into a sentence at the point the error
@@ -2687,3 +2711,349 @@ Acceptance:
   refused, with the reason. Hiding it hides the product's best sales argument at the exact
   moment somebody wants it.
 - Nothing in the UI decides entitlement; every limit shown comes from the backend.
+
+**Most of this was already true, and saying so is the honest part of the story.** `FZ-085`
+renders the plan, its limits and its usage from the backend, and composes a `402` into a
+sentence where the error is built — so `FREE` already appeared as a plan, the create form
+already showed the blocking option rather than hiding it, and the refusal already rendered
+as its own message rather than a generic error. Three of the four acceptance criteria needed
+no code.
+
+**What was actually missing was narrower and worth finding.** `planLimitFrom` requires
+`typeof body.limit === 'number'`, and a capability refusal deliberately sends no numbers
+(`FZ-143`) — so it fell past the composition that appends *"Upgrade under Settings →
+Billing"*. **The one `402` a free organization actually meets was the only one in the product
+with no way out on it.** A sibling parse fixes it, and keeps refusing to invent a count:
+`planLimit` stays null, so nothing can render a usage bar for something with no usage.
+
+**The capability comes from the backend, not from the plan's name.** `SubscriptionView`
+gained `blocksDeployments`, because a UI deriving it from `plan === 'FREE'` would be the
+frontend deciding entitlement — the thing every other limit on that endpoint avoids.
+
+Billing now states the distinction in words, which nothing did before: the counts were all
+visible and the one capability separating `FREE` from Starter was not mentioned anywhere.
+
+### FZ-148 — Which Rail Takes the Money
+**Status:** DONE · **Answered:** `OI-31` · **Decided in:** `D-34`
+
+`FZ-084` built Checkout, the Customer Portal and a signature-verified webhook, and it is
+correct. It also assumes a Stripe account that can accept payments, and **the operator cannot
+have one** — verified against Stripe's own availability page rather than assumed either way:
+Brazil and Mexico are supported in Latin America, Colombia is absent, and Stripe's support
+material states that payments are not supported there.
+
+**Decided: Paddle, as merchant of record** (`D-34`). Of the three routes, it is the one that
+removes work rather than adding an entity — Paddle registers for and remits US sales tax and
+EU VAT itself, and is the seller on the customer's receipt. A US Stripe account would have
+kept `FZ-084` untouched and handed a solo founder tax registration wherever a customer
+happens to be.
+
+**Checked before recommending, because this entry exists to correct exactly that mistake.**
+Paddle publishes the countries it cannot support suppliers from and Colombia is not among
+them. That is absence from an exclusion list rather than an explicit statement of support,
+and Paddle vets suppliers — so the account wants opening and approving **before** `FZ-149` is
+scheduled, or the same class of surprise happens twice.
+
+The cost is roughly double the transaction fee — about 5% + $0.50 against 2.9% + $0.30, which
+on the Stage 3 projection is ~$1,120 a month rather than ~$650. That buys tax liability in
+every jurisdiction the product sells into.
+
+**Nothing was implemented here.** The decision needed an input, has one, and the code is
+`FZ-149`.
+
+### FZ-149 — Paddle Replaces Stripe
+**Status:** TODO · **Decided by:** `D-34` · **Not scheduled:** see below
+
+Replaces `FZ-084`'s integration. Checkout sessions, the Customer Portal, the event shapes and
+the `stripe-java` dependency all go; `pom.xml` loses a dependency and nothing replaces it,
+because Paddle publishes no official Java SDK and the integration is plain HTTP plus an HMAC
+this codebase already computes in two other places.
+
+**What must survive, verbatim in behaviour if not in code:**
+
+- **Entitlement changes only from a signature-verified webhook.** Never from the redirect the
+  browser follows after paying, which anyone can forge. `FZ-084` has a test that forges the
+  redirect and proves it grants nothing; that test is rewritten, not dropped.
+- **Its own security chain**, matching the webhook path and nothing else, with no CORS. A
+  credential that works on one boundary must not work on another (`FZ-052`).
+- **Deliveries are idempotent** by stored event id. Paddle retries like Stripe does.
+- **Every subscription change is audited**, with the provider as the actor.
+
+Paddle signs with `Paddle-Signature` — HMAC-SHA256 over timestamp and body — the same
+construction as `D-2` pointed inward, so the verification is a rewrite of similar size rather
+than a new idea. The four defects `FZ-084` found are worth re-reading before starting: a null
+signature header arriving as `500`, `@PrePersist` not firing on an assigned id, idempotency
+by caught constraint violation failing inside a transaction, and an SDK deserialiser silently
+returning empty on an API-version mismatch. Three of those four are not Stripe-specific.
+
+**Deliberately not scheduled.** `13-validation.md` §3 invoices the first customers by hand so
+that no payment rail sits on the critical path, and that is still the plan. This becomes due
+at the **first self-serve payment** — which needs `FZ-082`, which needs `FZ-046`. Building it
+now would be building against an account that does not exist yet for a flow nobody can reach.
+
+**Blocked on one human action first:** a Paddle account, opened and approved. `D-34` says why
+that comes before the code rather than after it.
+
+### FZ-150 — The README Still Argued for the NAT
+**Status:** DONE
+
+`D-28` removed the NAT gateway. `infra/README.md` did not follow, and it is the document an
+operator reads immediately before `terraform apply`.
+
+It listed the NAT at ~$32 in a table totalling ~$100, named it among the "deliberate cost
+choices for beta", and closed with a paragraph arguing that removing it *"would weaken that
+boundary"* — **the opposite of the decision already recorded.** A wrong figure is a
+nuisance; a paragraph arguing against a settled decision, at the point of applying it, is how
+somebody re-adds a $32 line believing they are being careful.
+
+Corrected to the decided posture: two tasks in a public subnet, no NAT, **~$64/month**. The
+reasoning is now `D-28`'s — the boundary moves from the subnet to the security group rather
+than disappearing, the database stays private either way, and the trade is right for a
+pre-customer beta and worth revisiting when there is something to protect.
+
+**The IPv4 charge is stated rather than buried.** Removing the NAT means paying for a public
+address on each task — about $3.65 a month each, roughly $7 the private-subnet posture did not
+pay. Whether the load balancer's own addresses are billed the same way is flagged as worth
+confirming, because at this scale it is the difference between ~$64 and ~$71.
+
+**Not `FZ-123`'s work, though it was twice deferred there.** That story applies the
+infrastructure; this only makes a document match a decision taken weeks earlier. Leaving them
+disagreed until `FZ-123` runs would mean the wrong number sat in front of every reader in the
+meantime, and `FZ-123` is blocked on an AWS account that does not exist yet.
+
+## Milestone 17 — One Box
+
+`FZ-063` designed an ALB-and-ECS environment and it has never been applied. `D-28` trimmed it
+to ~$64 a month; `D-35` decided that the beta launches on **a single instance at ~$18**, and
+that the existing Terraform is what it graduates to rather than something replaced.
+
+The point is not the money. Nothing is deployed, and a deployment somebody can stand up in an
+afternoon gets design partners in front of the product sooner.
+
+**Order.** `FZ-152` before `FZ-153` before `FZ-154`. `FZ-155` and `FZ-156` can be written
+alongside but neither is optional: a box with no tested restore and no runbook is a box that
+will be rebuilt from memory at the worst possible time.
+
+```text
+FZ-151 ── FZ-152 ── FZ-153 ── FZ-154
+                        ├──── FZ-155
+                        └──── FZ-156
+                              FZ-157  (documented, not built)
+```
+
+**Blocked on the same human action as everything else:** an AWS account (`FZ-138`). This
+milestone changes what gets applied into it, not whether it is needed.
+
+### FZ-151 — Deploy on One Box
+**Status:** DONE
+
+Specification only: `D-35`, and this milestone.
+
+The measurements are what make it defensible rather than a hunch. `D-28` put the JVM's
+working set at **353 MiB**; the growth model puts *Stage 3* — 75 paying customers and 1,500
+free organizations — at about **0.3 requests a second**. One small instance carries the whole
+projection.
+
+**Caddy is what saves the money, not the box.** Automatic Let's Encrypt removes the load
+balancer, which was the largest line left after `D-28` removed the NAT.
+
+**Kept unchanged: S3 and CloudFront, Cognito, ECR, Route 53, the GitHub OIDC role.** That is
+what makes `FZ-157` small — only the compute and database tier moves.
+
+### FZ-152 — The Box
+**Status:** DONE · **Not applied** — needs `FZ-138`
+
+Terraform for one instance, in `infra/singlebox/`, separate from `infra/` so neither is
+half-applied by accident and `FZ-157` is a switch rather than a rewrite.
+
+Acceptance:
+
+- One `t4g.small` (ARM64, matching the image CI already builds) in the **default VPC**, with
+  an Elastic IP so the address survives a stop.
+- **Security group: 80 and 443 inbound, nothing else.** No port 22.
+- **IMDSv2 required, `http_put_response_hop_limit = 1`.** Not a default worth inheriting:
+  it is what keeps `OI-23`'s SSRF away from instance credentials.
+- An instance profile scoped to exactly three things — pull from this ECR repository, read
+  this environment's SSM parameters, write to the backup bucket. Nothing wildcarded.
+- Encrypted EBS, unattended security upgrades, SSM agent enabled.
+- A Route 53 A record pointing at the Elastic IP.
+- `terraform fmt` and `validate` clean in CI, like the rest of `infra/`.
+
+### FZ-153 — The Stack
+**Status:** DONE · **Cannot run until** `FZ-046`
+
+`docker-compose.yml` on the box: Caddy, the backend, PostgreSQL 16.
+
+Acceptance:
+
+- **Caddy terminates TLS** with automatic Let's Encrypt and proxies to the backend. No
+  certificate in the repository and none to renew by hand.
+- **PostgreSQL is never published to the host.** It listens on the Compose network only.
+  Publishing 5432 from a public instance is the mistake this bullet exists to prevent.
+- A named volume for the database, on the encrypted EBS volume.
+- **Secrets are read from SSM Parameter Store at boot** — the database password and
+  `freezehub.secrets.encryption-key`. Never in the compose file, the image, or the repository.
+- The backend runs with `SPRING_PROFILES_ACTIVE` set to something that is **not** `local`, so
+  the dev sign-in endpoint and its fake `IdentityProvider` cannot exist (`FZ-035`, `OI-2`).
+- Container health checks, with Compose configured to wait for healthy on start.
+- One replica, and the resulting **~15 second gap on deploy is documented, not hidden**. Two
+  replicas remove it and need a 4 GB instance; `FZ-121` already made running two safe.
+
+**Confirmed by running it, not by reading the YAML.** The jar was started under
+`SPRING_PROFILES_ACTIVE=beta` with the environment this stack supplies, against a real
+PostgreSQL. Two things came out of it:
+
+- **`FREEZEHUB_SECRETS_ENCRYPTION_KEY` does bind to `freezehub.secrets.encryption-key`.**
+  Spring's relaxed binding handles the underscore-to-hyphen mapping, which was worth
+  proving rather than assuming — `FZ-063`'s ECS task definition uses the same name, so a
+  wrong guess would have been wrong in both postures at once and discovered on a first
+  deploy.
+- **The application then failed exactly where `OI-2` says it will**, on
+  `No qualifying bean of type 'IdentityProvider'`. So the box cannot serve anything until
+  `FZ-046` ships. That was already written down; it is now executed.
+
+**`server.forward-headers-strategy` is deliberately not set here.** It is already `framework`
+in the default document and `none` only under `local`. The rate limiter depends on it
+(`FZ-087`), and configuration that load-bearing belongs in one place rather than two that can
+drift.
+
+**The port is Spring's default 8080, not 8099.** `server.port: ${SERVER_PORT:8099}` lives
+inside the `local` profile document, below the `---` at line 99, so it does not apply here.
+The `EXPOSE 8080` in the Dockerfile is right and the local port is the exception.
+
+### FZ-154 — Deploy Without SSH
+**Status:** DONE · **Not executed** — needs `FZ-138`, `FZ-152`
+
+A GitHub Actions job that deploys by **SSM Run Command**, reusing the OIDC role
+`github-oidc.tf` already creates.
+
+**No SSH, deliberately.** It removes the open port, the key somebody has to hold, and the
+question of who still has a copy. Every deploy becomes an IAM-authorised API call recorded in
+CloudTrail.
+
+Acceptance:
+
+- Manual dispatch, like `deploy.yml`: publishing changes what customers reach.
+- The job authenticates by OIDC, sends one command, and **fails the workflow if the command
+  fails** — a deploy that reports success because the API call was accepted is worse than one
+  that reports nothing.
+- The command pulls the pinned image tag and restarts the stack. Never `latest`, for the
+  reason `FZ-099` gives: a moving tag changes behaviour on a day nobody touched it.
+- The workflow prints how to read the logs on failure, pointing at `FZ-156`.
+- Rollback is redeploying an earlier tag, and that is written down.
+
+### FZ-155 — Backups, and a Restore Somebody Has Run
+**Status:** TODO · **Script written; the restore drill is what completes it**
+
+Nightly `pg_dump` to S3, with lifecycle expiry.
+
+**This story is not done when the backup runs. It is done when a restore has been performed
+into a scratch database and the result checked.** An untested backup is the classic way to
+discover there was none, and a single box has no automated snapshots to fall back on.
+
+Acceptance:
+
+- A nightly dump, encrypted at rest, in a bucket the instance role may write and not read
+  back broadly.
+- Lifecycle expiry so it does not grow without bound.
+- A failed backup is **visible** — a silent one is the same as no backup.
+- **A documented restore, executed once, with the command and its output recorded in
+  `14-operations.md`.**
+
+**The script exists and the story is still open, deliberately.** `deploy/backup.sh` and its
+systemd units are written; the acceptance criterion that matters — *a restore somebody has
+performed* — cannot be met until there is a box with a database on it. Marking this DONE on
+the strength of a script that has never produced a file anyone restored would be exactly the
+failure the criterion exists to prevent.
+
+Two things the script does that a naive `pg_dump | aws s3 cp` does not:
+
+- **It refuses to upload a dump under 1 KiB.** An empty or truncated dump uploads perfectly
+  happily and restores into nothing. The size check is the difference between a backup and
+  a file.
+- **It reports failure to the journal at `user.err`**, not just to stderr. A backup that
+  fails silently is worse than no backup, because it removes the reason to check.
+
+### FZ-156 — The Operations Runbook
+**Status:** DONE · **Unverified against a running box** — needs `FZ-138`
+
+`docs/14-operations.md`. Symptom-driven, not tour-driven: somebody reading it is already
+having a bad morning.
+
+Sections, each starting from what was observed rather than from a component:
+
+- **"The site is down"** — reaching the box through SSM Session Manager, `docker compose ps`,
+  and what a container in a restart loop looks like.
+- **"A customer's pipeline is failing"** — the Policy API path, and how to tell a real
+  refusal from an outage. `freeze-check.sh` fails closed, so those look identical from the
+  customer's side and are opposite problems.
+- **"Notifications are not arriving"** — the outbox, the dispatcher, and `notification` rows
+  in a terminal state.
+- **"A deploy failed"** — reading the SSM command output, and rolling back to a prior tag.
+
+**It must explain `X-Request-Id`.** `FZ-062` puts a correlation id on every log line and in
+every error body, so a customer quoting one turns an anecdote into an exact log lookup. That
+is the single most useful thing in the runbook and nothing else in the repository says it.
+
+Also: where Caddy's access log is, where PostgreSQL's log is, and how to widen the backend's
+log level temporarily without a redeploy.
+
+**Written from the code, not from memory of how systems like this usually behave.** The
+integration shapes were read out of `IntegrationConfigs.validate`, the notification states
+out of `NotificationStatus`, the log pattern out of `application.yml`, and the email
+condition out of the comment that explains why `freezehub.notifications.email.from` is
+deliberately not declared.
+
+**The Slack and email section exercises the real path** — outbox row, dispatcher sweep,
+sender — rather than asserting that configuration looks right. Two failures it names because
+they cost the most time and produce no error:
+
+- **Email with no from-address does nothing, silently.** The sender is
+  `@ConditionalOnProperty` on it, so an unset value means no sender is registered, the
+  notification defers rather than fails, and the outbox looks healthy. Check the environment
+  before the logs.
+- **A revoked Slack webhook and a typo'd one are indistinguishable**, because the path
+  segment of the URL is the secret and both return `404`.
+
+**It also separates "we are down" from "the product said no".** `freeze-check.sh` fails
+closed, so those are identical from the customer's side and are opposite problems — the
+section says to ask for the request id and whether the message said `BLOCK` before
+reassuring anyone.
+
+**Unverified against a running box**, because there is not one. Every command is derived from
+the compose stack in `FZ-153` and the code, and the first real incident will find whatever is
+wrong with it.
+
+### FZ-157 — Graduating to ECS
+**Status:** DONE · **Documented, not executed**
+
+The route off the box, written down while the reasons are fresh rather than discovered under
+pressure. `D-35` names three triggers: the first paying customer, an availability commitment,
+or a security review asking about isolation.
+
+It is small because most of the estate never moved: **the SPA, Cognito, ECR, Route 53 and the
+OIDC role are identical in both postures.** What changes is the compute and database tier.
+
+The shape, to be written rather than executed:
+
+1. Apply the existing `infra/` into the same account.
+2. Restore the latest dump into RDS and verify row counts against the box.
+3. Move one Route 53 record from the Elastic IP to the load balancer.
+4. Keep the box, stopped, until the new one has served a full business day.
+
+The `SPRING_DATASOURCE_*` overrides the backend already honours are what make step 2 a
+configuration change rather than a code one.
+
+Written as `docs/15-migration.md`, its own document rather than a section of the runbook.
+`FZ-156` owns that file and was unmerged when this was written, and `CLAUDE.md` §9 says not
+to branch one story from another — so the two merge in either order and neither waits.
+
+**What makes the migration small is what `FZ-152` deliberately did not create.** The SPA
+bucket, CloudFront, Cognito, ECR, the hosted zone and the OIDC role all live in `infra/` and
+are shared by both postures. Only the compute and database tier moves.
+
+**The step that needs care is the cutover, not the data.** `SPRING_DATASOURCE_*` is already
+an override the backend honours, so pointing it at RDS is configuration rather than code.
+What is not automatic is that the box keeps accepting writes until DNS moves — so the dump
+has to be taken *after* it stops serving, which is why the order in the document is stop,
+dump, restore, verify, then move the record.

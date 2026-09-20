@@ -84,6 +84,7 @@ interface ProblemDetail {
   /** Pre-FZ-061 shape. Kept only so an older backend does not produce a blank message. */
   message?: string
   /** 402 extensions (`FZ-081`). Present only on a plan refusal. */
+  feature?: unknown
   plan?: unknown
   resource?: unknown
   limit?: unknown
@@ -138,6 +139,39 @@ function describePlanLimit(limit: PlanLimitRefusal): string {
   )
 }
 
+/** What the plan does not carry at all (`FZ-143`). Distinct from a limit: there is no count. */
+export interface PlanFeatureRefusal {
+  plan: string
+  feature: string
+}
+
+/**
+ * A capability refusal, told apart from a limit by the absence of numbers.
+ *
+ * `PlanFeatureUnavailableException` sends `plan` and `feature` and deliberately no `limit`,
+ * so `planLimitFrom` declines it — which is correct, and is why this exists rather than a
+ * looser parse there. Nothing may render a usage bar for something that has no usage.
+ */
+function planFeatureFrom(body: ProblemDetail): PlanFeatureRefusal | null {
+  if (typeof body.plan !== 'string' || typeof body.feature !== 'string') return null
+  if (typeof body.limit === 'number') return null
+  return { plan: body.plan, feature: body.feature }
+}
+
+/**
+ * The same shape of sentence a limit gets, for the same reason (`FZ-146`).
+ *
+ * The backend's own `detail` is accurate and ends there. This is the one 402 a free
+ * organization actually meets, so leaving it without a way out made the commonest refusal
+ * in the product the only one that did not say what to do about it.
+ */
+function describePlanFeature(refusal: PlanFeatureRefusal): string {
+  return (
+    `Your ${refusal.plan} plan does not include ${refusal.feature}. ` +
+    `Upgrade under Settings → Billing.`
+  )
+}
+
 async function toApiError(response: Response): Promise<ApiError> {
   const fallback = `Request failed (${response.status})`
   try {
@@ -156,14 +190,17 @@ async function toApiError(response: Response): Promise<ApiError> {
         : stated
 
       const planLimit = planLimitFrom(body)
+      const planFeature = planLimit ? null : planFeatureFrom(body)
 
       return new ApiError(
         response.status,
         planLimit
           ? describePlanLimit(planLimit)
-          : message && message.trim()
-            ? message
-            : fallback,
+          : planFeature
+            ? describePlanFeature(planFeature)
+            : message && message.trim()
+              ? message
+              : fallback,
         fieldErrors,
         planLimit,
       )

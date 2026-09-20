@@ -17,7 +17,7 @@ There is one implementation and one published thing: **the image**. Every CI sys
 
 That is not a compromise — it is what the market actually looks like. Nearly every CI system runs containers, so one artifact covers nearly all of them, and a customer running GitLab in one team and Jenkins in another gets **the same answer from the same freeze** because it is the same binary (`D-24`). Per-ecosystem plugins would drift in exactly the places that matter — what a timeout means, whether a `401` fails open, how an unregistered name is reported — and that drift shows up as one team deploying during a freeze that stopped another.
 
-> **The image is not published yet.** `ghcr.io/freezehubio/freeze-check:v1` does not exist until `FZ-099` runs. Until then, build it: `docker build -t freeze-check connectors/` and use `freeze-check` in place of the image reference below.
+> **The image is published.** `ghcr.io/freezehubio/freeze-check:v1` is public and needs no credentials to pull — `linux/amd64` and `linux/arm64`, so it runs on a hosted runner and on Apple hardware alike. `v1` moves with each release; pin an exact version such as `v1.0.0` if you would rather decide when behaviour changes.
 
 ## What it does, and what it does not
 

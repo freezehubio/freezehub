@@ -193,6 +193,16 @@ At fewer than roughly twenty customers, provisioning happens rarely enough that 
 
 ## 6. Billing
 
+### The rail is Paddle, and FreezeHub is not the seller
+
+**Decided in `D-34`, after `FZ-148` found that Stripe is unavailable to the operator.** Stripe supports Brazil and Mexico in Latin America and not Colombia. Everything in this section describes an integration that is built, tested and correct — and that has no account to point at. It is superseded by `FZ-149` and kept here until that lands, because the properties it establishes are the ones the replacement has to preserve.
+
+**What changes commercially.** Paddle is the merchant of record: the customer contracts with Paddle, pays Paddle, and Paddle's name is on the receipt. Paddle registers for and remits US sales tax and EU VAT, and handles invoicing, dunning, refunds and chargebacks. §7 below says Stripe does those four and that building them would be duplicated work; that is more true of a merchant of record, not less.
+
+The fee is roughly double — about 5% + $0.50 against 2.9% + $0.30 — which buys tax registration and liability in every jurisdiction the product sells into. For one person selling internationally that is the cheaper side of the trade, and `D-34` records the arithmetic.
+
+**What does not change.** Entitlement still moves only on a signature-verified webhook, never on a redirect the browser follows after paying. That rule is about not trusting a client and it outlives any provider. Paddle signs with `Paddle-Signature`, HMAC-SHA256 over timestamp and body — the same construction as `D-2` pointed inward.
+
 ### Stripe, with entitlement staying in FreezeHub
 
 - **Stripe Checkout** hosts the payment page. Card details never reach FreezeHub, so FreezeHub is never in PCI scope.

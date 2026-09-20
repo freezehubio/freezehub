@@ -42,29 +42,6 @@ The MVP answer is that support fixes it by hand, which is honest at this volume 
 
 `FZ-088` is deliberately deferred rather than scheduled: the right fix depends on whether the common case is *join the existing organization automatically* — fast, and wrong for a contractor signing up under a client's domain — or *request access from an administrator*, which is correct and more machinery. One real occurrence answers that. Guessing first does not.
 
-### OI-13 — The connector image is not published, so nothing is installable
-**Severity:** Gap · **Owner:** `FZ-099` · **Found in:** `FZ-090`, corrected twice
-
-**This entry has been wrong twice, and both errors are worth keeping visible.**
-
-It first described publication as *discoverability* — "usable by direct reference now, listable later". That was wrong: a connector in a private repository is not usable at all, because `uses:` and `component:` resolve against a repository the customer can read.
-
-It then described the fix as extracting the connectors into a second public repository. That was over-built. The image is the connector (`D-26`), so publishing **one artifact** makes every guideline in `connectors/README.md` work at once — no second repository, no sync, no cross-repo token.
-
-Verified rather than assumed, at the time of writing:
-
-- `docker manifest inspect ghcr.io/freezehubio/freeze-check:v1` → `manifest unknown`
-- `git tag` → empty
-- the repository is private, and under a personal account
-
-So every guideline currently names an image that does not exist, and the README says so.
-
-**Two of those three facts have since changed** (2026-09-15). The `freezehubio` organization exists, this repository was moved into it, and it is now public — so "private, and under a personal account" no longer holds. That move also removed `FZ-099`'s second blocker rather than satisfying it: `GITHUB_TOKEN` could not write to *another* owner's package namespace, and `freezehubio` is no longer another owner, so no `CONNECTOR_PUBLISH_TOKEN` is needed or configured.
-
-**The fact that matters is unchanged.** `ghcr.io/freezehubio/freeze-check:v1` still does not exist, so every guideline still names an image customers cannot pull. This entry stays open until a `workflow_dispatch` publishes one and its package visibility is set to public.
-
-Discoverability — a Marketplace or Catalog listing — is a separate and lesser problem, deferred to `FZ-096`.
-
 ### OI-15 — The deployed cost posture, and which AWS services are actually needed
 **Severity:** Decision · **Owner:** `FZ-123` · **Raised:** 2026-09-05 · **Platform decided:** `D-28`
 
@@ -137,17 +114,6 @@ The specific hazard is that **Cognito issues ID tokens and access tokens from th
 
 `FZ-125` wrote the rules into `06-security.md` § Token validation rules. This entry stays open until something enforces them, with a test that watches each rejected shape fail.
 
-### OI-31 — Whether Stripe can be used from Colombia at all is unverified
-**Severity:** Decision · **Owner:** needs a story · **Raised:** 2026-09-15
-
-`FZ-084` is DONE and the whole commercial model rests on it: Checkout, the Customer Portal, and a signature-verified webhook that is the only thing allowed to change entitlement. Every one of those assumes a Stripe account that can accept payments.
-
-**Stripe's merchant support is country-bound, and the operator is in Colombia.** Whether a Colombian business can hold a Stripe account that takes payments has never been checked. If it cannot, `FZ-084` is not wrong — it is unreachable, and the options are a merchant-of-record (Paddle, Lemon Squeezy, which also absorb US sales tax and EU VAT) or a US entity holding a US Stripe account.
-
-**It does not block validation**, which invoices by hand (`docs/13-validation.md` §3), and that is the only reason this is a Decision rather than a Defect. It blocks the first self-serve payment, and it shapes the entity decision, so the answer is worth an hour long before either is needed.
-
-Recorded rather than assumed because the cost of being wrong is discovering it at the moment a customer is trying to pay.
-
 ### OI-32 — Production would run in a personal AWS account
 **Severity:** Gap · **Owner:** `FZ-138` · **Raised:** 2026-09-15
 
@@ -175,6 +141,8 @@ Recorded now because the repository's own rule is that "no owner" is not a statu
 ## Resolved
 
 | Issue | Found in | Resolved by |
+| **The connector image was not published, so nothing was installable** — every guideline in `connectors/README.md` named an image that did not exist, and the entry was wrong twice before settling on publishing one artifact rather than extracting a second repository | `FZ-090` | `FZ-099` — `ghcr.io/freezehubio/freeze-check:v1` is public, `linux/amd64` and `linux/arm64`, and verified by pulling it anonymously and watching it exit 2 when FreezeHub is unreachable |
+| **Stripe cannot be used from Colombia, and `FZ-084` assumes it can** — Stripe supports Brazil and Mexico in Latin America and not Colombia, so a built, tested and correct billing integration had no account to point at | `FZ-137` | `FZ-148` verified it against Stripe's own availability page, and `D-34` chose Paddle as merchant of record. Implementation is `FZ-149` |
 | **EU data residency was deferred by letting a default choose the region** — `us-east-1` was never decided, it was the `variables.tf` default, and a region cannot be changed after the first apply without moving the database *and* re-creating every identity | `FZ-080` | `FZ-135` removed the default and priced the choice; `FZ-141` records the decision (`D-32`): `us-east-1`, knowingly, with the EU answer accepted as a cost |
 |---|---|---|
 | **`deploy.yml` and `verify.yml` still ran actions targeting Node 20** — GitHub had deprecated that runtime and was force-running those actions on a newer one, so the workflows were relying on a compatibility shim with an end date | `FZ-099` | `FZ-140` — every `uses:` resolved to the runtime its own `action.yml` declares, which found two the issue had missed; the eight on node20 bumped, the ones already on node24 left alone, and the pinning question answered: actions stay on major tags, base images do not (`FZ-139`) |

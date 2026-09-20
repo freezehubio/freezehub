@@ -8,6 +8,11 @@ output "api_url" {
   value       = "https://${local.api_domain}"
 }
 
+output "ecr_repository_arn" {
+  description = "Scopes the single-box instance profile to this repository and no other (FZ-152)."
+  value       = aws_ecr_repository.backend.arn
+}
+
 output "ecr_repository_url" {
   description = "Push backend images here. Consumed by FZ-064."
   value       = aws_ecr_repository.backend.repository_url
