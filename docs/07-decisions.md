@@ -916,3 +916,60 @@ Stripe was the plan and is unavailable: it supports Brazil and Mexico in Latin A
 Paddle signs with `Paddle-Signature` — HMAC-SHA256 over timestamp and body — which is the same construction as Stripe's pointed inward and the same one FreezeHub already uses outbound (`D-2`). The verification code is a rewrite of about the same size, not a new idea.
 
 **One incidental improvement:** Paddle publishes no official Java SDK, so the integration is plain HTTP plus an HMAC this codebase already knows how to compute. `stripe-java` leaves `pom.xml` and nothing replaces it.
+
+---
+
+## D-35 — One box to launch on, and a documented way off it
+
+**Date:** 2026-09-19 · **Specified by:** `FZ-151` · **Supersedes for beta:** `D-28`'s posture, not its findings
+
+### Decision
+
+The beta deploys as **a single EC2 instance running Docker Compose** — the backend, PostgreSQL and Caddy for TLS — in the **default VPC**, with the SPA staying on S3 and CloudFront and identity staying on Cognito. About **$18 a month** against `D-28`'s $64.
+
+`FZ-063`'s ALB-and-ECS Terraform is **kept, not deleted**. It is what this graduates to, and `FZ-157` documents the move.
+
+### Why
+
+The product is a CRUD application with five scheduled jobs, one hot read path and some outbound HTTP. Nothing in it needs a cluster. The numbers say so rather than the shape: `D-28` measured the JVM at a **353 MiB working set**, and the growth projection puts *Stage 3* — 75 paying customers and 1,500 free organizations — at roughly **0.3 requests a second** with about 1.5 GB of egress a month. One small instance carries the entire projection with room.
+
+**What actually saves the money is Caddy, not the box.** Automatic Let's Encrypt removes the load balancer's $16, which was the largest remaining line once `D-28` removed the NAT. The rest is a smaller instance and no managed database.
+
+**And the real argument is time, not cost.** $46 a month is $550 a year, which matters to a pre-revenue founder but is not decisive on its own. What is decisive: nothing is deployed, `FZ-046` is the reason, and a deployment somebody can stand up in an afternoon gets design partners in front of the product sooner. The cheapest infrastructure is the one nobody spends a week optimising.
+
+### What is deliberately kept
+
+- **S3 and CloudFront for the SPA.** Free on the perpetual tier and genuinely the "all markets" answer; serving the bundle from one `us-east-1` box to Bogotá or Singapore is worse for no saving.
+- **Cognito.** Free to 10,000 monthly active users on the Lite tier, which `06-security.md` already specifies. There is no cost here to optimise, and it constrains nothing — it is an OIDC issuer over HTTPS, identical whether the app runs on ECS, EC2 or off AWS.
+- **ECR, Route 53, and the GitHub OIDC deploy role.** All reused unchanged.
+
+So this is not a rewrite of the infrastructure. It replaces the compute and database tier and leaves everything either side of it alone — which is also why the migration back is small.
+
+### Cost, stated plainly
+
+**A single point of failure, for a product that fails closed.** `freeze-check.sh` defaults to blocking when it cannot get an answer, so FreezeHub being down means **every customer's deployments are blocked**. One box means a reboot, a kernel patch or an EBS fault does exactly that. At zero customers this costs nothing, which is the whole window this decision is for. At ten customers it is an incident, and that is the trigger to leave.
+
+**Deploys have a gap.** One replica on a 2 GB instance, so a deploy is roughly fifteen seconds of no answer. Two replicas would remove it and need a 4 GB instance; `FZ-121`'s scheduler locking already makes running two safe, so this is a sizing choice rather than a correctness one.
+
+**Backups become ours.** No automated snapshots, no point-in-time recovery — a nightly dump and, more importantly, a restore somebody has actually performed. `FZ-155` is not done until the restore has been run.
+
+**The database shares a host with the internet-facing process.** It holds AES-encrypted Slack tokens and webhook signing secrets (`D-3`). Acceptable while validating; it is a real answer to give in the first enterprise security review, and another trigger to leave.
+
+### The security posture this buys back
+
+A single box is not automatically weaker, and two of these are better than what the ECS design had:
+
+- **No inbound SSH.** Deploys and shell access go through SSM, so port 22 is closed and access is IAM-controlled and logged in CloudTrail rather than guarded by a key somebody holds.
+- **IMDSv2 required, hop limit 1.** This directly blunts `OI-23`: the blast radius of the SSRF in outbound webhooks is whatever the instance metadata endpoint will hand out, and requiring session tokens with a single hop makes that path far harder to reach from inside a container.
+- **PostgreSQL is never published to the host.** It listens on the Docker network only. Publishing 5432 on a public instance is the classic single-box mistake and the one thing here that would be genuinely worse than RDS.
+- Secrets come from SSM Parameter Store at boot, never from the image or a file in the repository; EBS is encrypted; unattended security updates are on.
+
+### Triggers to leave
+
+Any one of these ends this posture, and `FZ-157` is the route:
+
+1. **The first paying customer** — split PostgreSQL out to RDS for managed backups and the isolation boundary.
+2. **An availability commitment** — return to ALB and ECS, which already exists and is validated.
+3. **A security review asking about isolation** — same answer as 2.
+
+Because the SPA, identity, registry and DNS are untouched, the migration is: stand the existing Terraform up, restore a dump into RDS, and move one DNS record.
