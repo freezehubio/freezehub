@@ -2851,50 +2851,6 @@ infrastructure; this only makes a document match a decision taken weeks earlier.
 disagreed until `FZ-123` runs would mean the wrong number sat in front of every reader in the
 meantime, and `FZ-123` is blocked on an AWS account that does not exist yet.
 
-## Milestone 19 — Data Protection
-
-The operating company is Colombian, so Ley 1581 de 2012 applies to everything the product
-holds. GDPR mechanics are specified alongside it because signup is self-serve and a product
-anyone can sign up for does not get to choose where its data subjects live.
-
-### FZ-161 — Data Protection Specification
-**Status:** DONE
-
-Specification only, no code: `docs/14-data-protection.md`.
-
-**Two roles, and the document turns on the difference.** FreezeHub is *encargado* for what a
-customer puts in — `users`, `audit_event`, `deployment_check`, the catalog — and *responsable*
-for what it collects itself: `demo_request`, signup, billing, logs. A subject request arriving
-against the first is forwarded to the customer; against the second it is answered directly.
-`demo_request` is the sharp edge, being the one table with no `organization_id` and the only
-place FreezeHub holds data about someone who never became a customer.
-
-**The GDPR reasoning does not transfer, and that is the finding.** Ley 1581 Art. 9 makes
-*autorización previa, expresa e informada* the general basis — there is no broad
-legitimate-interest basis to lean on — and Art. 8(b) gives the titular the right to demand
-**proof** of it. So the authorization must be stored: the timestamp, and the exact text shown
-at the time. `demo_request` has no column for either, which makes it a schema change rather
-than a checkbox (`FZ-163`).
-
-**`us-east-1` is a transmisión, not a transferencia.** AWS and Paddle are encargados
-processing on FreezeHub's behalf, so Decreto 1377 Art. 25 governs and the route is a contrato
-de transmisión rather than an adequacy finding. That is a materially easier path than the
-Art. 26 transfer prohibition, and it is why the section says so explicitly.
-
-**Written against the deployment that exists.** There is no RDS: PostgreSQL 16 runs in Compose
-on the box with its volume on encrypted EBS, secrets come from SSM Parameter Store, and
-backups are a nightly `pg_dump` to S3 whose restore has never been drilled (`FZ-155`). An
-untested restore is also how an erasure claim turns out to be untrue.
-
-Ten gaps are recorded in §7 with owners, `FZ-162` through `FZ-168`. None is implemented here.
-
-Acceptance:
-
-- Every claim about current behaviour is read from the code, the schema or `infra/singlebox/`.
-- Roles are assigned per store, not per product.
-- Retention and erasure behaviour is stated per class, including where erasure is refused.
-- Limits are stated rather than left to be discovered — free text, billing, backups.
-
 ## Milestone 17 — One Box
 
 `FZ-063` designed an ALB-and-ECS environment and it has never been applied. `D-28` trimmed it
@@ -3213,3 +3169,47 @@ Acceptance:
 - Objections concede the true part first, and none answers with a roadmap promise.
 - Qualification names who to walk away from, not only who to pursue.
 - Nothing claims a capability that is not built.
+
+## Milestone 19 — Data Protection
+
+The operating company is Colombian, so Ley 1581 de 2012 applies to everything the product
+holds. GDPR mechanics are specified alongside it because signup is self-serve and a product
+anyone can sign up for does not get to choose where its data subjects live.
+
+### FZ-161 — Data Protection Specification
+**Status:** DONE
+
+Specification only, no code: `docs/14-data-protection.md`.
+
+**Two roles, and the document turns on the difference.** FreezeHub is *encargado* for what a
+customer puts in — `users`, `audit_event`, `deployment_check`, the catalog — and *responsable*
+for what it collects itself: `demo_request`, signup, billing, logs. A subject request arriving
+against the first is forwarded to the customer; against the second it is answered directly.
+`demo_request` is the sharp edge, being the one table with no `organization_id` and the only
+place FreezeHub holds data about someone who never became a customer.
+
+**The GDPR reasoning does not transfer, and that is the finding.** Ley 1581 Art. 9 makes
+*autorización previa, expresa e informada* the general basis — there is no broad
+legitimate-interest basis to lean on — and Art. 8(b) gives the titular the right to demand
+**proof** of it. So the authorization must be stored: the timestamp, and the exact text shown
+at the time. `demo_request` has no column for either, which makes it a schema change rather
+than a checkbox (`FZ-163`).
+
+**`us-east-1` is a transmisión, not a transferencia.** AWS and Paddle are encargados
+processing on FreezeHub's behalf, so Decreto 1377 Art. 25 governs and the route is a contrato
+de transmisión rather than an adequacy finding. That is a materially easier path than the
+Art. 26 transfer prohibition, and it is why the section says so explicitly.
+
+**Written against the deployment that exists.** There is no RDS: PostgreSQL 16 runs in Compose
+on the box with its volume on encrypted EBS, secrets come from SSM Parameter Store, and
+backups are a nightly `pg_dump` to S3 whose restore has never been drilled (`FZ-155`). An
+untested restore is also how an erasure claim turns out to be untrue.
+
+Ten gaps are recorded in §7 with owners, `FZ-162` through `FZ-168`. None is implemented here.
+
+Acceptance:
+
+- Every claim about current behaviour is read from the code, the schema or `infra/singlebox/`.
+- Roles are assigned per store, not per product.
+- Retention and erasure behaviour is stated per class, including where erasure is refused.
+- Limits are stated rather than left to be discovered — free text, billing, backups.
