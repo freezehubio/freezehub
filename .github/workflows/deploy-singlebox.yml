@@ -1,0 +1,124 @@
+# Deploy to the single-box beta (FZ-154, D-35).
+#
+# By SSM Run Command, not SSH. That removes the open port, the key somebody has to hold,
+# and the question of who still has a copy — and it turns every deploy into an IAM-
+# authorised API call recorded in CloudTrail. The instance has no port 22 at all
+# (FZ-152).
+#
+# Manual, like deploy.yml: publishing changes what customers reach, and freeze-check.sh
+# fails closed, so a deploy is the one moment FreezeHub can block every customer at once.
+name: Deploy single-box
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Exact image tag to run, e.g. v1.2.3 or a commit SHA. Never "latest".'
+        required: true
+      instance_id:
+        description: 'Target instance (terraform -chdir=infra/singlebox output -raw instance_id)'
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # OIDC to AWS. No stored keys anywhere in this workflow.
+
+concurrency:
+  group: deploy-singlebox
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # A moving tag in a deploy gate changes behaviour on a day nobody touched it — the
+      # same reasoning FZ-099 applies to the connector image. Cheaper to refuse here.
+      - name: Refuse a moving tag
+        run: |
+          case "${{ inputs.image_tag }}" in
+            latest|main|master|"") echo "image_tag must be an exact tag, got '${{ inputs.image_tag }}'" >&2; exit 1 ;;
+          esac
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Send the deploy
+        id: send
+        env:
+          INSTANCE_ID: ${{ inputs.instance_id }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          REGISTRY: ${{ vars.ECR_REPOSITORY_URL }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          ENVIRONMENT: ${{ vars.ENVIRONMENT || 'beta' }}
+          ROOT_DOMAIN: ${{ vars.ROOT_DOMAIN }}
+        run: |
+          set -euo pipefail
+
+          # The stack files travel with the command rather than being baked into the AMI,
+          # so what runs on the box is what is in this commit and can be diffed.
+          COMPOSE_B64=$(base64 < deploy/compose.yaml | tr -d '\n')
+          CADDY_B64=$(base64 < deploy/Caddyfile | tr -d '\n')
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "FreezeHub deploy ${IMAGE_TAG}" \
+            --cloud-watch-output-config CloudWatchOutputEnabled=true \
+            --parameters commands="[\"set -euo pipefail\",\
+          \"cd /opt/freezehub\",\
+          \"echo $COMPOSE_B64 | base64 -d > compose.yaml\",\
+          \"echo $CADDY_B64 | base64 -d > Caddyfile\",\
+          \"aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${REGISTRY%%/*}\",\
+          \"export BACKEND_IMAGE=${REGISTRY}:${IMAGE_TAG}\",\
+          \"export API_DOMAIN=api.${ROOT_DOMAIN}\",\
+          \"export ROOT_DOMAIN=${ROOT_DOMAIN}\",\
+          \"export DATABASE_PASSWORD=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/database-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION)\",\
+          \"export ENCRYPTION_KEY=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/encryption-key --with-decryption --query Parameter.Value --output text --region $AWS_REGION)\",\
+          \"docker compose pull\",\
+          \"docker compose up -d --wait --wait-timeout 180\",\
+          \"docker image prune -f\"]" \
+            --query 'Command.CommandId' --output text)
+
+          echo "command_id=$COMMAND_ID" >> "$GITHUB_OUTPUT"
+          echo "Sent $COMMAND_ID"
+
+      # The step above only proves the API accepted the command. A deploy that reports
+      # success because a request was accepted is worse than one that reports nothing, so
+      # this waits for the real outcome and fails the workflow on it.
+      - name: Wait for it to actually finish
+        env:
+          INSTANCE_ID: ${{ inputs.instance_id }}
+          COMMAND_ID: ${{ steps.send.outputs.command_id }}
+        run: |
+          set -uo pipefail
+          for _ in $(seq 1 60); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in
+              Success) echo "Deploy succeeded."; exit 0 ;;
+              Failed|Cancelled|TimedOut|Undeliverable|Terminated)
+                echo "Deploy $STATUS. Output follows:" >&2
+                aws ssm get-command-invocation --command-id "$COMMAND_ID" \
+                  --instance-id "$INSTANCE_ID" \
+                  --query 'StandardErrorContent' --output text >&2 || true
+                echo "" >&2
+                echo "Read the logs: docs/14-operations.md, 'A deploy failed'." >&2
+                exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "Timed out waiting on $COMMAND_ID. See docs/14-operations.md." >&2
+          exit 1
+
+      - name: Where to look if something is wrong
+        if: always()
+        run: |
+          echo "Shell on the box (there is no SSH):"
+          echo "  aws ssm start-session --target ${{ inputs.instance_id }} --region ${{ vars.AWS_REGION }}"
+          echo "Rollback is this workflow again with an earlier image_tag."
+          echo "Runbook: docs/14-operations.md"
