@@ -2818,7 +2818,7 @@ balancer, which was the largest line left after `D-28` removed the NAT.
 what makes `FZ-157` small — only the compute and database tier moves.
 
 ### FZ-152 — The Box
-**Status:** TODO
+**Status:** DONE · **Not applied** — needs `FZ-138`
 
 Terraform for one instance, in `infra/singlebox/`, separate from `infra/` so neither is
 half-applied by accident and `FZ-157` is a switch rather than a rewrite.
