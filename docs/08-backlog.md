@@ -2879,7 +2879,7 @@ inside the `local` profile document, below the `---` at line 99, so it does not 
 The `EXPOSE 8080` in the Dockerfile is right and the local port is the exception.
 
 ### FZ-154 — Deploy Without SSH
-**Status:** TODO
+**Status:** DONE · **Not executed** — needs `FZ-138`, `FZ-152`
 
 A GitHub Actions job that deploys by **SSM Run Command**, reusing the OIDC role
 `github-oidc.tf` already creates.
