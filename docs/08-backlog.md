@@ -2932,7 +2932,7 @@ Two things the script does that a naive `pg_dump | aws s3 cp` does not:
   fails silently is worse than no backup, because it removes the reason to check.
 
 ### FZ-156 — The Operations Runbook
-**Status:** TODO
+**Status:** DONE · **Unverified against a running box** — needs `FZ-138`
 
 `docs/14-operations.md`. Symptom-driven, not tour-driven: somebody reading it is already
 having a bad morning.
@@ -2954,6 +2954,32 @@ is the single most useful thing in the runbook and nothing else in the repositor
 
 Also: where Caddy's access log is, where PostgreSQL's log is, and how to widen the backend's
 log level temporarily without a redeploy.
+
+**Written from the code, not from memory of how systems like this usually behave.** The
+integration shapes were read out of `IntegrationConfigs.validate`, the notification states
+out of `NotificationStatus`, the log pattern out of `application.yml`, and the email
+condition out of the comment that explains why `freezehub.notifications.email.from` is
+deliberately not declared.
+
+**The Slack and email section exercises the real path** — outbox row, dispatcher sweep,
+sender — rather than asserting that configuration looks right. Two failures it names because
+they cost the most time and produce no error:
+
+- **Email with no from-address does nothing, silently.** The sender is
+  `@ConditionalOnProperty` on it, so an unset value means no sender is registered, the
+  notification defers rather than fails, and the outbox looks healthy. Check the environment
+  before the logs.
+- **A revoked Slack webhook and a typo'd one are indistinguishable**, because the path
+  segment of the URL is the secret and both return `404`.
+
+**It also separates "we are down" from "the product said no".** `freeze-check.sh` fails
+closed, so those are identical from the customer's side and are opposite problems — the
+section says to ask for the request id and whether the message said `BLOCK` before
+reassuring anyone.
+
+**Unverified against a running box**, because there is not one. Every command is derived from
+the compose stack in `FZ-153` and the code, and the first real incident will find whatever is
+wrong with it.
 
 ### FZ-157 — Graduating to ECS
 **Status:** TODO · **Documented, not built**
