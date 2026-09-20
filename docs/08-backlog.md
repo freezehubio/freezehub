@@ -2837,7 +2837,7 @@ Acceptance:
 - `terraform fmt` and `validate` clean in CI, like the rest of `infra/`.
 
 ### FZ-153 — The Stack
-**Status:** TODO
+**Status:** DONE · **Cannot run until** `FZ-046`
 
 `docker-compose.yml` on the box: Caddy, the backend, PostgreSQL 16.
 
@@ -2855,6 +2855,28 @@ Acceptance:
 - Container health checks, with Compose configured to wait for healthy on start.
 - One replica, and the resulting **~15 second gap on deploy is documented, not hidden**. Two
   replicas remove it and need a 4 GB instance; `FZ-121` already made running two safe.
+
+**Confirmed by running it, not by reading the YAML.** The jar was started under
+`SPRING_PROFILES_ACTIVE=beta` with the environment this stack supplies, against a real
+PostgreSQL. Two things came out of it:
+
+- **`FREEZEHUB_SECRETS_ENCRYPTION_KEY` does bind to `freezehub.secrets.encryption-key`.**
+  Spring's relaxed binding handles the underscore-to-hyphen mapping, which was worth
+  proving rather than assuming — `FZ-063`'s ECS task definition uses the same name, so a
+  wrong guess would have been wrong in both postures at once and discovered on a first
+  deploy.
+- **The application then failed exactly where `OI-2` says it will**, on
+  `No qualifying bean of type 'IdentityProvider'`. So the box cannot serve anything until
+  `FZ-046` ships. That was already written down; it is now executed.
+
+**`server.forward-headers-strategy` is deliberately not set here.** It is already `framework`
+in the default document and `none` only under `local`. The rate limiter depends on it
+(`FZ-087`), and configuration that load-bearing belongs in one place rather than two that can
+drift.
+
+**The port is Spring's default 8080, not 8099.** `server.port: ${SERVER_PORT:8099}` lives
+inside the `local` profile document, below the `---` at line 99, so it does not apply here.
+The `EXPOSE 8080` in the Dockerfile is right and the local port is the exception.
 
 ### FZ-154 — Deploy Without SSH
 **Status:** TODO

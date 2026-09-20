@@ -1,0 +1,97 @@
+# What runs on the box (FZ-153, D-35).
+#
+# Three containers: Caddy terminates TLS, the backend serves the API, PostgreSQL holds the
+# data. The SPA is not here -- it stays on S3 and CloudFront, which is free and is the
+# actual answer to serving Bogota and Singapore from one region.
+#
+# FZ-154 writes this file to /opt/freezehub/compose.yaml and runs it through SSM. Nothing
+# here is applied by hand.
+
+name: freezehub
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data      # Certificates and ACME account. Losing this re-issues; losing it often hits rate limits.
+      - caddy-config:/config
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set by FZ-154 from the Terraform output}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [edge, internal]
+
+  backend:
+    image: ${BACKEND_IMAGE:?pinned tag, never latest -- see FZ-099 for why}
+    restart: unless-stopped
+    environment:
+      # Anything but `local`. Under the local profile the dev sign-in endpoint exists and
+      # the IdentityProvider is a fake that invents subjects (FZ-035, OI-2) -- on a public
+      # box that is an unauthenticated route to any account.
+      SPRING_PROFILES_ACTIVE: beta
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freezehub
+      SPRING_DATASOURCE_USERNAME: freezehub
+      SPRING_DATASOURCE_PASSWORD: ${DATABASE_PASSWORD:?from SSM at boot}
+      FREEZEHUB_SECRETS_ENCRYPTION_KEY: ${ENCRYPTION_KEY:?from SSM at boot}
+      FREEZEHUB_CORS_ALLOWED_ORIGINS: https://${ROOT_DOMAIN:?}
+      # server.forward-headers-strategy is already `framework` in the default document of
+      # application.yml, and `none` only under `local`. Not repeated here: the rate limiter
+      # (FZ-087) depends on it and config that matters should live in one place.
+    healthcheck:
+      # Readiness, not the aggregate endpoint: it reports false while Liquibase is still
+      # migrating, which is exactly when traffic must not arrive (FZ-062).
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # NO `ports:` BLOCK. Deliberately, and this comment is the guard rail.
+    #
+    # Publishing 5432 from a public instance exposes the database to the internet, and it
+    # is the single mistake that would make this posture genuinely worse than RDS. The
+    # backend reaches it over the `internal` network by service name; nothing else needs
+    # to. A shell on the box reaches it with `docker compose exec`.
+    environment:
+      POSTGRES_DB: freezehub
+      POSTGRES_USER: freezehub
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?from SSM at boot}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U freezehub -d freezehub"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [internal]
+    logging: *logging
+
+networks:
+  # Split so the database is not on the network that has a published port. Caddy sits on
+  # both; PostgreSQL sits only on `internal`.
+  edge:
+  internal:
+    internal: true
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
