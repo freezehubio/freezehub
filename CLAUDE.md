@@ -220,7 +220,8 @@ sh connectors/test/image-smoke.sh freeze-check:test
 ```
 
 The image is the connector (`D-26`): every CI system in `connectors/README.md` runs it.
-It is not published yet — `FZ-099` — so build it locally to try a guideline.
+It is published: `ghcr.io/freezehubio/freeze-check:v1`, public, `linux/amd64` and
+`linux/arm64`. Build locally only to test a change before publishing it.
 
 ### Scripts (`scripts/`)
 

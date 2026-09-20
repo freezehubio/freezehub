@@ -42,29 +42,6 @@ The MVP answer is that support fixes it by hand, which is honest at this volume 
 
 `FZ-088` is deliberately deferred rather than scheduled: the right fix depends on whether the common case is *join the existing organization automatically* — fast, and wrong for a contractor signing up under a client's domain — or *request access from an administrator*, which is correct and more machinery. One real occurrence answers that. Guessing first does not.
 
-### OI-13 — The connector image is not published, so nothing is installable
-**Severity:** Gap · **Owner:** `FZ-099` · **Found in:** `FZ-090`, corrected twice
-
-**This entry has been wrong twice, and both errors are worth keeping visible.**
-
-It first described publication as *discoverability* — "usable by direct reference now, listable later". That was wrong: a connector in a private repository is not usable at all, because `uses:` and `component:` resolve against a repository the customer can read.
-
-It then described the fix as extracting the connectors into a second public repository. That was over-built. The image is the connector (`D-26`), so publishing **one artifact** makes every guideline in `connectors/README.md` work at once — no second repository, no sync, no cross-repo token.
-
-Verified rather than assumed, at the time of writing:
-
-- `docker manifest inspect ghcr.io/freezehubio/freeze-check:v1` → `manifest unknown`
-- `git tag` → empty
-- the repository is private, and under a personal account
-
-So every guideline currently names an image that does not exist, and the README says so.
-
-**Two of those three facts have since changed** (2026-09-15). The `freezehubio` organization exists, this repository was moved into it, and it is now public — so "private, and under a personal account" no longer holds. That move also removed `FZ-099`'s second blocker rather than satisfying it: `GITHUB_TOKEN` could not write to *another* owner's package namespace, and `freezehubio` is no longer another owner, so no `CONNECTOR_PUBLISH_TOKEN` is needed or configured.
-
-**The fact that matters is unchanged.** `ghcr.io/freezehubio/freeze-check:v1` still does not exist, so every guideline still names an image customers cannot pull. This entry stays open until a `workflow_dispatch` publishes one and its package visibility is set to public.
-
-Discoverability — a Marketplace or Catalog listing — is a separate and lesser problem, deferred to `FZ-096`.
-
 ### OI-15 — The deployed cost posture, and which AWS services are actually needed
 **Severity:** Decision · **Owner:** `FZ-123` · **Raised:** 2026-09-05 · **Platform decided:** `D-28`
 
@@ -164,6 +141,7 @@ Recorded now because the repository's own rule is that "no owner" is not a statu
 ## Resolved
 
 | Issue | Found in | Resolved by |
+| **The connector image was not published, so nothing was installable** — every guideline in `connectors/README.md` named an image that did not exist, and the entry was wrong twice before settling on publishing one artifact rather than extracting a second repository | `FZ-090` | `FZ-099` — `ghcr.io/freezehubio/freeze-check:v1` is public, `linux/amd64` and `linux/arm64`, and verified by pulling it anonymously and watching it exit 2 when FreezeHub is unreachable |
 | **Stripe cannot be used from Colombia, and `FZ-084` assumes it can** — Stripe supports Brazil and Mexico in Latin America and not Colombia, so a built, tested and correct billing integration had no account to point at | `FZ-137` | `FZ-148` verified it against Stripe's own availability page, and `D-34` chose Paddle as merchant of record. Implementation is `FZ-149` |
 | **EU data residency was deferred by letting a default choose the region** — `us-east-1` was never decided, it was the `variables.tf` default, and a region cannot be changed after the first apply without moving the database *and* re-creating every identity | `FZ-080` | `FZ-135` removed the default and priced the choice; `FZ-141` records the decision (`D-32`): `us-east-1`, knowingly, with the EU answer accepted as a cost |
 |---|---|---|
