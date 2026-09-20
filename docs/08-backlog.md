@@ -1817,45 +1817,6 @@ choice with the egress and architecture questions answered rather than assumed.
 ### FZ-123 — Apply the Beta Deployment
 **Status:** TODO · **Blocked on:** `FZ-138` — an AWS account · **Resolves:** `OI-15`, `OI-21`
 
-The first `terraform apply`. Always-on and publicly reachable, at the smallest posture that
-is honestly available, on the platform `FZ-122` chooses and at the size it measures.
-
-Three changes are independent of that choice and should happen regardless:
-
-- **`terraform destroy` must be able to run.** `deletion_protection` on RDS and Cognito,
-  `skip_final_snapshot = false`, and `prevent_destroy` on both secrets currently block it —
-  correct for production and wrong for a pre-customer beta, where the first mistake is
-  otherwise unrecoverable without console surgery. They become variables, defaulting to the
-  safe value.
-- **`frontend.tf` moves to `PriceClass_All`.** It reads `PriceClass_100` — North America and
-  Europe — with the comment *"widen when customers are elsewhere."* The frontend is a small
-  bundle inside CloudFront's perpetual always-free tier, so every other market costs
-  approximately nothing. One line.
-- **`backend_desired_count` stays at 1 until `FZ-121` ships**, and the variable's description
-  stops promising a redundancy the application cannot currently survive.
-
-Acceptance:
-
-- A public URL serving the frontend and the API, with certificates valid and Liquibase
-  migrated.
-- `/actuator/health/readiness` is what the platform health-checks, not the aggregate
-  endpoint — `FZ-062` established readiness reports false while migrations run, which is
-  exactly when an instance must not be sent traffic.
-- The two Secrets Manager values are injected from Secrets Manager, never from configuration.
-- `terraform destroy` runs cleanly against the beta workspace.
-- The first month's actual bill is recorded against the estimate, because every figure in
-  the plan is derived from list prices and none of it has been invoiced.
-
-**It cannot ship a working signup.** Outside the `local` profile there is no real
-`IdentityProvider` (`OI-2`), so nobody can sign in to what this deploys. That is `FZ-046`,
-and this story should say so in its output rather than report an environment that is only
-half true — the same honesty `FZ-086` chose when its closing summary admitted the same gap.
-
-## Milestone 14 — What Beta Found
-
-`FZ-065` reviewed the seven areas Milestone 8 named and fixed what it found on the
-backend. This is the part it deliberately did not do in a review.
-
 **Rewritten by `FZ-159`, because `D-35` changed what "the beta deployment" means.** This
 entry described applying `infra/` — the ALB-and-ECS estate. The beta now applies
 `infra/shared/` and `infra/singlebox/`, and somebody picking this up as written would have
@@ -1885,6 +1846,11 @@ use, and `FZ-121` shipped the locking its old note was waiting on.
 Acceptance is unchanged in substance — a public URL serving the frontend and the API, with
 certificates valid and Liquibase migrated — and `FZ-153` has already confirmed by execution
 that none of it can serve anything until `FZ-046` exists.
+
+## Milestone 14 — What Beta Found
+
+`FZ-065` reviewed the seven areas Milestone 8 named and fixed what it found on the
+backend. This is the part it deliberately did not do in a review.
 
 ### FZ-124 — A Request That Never Answers
 **Status:** DONE · **Resolves** `OI-22`
@@ -3237,3 +3203,27 @@ Acceptance:
 - Roles are assigned per store, not per product.
 - Retention and erasure behaviour is stated per class, including where erasure is refused.
 - Limits are stated rather than left to be discovered — free text, billing, backups.
+
+### FZ-162 — Repair the Split FZ-123 Entry
+**Status:** DONE · **Resolves** `OI-35`
+
+`FZ-159` rewrote `FZ-123` to say the beta applies `shared/` then `singlebox/` rather than
+the ECS estate. A later conflict resolution split that entry in half: the heading kept the
+**new status line** and the **old body**, and the rewritten body was left orphaned thirty
+lines down, under `## Milestone 14 — What Beta Found`, with no heading of its own.
+
+So the backlog simultaneously said `FZ-123` was the ECS apply *and* contained an unattributed
+block explaining that it was not — which is exactly what `OI-35` then recorded as "both
+readings are live". The issue was real; its cause was a merge, not a decision nobody had
+made.
+
+**Nothing failed and nothing flagged it.** Markdown has no structure to violate, so a
+paragraph under the wrong heading renders perfectly. It was found by reading `OI-35`,
+following it to `FZ-123`, and noticing the body did not match the status line above it.
+
+Worth recording because it is the second time this file has been damaged by a conflict —
+`FZ-150` hit the same class, where a stale branch carried an older version of an entry that
+had since been rewritten. Both times the diff looked plausible. A backlog entry whose status
+line and body disagree is the signature.
+
+Resolves `OI-35`: `FZ-123` is the beta apply, and the restored body says so.

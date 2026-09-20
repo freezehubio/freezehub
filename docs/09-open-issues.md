@@ -22,27 +22,6 @@ Severity is about consequence if it reaches beta, not effort:
 
 ## Open
 
-### OI-35 — Whether `FZ-123` is superseded by the one box
-**Severity:** Decision · **Owner:** needs a story · **Found in:** `FZ-160`
-
-`FZ-123` — *Apply the Beta Deployment* — describes the first `terraform apply` of the ECS
-posture: `deletion_protection` becoming variables, `PriceClass_All`, `backend_desired_count`.
-Milestone 17 then decided the beta runs on **one box** with Caddy and Compose (`D-35`), and
-`FZ-157` documents graduating to ECS as a later step.
-
-So `FZ-123` is either **superseded** by Milestone 17, or it is **the ECS apply that follows
-the beta** and its description needs rewriting to say so. Nobody has decided which, and both
-readings are live in the backlog simultaneously.
-
-**Why this is worth an entry rather than a shrug.** `FZ-123` is still `TODO` and still
-`Resolves: OI-15, OI-21`, so two open issues are waiting on a story that may not be the plan
-any more. Anyone picking up deployment work reads it as the next step, and `FZ-159` has
-already shown that a `FZ-123` nobody re-reads is how a wrong assumption survives for weeks.
-
-Resolving it costs one decision and one edit. Leaving it costs whatever the next reader
-builds on the wrong half.
-
-
 ### OI-2 — No real Cognito identity provider
 **Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-016`
 
@@ -162,6 +141,7 @@ Recorded now because the repository's own rule is that "no owner" is not a statu
 ## Resolved
 
 | Issue | Found in | Resolved by |
+| **Whether `FZ-123` was superseded by the one box** — two readings of the same story were live at once, and it still claimed `OI-15` and `OI-21` | `FZ-160` | `FZ-162` — it is the beta apply, now pointing at `shared/` then `singlebox/`. `FZ-159` had already rewritten it to say so; a conflict resolution had split the entry, leaving the old body under the heading and the new one orphaned inside Milestone 14 |
 | **The connector image was not published, so nothing was installable** — every guideline in `connectors/README.md` named an image that did not exist, and the entry was wrong twice before settling on publishing one artifact rather than extracting a second repository | `FZ-090` | `FZ-099` — `ghcr.io/freezehubio/freeze-check:v1` is public, `linux/amd64` and `linux/arm64`, and verified by pulling it anonymously and watching it exit 2 when FreezeHub is unreachable |
 | **Stripe cannot be used from Colombia, and `FZ-084` assumes it can** — Stripe supports Brazil and Mexico in Latin America and not Colombia, so a built, tested and correct billing integration had no account to point at | `FZ-137` | `FZ-148` verified it against Stripe's own availability page, and `D-34` chose Paddle as merchant of record. Implementation is `FZ-149` |
 | **EU data residency was deferred by letting a default choose the region** — `us-east-1` was never decided, it was the `variables.tf` default, and a region cannot be changed after the first apply without moving the database *and* re-creating every identity | `FZ-080` | `FZ-135` removed the default and priced the choice; `FZ-141` records the decision (`D-32`): `us-east-1`, knowingly, with the EU answer accepted as a cost |
