@@ -2777,3 +2777,164 @@ confirming, because at this scale it is the difference between ~$64 and ~$71.
 infrastructure; this only makes a document match a decision taken weeks earlier. Leaving them
 disagreed until `FZ-123` runs would mean the wrong number sat in front of every reader in the
 meantime, and `FZ-123` is blocked on an AWS account that does not exist yet.
+
+## Milestone 17 — One Box
+
+`FZ-063` designed an ALB-and-ECS environment and it has never been applied. `D-28` trimmed it
+to ~$64 a month; `D-35` decided that the beta launches on **a single instance at ~$18**, and
+that the existing Terraform is what it graduates to rather than something replaced.
+
+The point is not the money. Nothing is deployed, and a deployment somebody can stand up in an
+afternoon gets design partners in front of the product sooner.
+
+**Order.** `FZ-152` before `FZ-153` before `FZ-154`. `FZ-155` and `FZ-156` can be written
+alongside but neither is optional: a box with no tested restore and no runbook is a box that
+will be rebuilt from memory at the worst possible time.
+
+```text
+FZ-151 ── FZ-152 ── FZ-153 ── FZ-154
+                        ├──── FZ-155
+                        └──── FZ-156
+                              FZ-157  (documented, not built)
+```
+
+**Blocked on the same human action as everything else:** an AWS account (`FZ-138`). This
+milestone changes what gets applied into it, not whether it is needed.
+
+### FZ-151 — Deploy on One Box
+**Status:** DONE
+
+Specification only: `D-35`, and this milestone.
+
+The measurements are what make it defensible rather than a hunch. `D-28` put the JVM's
+working set at **353 MiB**; the growth model puts *Stage 3* — 75 paying customers and 1,500
+free organizations — at about **0.3 requests a second**. One small instance carries the whole
+projection.
+
+**Caddy is what saves the money, not the box.** Automatic Let's Encrypt removes the load
+balancer, which was the largest line left after `D-28` removed the NAT.
+
+**Kept unchanged: S3 and CloudFront, Cognito, ECR, Route 53, the GitHub OIDC role.** That is
+what makes `FZ-157` small — only the compute and database tier moves.
+
+### FZ-152 — The Box
+**Status:** TODO
+
+Terraform for one instance, in `infra/singlebox/`, separate from `infra/` so neither is
+half-applied by accident and `FZ-157` is a switch rather than a rewrite.
+
+Acceptance:
+
+- One `t4g.small` (ARM64, matching the image CI already builds) in the **default VPC**, with
+  an Elastic IP so the address survives a stop.
+- **Security group: 80 and 443 inbound, nothing else.** No port 22.
+- **IMDSv2 required, `http_put_response_hop_limit = 1`.** Not a default worth inheriting:
+  it is what keeps `OI-23`'s SSRF away from instance credentials.
+- An instance profile scoped to exactly three things — pull from this ECR repository, read
+  this environment's SSM parameters, write to the backup bucket. Nothing wildcarded.
+- Encrypted EBS, unattended security upgrades, SSM agent enabled.
+- A Route 53 A record pointing at the Elastic IP.
+- `terraform fmt` and `validate` clean in CI, like the rest of `infra/`.
+
+### FZ-153 — The Stack
+**Status:** TODO
+
+`docker-compose.yml` on the box: Caddy, the backend, PostgreSQL 16.
+
+Acceptance:
+
+- **Caddy terminates TLS** with automatic Let's Encrypt and proxies to the backend. No
+  certificate in the repository and none to renew by hand.
+- **PostgreSQL is never published to the host.** It listens on the Compose network only.
+  Publishing 5432 from a public instance is the mistake this bullet exists to prevent.
+- A named volume for the database, on the encrypted EBS volume.
+- **Secrets are read from SSM Parameter Store at boot** — the database password and
+  `freezehub.secrets.encryption-key`. Never in the compose file, the image, or the repository.
+- The backend runs with `SPRING_PROFILES_ACTIVE` set to something that is **not** `local`, so
+  the dev sign-in endpoint and its fake `IdentityProvider` cannot exist (`FZ-035`, `OI-2`).
+- Container health checks, with Compose configured to wait for healthy on start.
+- One replica, and the resulting **~15 second gap on deploy is documented, not hidden**. Two
+  replicas remove it and need a 4 GB instance; `FZ-121` already made running two safe.
+
+### FZ-154 — Deploy Without SSH
+**Status:** TODO
+
+A GitHub Actions job that deploys by **SSM Run Command**, reusing the OIDC role
+`github-oidc.tf` already creates.
+
+**No SSH, deliberately.** It removes the open port, the key somebody has to hold, and the
+question of who still has a copy. Every deploy becomes an IAM-authorised API call recorded in
+CloudTrail.
+
+Acceptance:
+
+- Manual dispatch, like `deploy.yml`: publishing changes what customers reach.
+- The job authenticates by OIDC, sends one command, and **fails the workflow if the command
+  fails** — a deploy that reports success because the API call was accepted is worse than one
+  that reports nothing.
+- The command pulls the pinned image tag and restarts the stack. Never `latest`, for the
+  reason `FZ-099` gives: a moving tag changes behaviour on a day nobody touched it.
+- The workflow prints how to read the logs on failure, pointing at `FZ-156`.
+- Rollback is redeploying an earlier tag, and that is written down.
+
+### FZ-155 — Backups, and a Restore Somebody Has Run
+**Status:** TODO
+
+Nightly `pg_dump` to S3, with lifecycle expiry.
+
+**This story is not done when the backup runs. It is done when a restore has been performed
+into a scratch database and the result checked.** An untested backup is the classic way to
+discover there was none, and a single box has no automated snapshots to fall back on.
+
+Acceptance:
+
+- A nightly dump, encrypted at rest, in a bucket the instance role may write and not read
+  back broadly.
+- Lifecycle expiry so it does not grow without bound.
+- A failed backup is **visible** — a silent one is the same as no backup.
+- **A documented restore, executed once, with the command and its output recorded in
+  `14-operations.md`.**
+
+### FZ-156 — The Operations Runbook
+**Status:** TODO
+
+`docs/14-operations.md`. Symptom-driven, not tour-driven: somebody reading it is already
+having a bad morning.
+
+Sections, each starting from what was observed rather than from a component:
+
+- **"The site is down"** — reaching the box through SSM Session Manager, `docker compose ps`,
+  and what a container in a restart loop looks like.
+- **"A customer's pipeline is failing"** — the Policy API path, and how to tell a real
+  refusal from an outage. `freeze-check.sh` fails closed, so those look identical from the
+  customer's side and are opposite problems.
+- **"Notifications are not arriving"** — the outbox, the dispatcher, and `notification` rows
+  in a terminal state.
+- **"A deploy failed"** — reading the SSM command output, and rolling back to a prior tag.
+
+**It must explain `X-Request-Id`.** `FZ-062` puts a correlation id on every log line and in
+every error body, so a customer quoting one turns an anecdote into an exact log lookup. That
+is the single most useful thing in the runbook and nothing else in the repository says it.
+
+Also: where Caddy's access log is, where PostgreSQL's log is, and how to widen the backend's
+log level temporarily without a redeploy.
+
+### FZ-157 — Graduating to ECS
+**Status:** TODO · **Documented, not built**
+
+The route off the box, written down while the reasons are fresh rather than discovered under
+pressure. `D-35` names three triggers: the first paying customer, an availability commitment,
+or a security review asking about isolation.
+
+It is small because most of the estate never moved: **the SPA, Cognito, ECR, Route 53 and the
+OIDC role are identical in both postures.** What changes is the compute and database tier.
+
+The shape, to be written rather than executed:
+
+1. Apply the existing `infra/` into the same account.
+2. Restore the latest dump into RDS and verify row counts against the box.
+3. Move one Route 53 record from the Elastic IP to the load balancer.
+4. Keep the box, stopped, until the new one has served a full business day.
+
+The `SPRING_DATASOURCE_*` overrides the backend already honours are what make step 2 a
+configuration change rather than a code one.
