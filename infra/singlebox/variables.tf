@@ -32,7 +32,7 @@ variable "root_volume_size" {
 }
 
 variable "ecr_repository_arn" {
-  description = "ARN of the backend repository in ../. The instance may pull from this one and no other."
+  description = "ARN of the backend repository in ../shared. The instance may pull from this one and no other."
   type        = string
 }
 

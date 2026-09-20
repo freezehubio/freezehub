@@ -1,31 +1,13 @@
-# The backend: an image in ECR, run on Fargate behind an HTTPS load balancer.
+# The backend on Fargate, behind an HTTPS load balancer (FZ-159 split this from ECR,
+# which both postures share and which now lives in ../shared).
 
-resource "aws_ecr_repository" "backend" {
-  name                 = local.name
-  image_tag_mutability = "IMMUTABLE" # a tag always means the same image, so a rollback is honest
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-}
-
-resource "aws_ecr_lifecycle_policy" "backend" {
-  repository = aws_ecr_repository.backend.name
-
-  policy = jsonencode({
-    rules = [{
-      rulePriority = 1
-      description  = "Keep the last 20 images; older ones are not rollback targets."
-      selection    = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 20 }
-      action       = { type = "expire" }
-    }]
-  })
-}
-
+# ECS-specific: the awslogs driver writes here. The single box uses Docker's json-file
+# driver instead, so this does not belong in ../shared.
 resource "aws_cloudwatch_log_group" "backend" {
   name              = "/ecs/${local.name}"
   retention_in_days = 30
 }
+
 
 # --- Certificate and DNS ---------------------------------------------------------------
 
@@ -187,7 +169,7 @@ data "aws_iam_policy_document" "task" {
   statement {
     sid       = "InviteUsers"
     actions   = ["cognito-idp:AdminCreateUser", "cognito-idp:AdminGetUser"]
-    resources = [aws_cognito_user_pool.main.arn]
+    resources = [var.cognito_user_pool_arn]
   }
 
   statement {
@@ -230,7 +212,7 @@ resource "aws_ecs_task_definition" "backend" {
 
   container_definitions = jsonencode([{
     name      = "backend"
-    image     = "${aws_ecr_repository.backend.repository_url}:${var.backend_image_tag}"
+    image     = "${var.ecr_repository_url}:${var.backend_image_tag}"
     essential = true
 
     portMappings = [{ containerPort = 8080, protocol = "tcp" }]
@@ -241,9 +223,9 @@ resource "aws_ecs_task_definition" "backend" {
       # (FZ-035, 06-security.md).
       { name = "SPRING_PROFILES_ACTIVE", value = var.environment },
       { name = "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI",
-      value = "https://cognito-idp.${var.region}.amazonaws.com/${aws_cognito_user_pool.main.id}" },
+      value = "https://cognito-idp.${var.region}.amazonaws.com/${var.cognito_user_pool_id}" },
       { name = "FREEZEHUB_CORS_ALLOWED_ORIGINS", value = "https://${var.domain_name}" },
-      { name = "FREEZEHUB_COGNITO_USER_POOL_ID", value = aws_cognito_user_pool.main.id },
+      { name = "FREEZEHUB_COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id },
       { name = "SPRING_DATASOURCE_URL",
       value = "jdbc:postgresql://${aws_db_instance.main.endpoint}/${aws_db_instance.main.db_name}" },
     ]
