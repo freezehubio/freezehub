@@ -2878,7 +2878,7 @@ Acceptance:
 - Rollback is redeploying an earlier tag, and that is written down.
 
 ### FZ-155 — Backups, and a Restore Somebody Has Run
-**Status:** TODO
+**Status:** TODO · **Script written; the restore drill is what completes it**
 
 Nightly `pg_dump` to S3, with lifecycle expiry.
 
@@ -2894,6 +2894,20 @@ Acceptance:
 - A failed backup is **visible** — a silent one is the same as no backup.
 - **A documented restore, executed once, with the command and its output recorded in
   `14-operations.md`.**
+
+**The script exists and the story is still open, deliberately.** `deploy/backup.sh` and its
+systemd units are written; the acceptance criterion that matters — *a restore somebody has
+performed* — cannot be met until there is a box with a database on it. Marking this DONE on
+the strength of a script that has never produced a file anyone restored would be exactly the
+failure the criterion exists to prevent.
+
+Two things the script does that a naive `pg_dump | aws s3 cp` does not:
+
+- **It refuses to upload a dump under 1 KiB.** An empty or truncated dump uploads perfectly
+  happily and restores into nothing. The size check is the difference between a backup and
+  a file.
+- **It reports failure to the journal at `user.err`**, not just to stderr. A backup that
+  fails silently is worse than no backup, because it removes the reason to check.
 
 ### FZ-156 — The Operations Runbook
 **Status:** TODO
