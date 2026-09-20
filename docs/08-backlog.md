@@ -2874,6 +2874,30 @@ FZ-151 ── FZ-152 ── FZ-153 ── FZ-154
 **Blocked on the same human action as everything else:** an AWS account (`FZ-138`). This
 milestone changes what gets applied into it, not whether it is needed.
 
+### FZ-160 — Is FZ-123 Still the Plan
+**Status:** DONE · **Owns:** `OI-35`
+
+Backlog hygiene, no code.
+
+**The defect this story set out to fix was fixed twice.** `FZ-123` named `FZ-121` and `FZ-122`
+as blockers after both shipped, hiding an available story behind a dependency that no longer
+existed. `FZ-159` corrected it from one direction — re-reading the story — and this one found
+it from the other, by recomputing every blocker from real statuses (`FZ-147`). `FZ-159`
+landed first and its wording is better, naming *why* it is blocked and resolving `OI-21` as
+well, so that line is left exactly as it stands.
+
+**What neither fixed is the larger question**, and it is the reason this story survived rather
+than being closed. Milestone 17 deploys on a single box; `FZ-157` documents graduating to ECS
+as a later step; `FZ-123` still describes applying the ECS posture. Whether it is superseded,
+or is the ECS apply that follows the beta, is a sequencing decision nobody has made — and an
+open story describing a plan that may have been abandoned is worse than either answer.
+Recorded as `OI-35` rather than decided here.
+
+**Two sessions finding the same stale line independently is the useful part.** It is evidence
+the field goes unread rather than that one reader was careless, which is an argument for
+`FZ-147` running before a story starts rather than for being more careful.
+
+
 ### FZ-151 — Deploy on One Box
 **Status:** DONE
 

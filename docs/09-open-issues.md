@@ -22,6 +22,27 @@ Severity is about consequence if it reaches beta, not effort:
 
 ## Open
 
+### OI-35 — Whether `FZ-123` is superseded by the one box
+**Severity:** Decision · **Owner:** needs a story · **Found in:** `FZ-160`
+
+`FZ-123` — *Apply the Beta Deployment* — describes the first `terraform apply` of the ECS
+posture: `deletion_protection` becoming variables, `PriceClass_All`, `backend_desired_count`.
+Milestone 17 then decided the beta runs on **one box** with Caddy and Compose (`D-35`), and
+`FZ-157` documents graduating to ECS as a later step.
+
+So `FZ-123` is either **superseded** by Milestone 17, or it is **the ECS apply that follows
+the beta** and its description needs rewriting to say so. Nobody has decided which, and both
+readings are live in the backlog simultaneously.
+
+**Why this is worth an entry rather than a shrug.** `FZ-123` is still `TODO` and still
+`Resolves: OI-15, OI-21`, so two open issues are waiting on a story that may not be the plan
+any more. Anyone picking up deployment work reads it as the next step, and `FZ-159` has
+already shown that a `FZ-123` nobody re-reads is how a wrong assumption survives for weeks.
+
+Resolving it costs one decision and one edit. Leaving it costs whatever the next reader
+builds on the wrong half.
+
+
 ### OI-2 — No real Cognito identity provider
 **Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-016`
 
