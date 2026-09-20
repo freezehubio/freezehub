@@ -60,8 +60,29 @@ variable "backend_memory" {
   default     = 1024
 }
 
-variable "github_repository" {
-  description = "owner/name of the repository allowed to deploy. The OIDC trust policy is scoped to it and to the master branch, so getting this wrong is the difference between only this repository deploying and anyone's doing so."
+
+# ——— supplied by ../shared ——————————————————————————————————————————————————————————
+#
+# Wired by hand rather than by a remote state data source, deliberately: reading another
+# module's state couples this one to where that state lives, and these are four values a
+# person can paste from `terraform -chdir=../shared output`.
+
+variable "ecr_repository_url" {
+  description = "Push target and pull source. `terraform -chdir=../shared output -raw ecr_repository_url`."
   type        = string
-  default     = "acme/freezehub"
+}
+
+variable "cognito_user_pool_id" {
+  description = "`terraform -chdir=../shared output -raw cognito_user_pool_id`."
+  type        = string
+}
+
+variable "cognito_user_pool_arn" {
+  description = "Scopes the task role to this pool alone. `terraform -chdir=../shared output -raw cognito_user_pool_arn`."
+  type        = string
+}
+
+variable "github_deploy_role_name" {
+  description = "The role ../shared creates. This module attaches its ECS statements to it. `terraform -chdir=../shared output -raw github_deploy_role_name`."
+  type        = string
 }

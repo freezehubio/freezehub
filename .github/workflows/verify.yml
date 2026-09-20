@@ -95,14 +95,21 @@ jobs:
 
       # `-backend=false` is what makes this need no AWS credentials at all: it installs
       # providers and checks the configuration without touching state or the account.
-      - name: Validate
-        working-directory: infra
+      # Three root modules since FZ-159: the shared estate, the ECS compute estate, and the
+      # single box. `fmt -check -recursive` above covers all of them; init and validate are
+      # per-module.
+      - name: Validate the shared estate
+        working-directory: infra/shared
         run: |
           terraform init -backend=false -input=false
           terraform validate
 
-      # The single-box beta (FZ-152). A second root module, so it needs its own init and
-      # validate -- `fmt -check -recursive` above already covers both for formatting.
+      - name: Validate the ECS estate
+        working-directory: infra/ecs
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
       - name: Validate the single-box posture
         working-directory: infra/singlebox
         run: |
