@@ -1463,6 +1463,25 @@ Acceptance:
 - States what is untestable with the current set rather than only what is present.
 - Needs Postgres but not the backend, so it answers even when the app will not start.
 
+### FZ-147 — Next Story
+**Status:** DONE
+
+`.claude/skills/next-story/SKILL.md` — what has actually landed on `master`, and what is available to work on because of it.
+
+**The check is "did it land", not "did it merge".** §9 warns that a pull request merged while a later commit was still being pushed leaves that commit behind, and that the merge commit looks the same either way. The skill compares each merged PR's head SHA against `origin/master` with `git merge-base --is-ancestor`, and lists remote branches never merged at all. Both are invisible unless specifically looked for.
+
+**It recomputes blockers rather than reading them.** A `**Blocked by:**` line is written once and rarely revisited. The skill looks up the current status of every story a line names, and reports the disagreement when the line claims a blocker that is DONE — which it did on its first run: `FZ-123` had been available since `FZ-122` finished and its line still said otherwise.
+
+**It reports and stops.** No branch, no commit, no edit to the backlog — not even to fix a stale line it found. §9 keeps those with the operator.
+
+Acceptance:
+
+- Names any merged PR whose head commit is not an ancestor of `origin/master`, and any remote branch not merged into it.
+- Recomputes each open story's blockers from current statuses and reports lines that disagree.
+- Separates stories blocked by a story from those blocked on a human action, and never recommends a `DEFERRED` item.
+- Prints the branch command without running it.
+- Answers "nothing is available" when that is true, rather than inventing a candidate.
+
 ## Milestone 12 — Build the Mockups
 
 `FreezeHub UI mockups/FreezeHub Screens.dc.html` is the design of record. `FZ-101` swapped the tokens; this milestone builds what the screens actually specify, including the parts that need the backend.
