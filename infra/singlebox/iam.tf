@@ -60,9 +60,9 @@ resource "aws_iam_role_policy" "instance" {
         ]
       },
       {
-        Sid    = "DecryptThoseParameters"
-        Effect = "Allow"
-        Action = "kms:Decrypt"
+        Sid      = "DecryptThoseParameters"
+        Effect   = "Allow"
+        Action   = "kms:Decrypt"
         Resource = "*"
         Condition = {
           StringEquals = { "kms:ViaService" = "ssm.${var.region}.amazonaws.com" }
