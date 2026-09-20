@@ -1796,7 +1796,7 @@ Acceptance: a measured CPU/memory pair, a `MaxRAMPercentage` value, and a writte
 choice with the egress and architecture questions answered rather than assumed.
 
 ### FZ-123 — Apply the Beta Deployment
-**Status:** TODO · **Blocked by:** `FZ-121`, `FZ-122` · **Resolves:** `OI-15`
+**Status:** TODO · **Blocked by:** `FZ-138` · **Resolves:** `OI-15`
 
 The first `terraform apply`. Always-on and publicly reachable, at the smallest posture that
 is honestly available, on the platform `FZ-122` chooses and at the size it measures.
@@ -2824,6 +2824,29 @@ FZ-151 ── FZ-152 ── FZ-153 ── FZ-154
 
 **Blocked on the same human action as everything else:** an AWS account (`FZ-138`). This
 milestone changes what gets applied into it, not whether it is needed.
+
+### FZ-160 — A Blocker That Had Finished
+**Status:** DONE · **Fixes:** a defect in `FZ-123`'s entry
+
+`FZ-123` read **Blocked by: `FZ-121`, `FZ-122`**. Both have been `DONE` for weeks, so the
+line claimed a dependency that no longer existed and the story read as unavailable when it
+was not.
+
+**The real blocker was already written down, three hundred lines further on.** Milestone 17
+says plainly that *"`FZ-123` is blocked on an AWS account that does not exist yet"* — which
+is `FZ-138`. The line now says that, so the two places agree.
+
+**Why this is a defect and not tidying.** A `**Blocked by:**` line is the only thing most
+readers check before deciding what to pick up. One that names finished work is not a stale
+comment, it is a wrong answer to the question the field exists to answer, and it hides an
+available story for as long as nobody re-derives it by hand. Found by `FZ-147`, which
+recomputes every blocker from real statuses rather than reading the line.
+
+**One question deliberately not answered here.** Milestone 17 deploys on a single box and
+`FZ-157` documents graduating to ECS as a later step, while `FZ-123` still describes applying
+the ECS posture. Whether `FZ-123` is now superseded, or remains the ECS apply that follows the
+one-box beta, is a sequencing decision for the operator — so this story corrects only what is
+demonstrably wrong and leaves that open.
 
 ### FZ-151 — Deploy on One Box
 **Status:** DONE
