@@ -1304,7 +1304,7 @@ Acceptance:
 - The reference implementations stay tested, and the documentation **does not offer them as installable** — they are not, while the repository is private.
 
 ### FZ-099 — Publish the Connector Image
-**Status:** TODO · **Owner of** `OI-13` · **Blocked on one dispatch**
+**Status:** DONE · **Resolves** `OI-13`
 
 `.github/workflows/publish-connectors.yml` builds `linux/amd64` and `linux/arm64`, runs the connector tests first, tags the exact version and moves `v1`, and has a dry-run mode. It refuses a version that is not `vN.N.N`, and there is no `latest` tag — a moving `latest` in a deploy gate is how a pipeline changes behaviour on a day nobody touched it.
 
@@ -1321,6 +1321,30 @@ Then one thing that is easy to miss: **GHCR package visibility is set on the pac
 Only this workflow was bumped. `deploy.yml` and `verify.yml` carry the same deprecated actions and are not this story's to change — `verify.yml` in particular runs the suite, so bumping `setup-java` and `setup-node` there deserves its own run to prove it (`OI-33`).
 
 **What remains is one `workflow_dispatch`** with a version. It stays a human action because it publishes to a real registry under a name customers will pin — the same reasoning that makes `deploy.yml` manual. Until it runs, every guideline in `connectors/README.md` names an image that does not exist, and the README says so.
+
+**Published and verified against the real artifact, not a local build.** `v1.0.0` pushed and
+`v1` moved to match — the two resolve to the same digest. The package was then made public,
+which GHCR does not do on its own: a newly published package is private, and a customer
+pulling one gets `unauthorized` indistinguishably from one that does not exist.
+
+Four things were checked by pulling it anonymously:
+
+- **Both architectures survived into what was pushed.** `linux/amd64` and `linux/arm64` are
+  in the manifest index. The dry runs built both; nobody had confirmed the push kept them.
+- **It refuses cleanly with no configuration** — `FREEZEHUB_URL is not set`, rather than a
+  stack trace or a silent pass.
+- **It fails closed.** With FreezeHub unreachable it retries, reports
+  `refusing to deploy without a policy decision`, and **exits 2**. That exit code is the
+  entire gate: the message without it would be a warning nobody's pipeline acts on.
+- **`FREEZEHUB_ON_ERROR=allow` exits 0**, so the documented escape hatch works and is the
+  only way past a failure.
+
+That is `D-24`'s central property demonstrated on the published artifact rather than
+inferred from the source.
+
+**The `GITHUB_TOKEN` change from the earlier half of this story is also now proven.** The
+dry runs skipped `Log in to GHCR` because it is gated on `inputs.publish`, so the credential
+swap was unexercised until the real publish authenticated with it.
 
 ### FZ-096 — GitHub App and Required Checks
 **Status:** DEFERRED · **Decision required before scheduling**
