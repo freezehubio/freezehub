@@ -3014,3 +3014,43 @@ an override the backend honours, so pointing it at RDS is configuration rather t
 What is not automatic is that the box keeps accepting writes until DNS moves — so the dump
 has to be taken *after* it stops serving, which is why the order in the document is stop,
 dump, restore, verify, then move the record.
+
+## Milestone 18 — Selling It
+
+Customer-facing and sales material. Distinct from `Going to Market`, which is launch
+readiness: that milestone asks what must exist before anyone can sign in, this one asks what
+must be said before anyone will want to.
+
+Lives in `gtm/`, not `docs/`. The numbered documents decide what gets built; these decide
+what gets said, and confusing the two produces a roadmap driven by a pitch deck.
+
+### FZ-158 — Positioning, Objections, Discovery
+**Status:** DONE
+
+`gtm/01-positioning.md`, `02-objections.md`, `03-discovery.md` — the source every other piece
+of sales material derives from. Internal: they name what the product cannot do yet, which is
+essential for selling honestly and unhelpful read over a customer's shoulder.
+
+**The spine is the four questions in `11-commercial.md` §1**, and the line that orders
+everything else: the first two make it used daily, the last two make it renewed. So a demo
+opens on *is there a freeze* and *does it apply to me*, and closes on *did anyone deploy
+anyway* and *who lifted it* — the two a Slack channel cannot answer.
+
+**No claim that is not true today.** No logos, testimonials, case studies or usage counts.
+There are no customers, and §1 of the commercial model already notes that a technical buyer
+tests claims. `01-positioning.md` §8 is the list of what cannot be said: no public signup, no
+applied deployment, demos local, pilots hand-provisioned, billing invoiced.
+
+**Two findings from checking claims rather than asserting them.** The connector does not
+simply fail closed — `FREEZEHUB_ON_ERROR` defaults to `block`, and a setup problem is never
+subject to that switch, so enforcement cannot be disabled by breaking it. That is the
+stronger answer and it is the one written down. And the category does not exist: nobody
+searches for "deployment freeze management", so discovery opens on the situation and adopts
+the prospect's own word for it.
+
+Acceptance:
+
+- Every factual claim is checkable against `docs/`, `connectors/` or a decision record.
+- Objections concede the true part first, and none answers with a roadmap promise.
+- Qualification names who to walk away from, not only who to pursue.
+- Nothing claims a capability that is not built.
