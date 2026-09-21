@@ -3288,3 +3288,38 @@ what was typed inside it.
 
 Ends by naming the prerequisite AWS cannot satisfy on its own — a domain with a Route 53
 hosted zone that already delegates it, without which both certificate validations hang.
+
+### FZ-166 — Nothing Built an Image for the Box
+**Status:** DONE
+
+`FZ-154` deploys the single box from an image tag that **must already exist in ECR**, which
+is right — it is what makes rollback a redeploy rather than a rebuild. Nothing produced one.
+
+`deploy.yml` was a single job that built the image, rolled out an ECS task definition and
+published the SPA. On the single-box posture (`D-35`) it cannot run: there is no cluster, so
+it would push the image and then fail on `aws ecs describe-task-definition` — **reporting
+red after a successful push**, which is the worst of both outcomes because the image is
+there and the workflow says it is not.
+
+**Two of those three steps are shared, and the split follows `FZ-159`'s.** The ECR repository
+and the SPA bucket both live in `infra/shared` and serve either posture, so building the
+image and publishing the frontend cannot be steps inside an ECS rollout.
+
+| | Runs on | Callable |
+|---|---|---|
+| `build-image.yml` | both | dispatched, and called by `deploy.yml` |
+| `deploy-frontend.yml` | both | dispatched, and called by `deploy.yml` |
+| `deploy.yml` | ECS only | dispatched; now `image → rollout → frontend` |
+| `deploy-singlebox.yml` | the box | unchanged |
+
+**`deploy-singlebox.yml` is deliberately untouched.** It still takes an exact tag rather than
+building one, because a workflow that builds on every deploy cannot roll back — and rolling
+back to a tag already in ECR is the fastest recovery the box has.
+
+**The same class of gap as `FZ-159`, found the same way.** Each half assumed the other
+existed: the Terraform assumed a shared estate that could be applied alone, and the deploy
+workflows assumed a posture that could build. Both were found by reading what a person would
+actually have to run, in order, rather than by anything failing — nothing can fail yet.
+
+`14-operations.md` gains a *Releasing* section naming the three workflows in order, and
+saying not to run `Deploy` on this posture.

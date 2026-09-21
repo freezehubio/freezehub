@@ -1,0 +1,79 @@
+# Build the backend image and push it to ECR (FZ-166).
+#
+# Extracted from deploy.yml, which built the image and updated an ECS service in one job.
+# That was fine while ECS was the only posture. Since D-35 the beta runs on one box
+# (FZ-152), deployed by SSM from a tag that must already exist (FZ-154) — and nothing
+# produced one: running deploy.yml on that posture would push the image and then fail on
+# `aws ecs describe-task-definition`, reporting red after a successful push.
+#
+# So this is the half both postures share, callable two ways: dispatched on its own for
+# the box, and called by deploy.yml for ECS.
+name: Build image
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment whose ECR repository to push to
+        required: true
+        default: beta
+        type: choice
+        options: [beta]
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+    outputs:
+      image_tag:
+        description: The tag that was pushed. Pass it to a deploy workflow.
+        value: ${{ jobs.build.outputs.image_tag }}
+
+permissions:
+  contents: read
+  id-token: write # OIDC to AWS; no stored credentials anywhere.
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      image_tag: ${{ steps.image.outputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      # The commit, not `latest`: a tag always means one image, so a rollback is
+      # redeploying an older tag rather than rebuilding and hoping.
+      - name: Resolve the image tag
+        id: image
+        run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      # linux/arm64 for both postures, and for the same reason: the Fargate task runs
+      # ARM64 and so does the t4g.small the box is (FZ-152). An amd64 image would simply
+      # fail to start on either.
+      - name: Build and push the image
+        uses: docker/build-push-action@v7
+        with:
+          context: backend
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ steps.image.outputs.tag }}
+
+      - name: Say what to do with it
+        run: |
+          echo "Pushed ${{ vars.ECR_REPOSITORY }}:${{ steps.image.outputs.tag }}"
+          echo ""
+          echo "Single box: run 'Deploy single-box' with image_tag=${{ steps.image.outputs.tag }}"
+          echo "ECS:        'Deploy' builds and rolls out in one dispatch"
