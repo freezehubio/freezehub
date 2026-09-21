@@ -31,10 +31,13 @@
 #     Locally both come from docker compose. In a deployed environment that means an
 #     operator with production database access, which is exactly the cost D-23 accepted.
 #
-#   * OI-2 IS NOT RESOLVED. Outside the `local` profile there is no real IdentityProvider,
-#     so the invited user has no Cognito identity and cannot sign in. Until FZ-046 ships,
-#     this script provisions correctly against a local backend and only half-provisions
-#     against a deployed one. It says so at the end rather than pretending otherwise.
+#   * THE COGNITO POOL, against a deployed environment. Pass --user-pool-id (or set
+#     COGNITO_USER_POOL_ID) and the script creates the Administrator's identity and stores
+#     the sub Cognito issues, so they can sign in. Omit it and it does not, which is right
+#     under the `local` profile and wrong everywhere else — it says which it did.
+#
+#     This used to be impossible (OI-2), and the script invented a subject and admitted at
+#     the end that the person could never sign in. FZ-046 closed that; FZ-177 caught up.
 #
 # Requires: curl, jq, docker compose (for psql), and a running backend.
 
@@ -46,6 +49,10 @@ ADMIN_EMAIL=""
 PLAN=""
 DEMO_REQUEST=""
 APPLICATION_LIMIT=""
+# Empty means "there is no identity provider", which is true under the `local` profile and
+# wrong anywhere else (FZ-177). See "the identity the API cannot create" below.
+USER_POOL_ID="${COGNITO_USER_POOL_ID:-}"
+AWS_REGION="${AWS_REGION:-us-east-2}"
 
 say()  { printf '\n\033[1m%s\033[0m\n' "$1"; }
 note() { printf '  %s\n' "$1"; }
@@ -54,11 +61,17 @@ fail() { printf '%s\n' "$1" >&2; exit 1; }
 usage() {
     fail "usage: provision-organization.sh --company NAME --admin EMAIL --plan PLAN
                                    [--demo-request ID] [--applications N]
+                                   [--user-pool-id ID] [--region REGION]
 
   --plan          STARTER | GROWTH | SCALE | ENTERPRISE
   --demo-request  the demo_request row this closes, marked CONVERTED
   --applications  application limit override; ENTERPRISE only, since every other
-                  plan's limit is a published number and not a per-deal one"
+                  plan's limit is a published number and not a per-deal one
+  --user-pool-id  the Cognito pool to create the Administrator's identity in, so they
+                  can actually sign in. Also read from COGNITO_USER_POOL_ID. Omit it
+                  only against a backend running the 'local' profile, where no pool
+                  exists and a fabricated subject is correct
+  --region        the pool's region; also AWS_REGION (default us-east-2)"
 }
 
 while [ $# -gt 0 ]; do
@@ -68,6 +81,8 @@ while [ $# -gt 0 ]; do
         --plan)         PLAN="${2:-}"; shift 2 ;;
         --demo-request) DEMO_REQUEST="${2:-}"; shift 2 ;;
         --applications) APPLICATION_LIMIT="${2:-}"; shift 2 ;;
+        --user-pool-id) USER_POOL_ID="${2:-}"; shift 2 ;;
+        --region)       AWS_REGION="${2:-}"; shift 2 ;;
         -h|--help)      usage ;;
         *)              fail "Unknown argument: $1" ;;
     esac
@@ -138,6 +153,60 @@ if [ -n "$DEMO_REQUEST" ]; then
 "Demo request $DEMO_REQUEST is already marked CONVERTED. It has been provisioned once."
 fi
 
+# --- the identity the API cannot create -------------------------------------------------
+#
+# FZ-177. Before this, external_subject was invented here — 'provisioned-<id>-<md5>' — and
+# no Cognito user was made, so the first Administrator of every organization could never
+# sign in. The script said so at the end and blamed OI-2, which FZ-046 has since closed.
+#
+# Cognito assigns the subject. It is not the email, not the username, not anything this
+# script can compute, so it has to come back from AdminCreateUser and be stored verbatim.
+#
+# DELIBERATELY BEFORE THE TRANSACTION. If this fails, nothing has been written and the
+# operator can simply run the script again. The reverse order would leave an organization
+# whose Administrator cannot sign in — which is the bug being fixed.
+if [ -n "$USER_POOL_ID" ]; then
+    say "Creating the Cognito identity for $ADMIN_EMAIL"
+
+    command -v aws >/dev/null 2>&1 || fail \
+"--user-pool-id was given but the aws CLI is not on PATH. It is what creates the identity."
+
+    # email_verified, because whoever ran this has already vouched for the address; without
+    # it Cognito holds it unverified and password recovery has nowhere to go.
+    CREATED=$(aws cognito-idp admin-create-user \
+        --user-pool-id "$USER_POOL_ID" \
+        --username "$ADMIN_EMAIL" \
+        --region "$AWS_REGION" \
+        --user-attributes "Name=email,Value=$ADMIN_EMAIL" "Name=email_verified,Value=true" \
+        --output json 2>&1) || fail \
+"Could not create the Cognito identity, so nothing was written to the database:
+
+$CREATED"
+
+    EXTERNAL_SUBJECT=$(printf '%s' "$CREATED" \
+        | jq -r '.User.Attributes[]? | select(.Name == "sub") | .Value')
+
+    [ -n "$EXTERNAL_SUBJECT" ] || fail \
+"Cognito created the user but returned no sub. A row written now would look correct and
+belong to nobody. Delete the identity for $ADMIN_EMAIL in pool $USER_POOL_ID before
+running this again."
+
+    note "cognito sub   $EXTERNAL_SUBJECT"
+    SIGN_IN_NOTE="They can sign in. Cognito emailed a temporary password to $ADMIN_EMAIL,
+      which it will require them to change on first use."
+else
+    # No pool, so no identity: correct under the `local` profile, where LocalIdentityProvider
+    # invents subjects too and /api/dev/token accepts any email. Wrong anywhere else, which
+    # is what the summary at the end says out loud.
+    EXTERNAL_SUBJECT="provisioned-$(date +%s)-$$"
+    note "no --user-pool-id: using a local-only subject, and this Administrator cannot sign in"
+    SIGN_IN_NOTE="They CANNOT sign in. No --user-pool-id was given, so no Cognito identity
+      exists and the stored subject matches nothing. Correct only if this backend runs the
+      \"local\" profile; otherwise re-run against the pool."
+fi
+
+SUBJECT_SQL=$(sql_quote "$EXTERNAL_SUBJECT")
+
 # --- the rows the API cannot create -----------------------------------------------------
 say "Creating $COMPANY on $PLAN"
 
@@ -151,7 +220,7 @@ WITH org AS (
   INSERT INTO organization (name) VALUES ('$COMPANY_SQL') RETURNING id
 ), admin AS (
   INSERT INTO users (organization_id, external_subject, email, role)
-  SELECT id, 'provisioned-' || id || '-' || md5(random()::text), '$ADMIN_SQL', 'ADMINISTRATOR'
+  SELECT id, '$SUBJECT_SQL', '$ADMIN_SQL', 'ADMINISTRATOR'
   FROM org
 )
 INSERT INTO subscription (organization_id, plan, status, application_limit_override)
@@ -208,9 +277,7 @@ cat <<SUMMARY
 
   Before telling the customer:
 
-    * They cannot sign in yet unless this backend runs the "local" profile. There is no
-      real identity provider (OI-2 / FZ-046), so no Cognito user was created and no
-      invitation email was sent. That is the one step this script cannot do.
+    * ${SIGN_IN_NOTE}
 
     * Further users are invited in-product by the Administrator, not by running this
       again — POST /api/invites, or Settings in the UI.

@@ -4023,3 +4023,48 @@ Acceptance:
 - No `api.` hostname is derived from another hostname anywhere.
 - `infra/README.md` lists the single box's repository variables, which it never did — the
   table there was the ECS posture's.
+
+### FZ-177 — The First Administrator of Every Organization Could Never Sign In
+**Status:** DONE · **Completes** `FZ-046` where it is actually used · **Found by:** deploying
+
+`provision-organization.sh` created the organization, the subscription and the first
+Administrator — and invented that Administrator's identity:
+
+```sql
+SELECT id, 'provisioned-' || id || '-' || md5(random()::text), ...
+```
+
+No Cognito user, and an `external_subject` matching nothing. The row looks correct and the
+person can never sign in. The script knew: it ended by saying so and blaming `OI-2`.
+
+**`FZ-046` closed `OI-2` and nothing came back here.** Which is how the gap survived a story
+written specifically to fix it — the adapter was built, tested and deployed, and the one
+path that creates the *first* user of an organization does not go through it, because the
+API cannot: inviting somebody needs an Administrator, and this is how the Administrator
+comes to exist.
+
+**Fixed by creating the identity and storing what Cognito returns.** `--user-pool-id`, or
+`COGNITO_USER_POOL_ID`, and the script calls `AdminCreateUser` and reads the `sub` from the
+response. Never derives it: Cognito assigns that value and it is not the email, the username
+or anything this script can compute.
+
+**Deliberately before the transaction.** If Cognito fails, nothing has been written and the
+operator runs the script again. The reverse order leaves an organization whose Administrator
+cannot sign in, which is the bug being fixed.
+
+**Omitting the pool stays valid, because under `local` it is correct.** There is no pool,
+`LocalIdentityProvider` invents subjects too, and `/api/dev/token` accepts any email. So the
+flag is optional and the script *says which it did* — the closing summary now reads "They can
+sign in" or "They CANNOT sign in" rather than a fixed paragraph that was true once.
+
+**Sixth instance of two halves assuming each other** — `FZ-159`, `FZ-166`, `OI-44`,
+`FZ-176`, `FZ-123`, this. The first three were found by reading, the last two by running.
+This one was found by asking a question the deploy made askable: *how does the first person
+actually sign in?*
+
+Acceptance:
+
+- The first Administrator has a real Cognito `sub`, read from the response and never derived.
+- A Cognito failure writes nothing to the database.
+- Running without a pool still works and says plainly that the person cannot sign in.
+- No claim anywhere in the script that creating an identity is impossible.
