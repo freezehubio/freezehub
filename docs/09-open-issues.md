@@ -184,6 +184,27 @@ who the registrar is, so **register anywhere and delegate the nameservers to a R
 hosted zone** — which costs about $0.50 a month and is not blocked. The support case is
 worth opening only if AWS as registrar is wanted for its own sake.
 
+### OI-45 — AWS reports root MFA as disabled, and it is unclear whether that is meaningful
+**Severity:** Question · **Owner:** needs an answer · **Found in:** `FZ-138`
+
+`iam:GetAccountSummary` returns `AccountMFAEnabled: 0`. `16-accounts.md` §2 says to enable
+root MFA, so either the guide has a step nobody did or it has a step that does not apply
+here. Both cannot be right.
+
+**The likely answer is that it does not apply.** On AWS's new sign-up experience sign-in is
+through AWS Builder ID — a Google account here — rather than a root password, so there may
+be no classic root credential for MFA to protect, and the flag is reporting on something
+that does not exist.
+
+**What is certainly true either way:** the Google account behind the Builder ID can reset
+everything below it, and no AWS API reports whether *that* has MFA. It is the credential
+that matters and the one nothing can check automatically.
+
+Resolvable by looking. If the console offers a root user with security credentials, the
+guide's step applies and should be done. If it does not, `16-accounts.md` §2 needs a
+sentence saying so — leaving an instruction that cannot be followed is how a reader learns
+to skip the ones that can.
+
 ### OI-2 — No real Cognito identity provider
 
 **Severity:** Gap · **RESOLVED by** `FZ-046` · **Found in:** `FZ-016`
@@ -311,7 +332,12 @@ The specific hazard is that **Cognito issues ID tokens and access tokens from th
 `FZ-125` wrote the rules into `06-security.md` § Token validation rules. This entry stays open until something enforces them, with a test that watches each rejected shape fail.
 
 ### OI-32 — Production would run in a personal AWS account
-**Severity:** Gap · **Owner:** `FZ-138` · **Raised:** 2026-09-15
+**Severity:** Gap · **RESOLVED by** `FZ-138` · **Raised:** 2026-09-15
+
+**Closed.** The estate runs in a standalone account of its own, with no root access keys, no
+usable IAM user, no long-lived credential, and `allowed_account_ids` refusing an apply into
+any other account. The personal account holds nothing of this product. Verified by reading
+the account rather than by asserting it — see `FZ-138`.
 
 The target account is the operator's personal one, dating from 2022-10-23 (`OI-15`). `infra/README.md` already says Terraform must use an IAM role and not account root — advice a personal account cannot take, because there the operator *is* root.
 
