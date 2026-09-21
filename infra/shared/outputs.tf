@@ -28,13 +28,13 @@ output "cognito_user_pool_client_id" {
 }
 
 output "github_deploy_role_arn" {
-  description = "Set as AWS_DEPLOY_ROLE_ARN in the repository's variables."
-  value       = aws_iam_role.github_deploy.arn
+  description = "Set as AWS_DEPLOY_ROLE_ARN in the repository's variables. null until github_oidc_enabled (OI-43)."
+  value       = one(aws_iam_role.github_deploy[*].arn)
 }
 
 output "github_deploy_role_name" {
-  description = "../ecs attaches its own statements to this role."
-  value       = aws_iam_role.github_deploy.name
+  description = "../ecs attaches its own statements to this role. null until github_oidc_enabled (OI-43)."
+  value       = one(aws_iam_role.github_deploy[*].name)
 }
 
 output "frontend_bucket" {

@@ -4,8 +4,10 @@
 # inherits a region, which cannot be changed later without re-creating every identity.
 region = "us-east-2"
 
-# The API is served from api.<domain_name>, which is what Caddy requests a certificate for.
-domain_name    = "freezehub.io"
+# The SPA's hostname, and the API's — the latter is what Caddy requests a certificate for.
+# Stated separately rather than derived (FZ-174). Must match what ../shared was applied with.
+domain_name     = "app.freezehub.example"
+api_domain_name = "api.freezehub.example"
 hosted_zone_id = "Z0123456789ABCDEFGHIJ"
 
 # From the other estate: `terraform -chdir=../shared output -raw ecr_repository_arn`.

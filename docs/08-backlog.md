@@ -3664,3 +3664,54 @@ Acceptance:
   that it need not be re-derived.
 - No Terraform changes. The story is a correction to documentation and a deliberate
   non-implementation.
+
+### FZ-174 — Making `shared/` Appliable, and Settling the Hostnames
+**Status:** DONE · **Resolves** `OI-43`'s implementation · **Domain:** `freezehub.io`
+
+Two changes, both of which had to be true before the first `terraform apply` and neither of
+which is worth a separate branch, because they touch the same three files and would only
+conflict with each other.
+
+**1. `github_oidc_enabled`, default `false`.** `shared/` could not be applied at all on this
+account: `iam:*Provider*` is denied by an SCP that cannot be modified (`OI-43`), and
+`github-oidc.tf` creates an `aws_iam_openid_connect_provider` as its first resource.
+`count` on the provider, the assume-role policy document, the role and its inline policy;
+`one()` on the two outputs.
+
+The alternative was a fourth root module, which would have matched `FZ-159`'s precedent of
+lifecycle boundaries as module boundaries. Rejected: these resources **share** the shared
+estate's lifecycle. They are absent only because of an account capability we intend to
+remove, and a module boundary would assert a difference that is not there. A flag says
+"temporarily unavailable", which is the truth.
+
+`data.aws_iam_policy_document.github_deploy` is deliberately *not* counted — it references
+only always-present resources and a policy document is computed locally, so gating it would
+add `[0]` noise and buy nothing.
+
+**2. `api_domain_name` is stated, not derived.** All three modules had
+`api_domain = "api.${var.domain_name}"`. With the SPA at `app.freezehub.io` that produces
+`api.app.freezehub.io` — and **that hostname goes into every customer's CI configuration**
+through `freeze-check.sh`. A URL a customer pastes into a pipeline should not inherit
+whichever subdomain the SPA happens to use.
+
+Decided: `app.freezehub.io` for the SPA, `api.freezehub.io` for the Policy API, apex left
+free for marketing. Both are certificate subject names, so both are decided before the first
+apply rather than reissued after — the same argument `FZ-135` makes about the region.
+
+The derivation was found only because the choice of subdomain forced someone to ask what the
+API hostname would become. Had the apex been chosen, `api.freezehub.io` would have fallen
+out by accident and the coupling would still be there, waiting for the first time the SPA
+moved.
+
+**The domain is live.** `freezehub.io` is registered at GoDaddy and delegated to Route 53 —
+the `.io` registry and public resolvers all return the four `awsdns` nameservers. Hosted
+zone `Z05328562QOD2HA2DHF83`.
+
+Acceptance:
+
+- `shared/` applies on this account with the toggle off, and turning it on is one tfvars
+  line after advanced features — not a migration.
+- No `api_domain` is derived from `domain_name` anywhere.
+- Every remaining `var.domain_name` use is genuinely the SPA: Cognito callback URLs, the
+  CloudFront alias and certificate, the A record, and the CORS origin.
+- All four modules `validate`, and `fmt -check` passes.

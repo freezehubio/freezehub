@@ -1,6 +1,6 @@
 locals {
   name       = "freezehub-${var.environment}"
-  api_domain = "api.${var.domain_name}"
+  api_domain = var.api_domain_name
 }
 
 data "aws_caller_identity" "current" {}
