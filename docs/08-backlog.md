@@ -2488,7 +2488,7 @@ bootstrap sequence and is history rather than a live schedule. The path lives in
 document.
 
 ### FZ-138 — Who Owns Production
-**Status:** TODO · **Owns:** `OI-32` · **Blocked on:** two human actions
+**Status:** TODO · **Owns:** `OI-32` · **How:** `docs/16-accounts.md` (`FZ-164`) · **Blocked on:** two human actions
 
 `infra/README.md` told you to use an IAM role rather than account root and never said which
 account any of it belongs in. The target today is the operator's personal AWS account, where
@@ -3253,3 +3253,38 @@ Now one per module, each carrying only what that module declares:
 `ecs/`'s header says plainly that the beta runs on `singlebox/` and that applying both means
 paying for both — the same trap `FZ-159` fixed in the Terraform, restated where somebody
 about to run `apply` will actually read it.
+
+### FZ-164 — How to Create the Accounts
+**Status:** DONE · **Serves** `FZ-138`
+
+`FZ-138` says *what* must exist — an Organization, a production member account, root secured,
+a role for Terraform. It does not say how, and "create an AWS Organization" is an hour of
+console archaeology for somebody who has not done it before. `docs/16-accounts.md` is the
+sequence.
+
+**The decision inside it is Identity Center rather than an IAM user.** The obvious path is an
+IAM user with an access key in `~/.aws/credentials`, and it is the wrong one for the same
+reason `infra/README.md` gives about root keys: a long-lived credential on a laptop cannot be
+scoped down after issue, cannot be rotated without coordination, and survives the laptop
+being lost. Identity Center is free, issues temporary credentials, and is the piece that does
+not need redoing when a second person arrives.
+
+**It admits what it compromises on.** Terraform runs as an administrator-equivalent role,
+because Terraform creates IAM roles and policies — so a least-privilege Terraform role needs
+`iam:CreateRole` and `iam:PutRolePolicy`, which is escalation to anything it can create.
+Saying that plainly is better than a policy that looks scoped and is not. What makes it
+acceptable is the credential being temporary, MFA-gated and recorded; `D-23`'s trigger for
+revisiting is the same one — somebody who should not be an administrator needing to run it.
+
+**It documents break-glass and says to test it now.** `OrganizationAccountAccessRole` from
+the management account, and production root with its MFA device. A recovery path nobody has
+walked does not exist, which is `FZ-155`'s argument about restores applied to access.
+
+**One claim elsewhere in the repository depended on something nobody had checked.** `FZ-152`
+and `FZ-154` both say deploys are "recorded in CloudTrail". CloudTrail Event history is on by
+default, free, and retains **90 days** — so the claim holds, and now says for how long. It
+also notes what it does not cover: the API call that opened an SSM session is recorded, not
+what was typed inside it.
+
+Ends by naming the prerequisite AWS cannot satisfy on its own — a domain with a Route 53
+hosted zone that already delegates it, without which both certificate validations hang.
