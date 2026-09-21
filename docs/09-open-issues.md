@@ -173,8 +173,16 @@ activating advanced features**, not a separate migration: set `github_oidc_enabl
 and apply again. Until then `github_deploy_role_arn` and `github_deploy_role_name` are
 `null`, which is what `../ecs` and the workflows would read.
 
-`route53domains:*` is permitted on the Free Tier and the API answers, so the domain can be
-registered in the account itself rather than delegated from elsewhere.
+**The registrar does not matter, and AWS refuses to be one.** `route53domains:*` is
+permitted by the SCP and the API answers — but an actual registration fails with *"We can't
+finish registering your domain. Contact AWS Support"*. Amazon Registrar applies
+fraud-prevention checks to new accounts, and the restriction is account-level and removable
+only through a support case (Basic support covers it, free).
+
+Nothing depends on it. `shared/` asks for `domain_name` and `hosted_zone_id` and never asks
+who the registrar is, so **register anywhere and delegate the nameservers to a Route 53
+hosted zone** — which costs about $0.50 a month and is not blocked. The support case is
+worth opening only if AWS as registrar is wanted for its own sake.
 
 ### OI-2 — No real Cognito identity provider
 
