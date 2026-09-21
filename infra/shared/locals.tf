@@ -5,7 +5,7 @@ locals {
   # is the same on either posture — Caddy on the box (D-35) or the load balancer — because
   # both are reached at this name. So the CSP does not change when the compute does, which
   # is one more thing FZ-157's migration does not have to touch.
-  api_domain = "api.${var.domain_name}"
+  api_domain = var.api_domain_name
 }
 
 data "aws_caller_identity" "current" {}

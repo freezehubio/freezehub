@@ -1,7 +1,7 @@
 locals {
   name = "freezehub-${var.environment}"
 
-  api_domain = "api.${var.domain_name}"
+  api_domain = var.api_domain_name
 
   # Two AZs, which is the minimum RDS and an ALB will accept. Not three: a third doubles
   # nothing useful at beta scale and adds a NAT gateway if ever made per-AZ.

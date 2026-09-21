@@ -1,10 +1,21 @@
 # Lets GitHub Actions deploy without any stored AWS credentials (FZ-064).
 #
+# **Off by default, because this account cannot create it** (OI-43). AWS's new sign-up
+# experience denies `iam:*Provider*` through a service control policy that cannot be
+# modified, so an apply with this enabled fails on the first resource. Activating advanced
+# features (D-37) lifts the denial; then set github_oidc_enabled = true and apply again.
+#
+# A toggle rather than a separate root module (FZ-174): these resources share the shared
+# estate's lifecycle and are absent only because of an account capability we intend to
+# remove. A module boundary would assert a difference that is not there.
+#
 # The runner exchanges a short-lived OIDC token for this role. Nothing long-lived exists
 # to leak, nothing has to be rotated, and revoking access is deleting a role rather than
 # hunting for a key somebody pasted into a secret four months ago.
 
 resource "aws_iam_openid_connect_provider" "github" {
+  count = var.github_oidc_enabled ? 1 : 0
+
   url            = "https://token.actions.githubusercontent.com"
   client_id_list = ["sts.amazonaws.com"]
 
@@ -17,12 +28,14 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 data "aws_iam_policy_document" "github_assume_role" {
+  count = var.github_oidc_enabled ? 1 : 0
+
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
+      identifiers = [aws_iam_openid_connect_provider.github[0].arn]
     }
 
     condition {
@@ -44,9 +57,11 @@ data "aws_iam_policy_document" "github_assume_role" {
 }
 
 resource "aws_iam_role" "github_deploy" {
+  count = var.github_oidc_enabled ? 1 : 0
+
   name               = "${local.name}-github-deploy"
   description        = "Assumed by GitHub Actions to deploy. Cannot change infrastructure."
-  assume_role_policy = data.aws_iam_policy_document.github_assume_role.json
+  assume_role_policy = data.aws_iam_policy_document.github_assume_role[0].json
 }
 
 # Everything the deploy role needs that does not depend on a compute posture: push an
@@ -118,7 +133,9 @@ data "aws_iam_policy_document" "github_deploy" {
   }
 }
 resource "aws_iam_role_policy" "github_deploy" {
+  count = var.github_oidc_enabled ? 1 : 0
+
   name   = "${local.name}-github-deploy"
-  role   = aws_iam_role.github_deploy.id
+  role   = aws_iam_role.github_deploy[0].id
   policy = data.aws_iam_policy_document.github_deploy.json
 }

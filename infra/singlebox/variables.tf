@@ -10,7 +10,12 @@ variable "region" {
 }
 
 variable "domain_name" {
-  description = "Apex or subdomain the product is served from. The API is served from api.<domain_name>, which is what Caddy requests a certificate for."
+  description = "Apex or subdomain the SPA is served from."
+  type        = string
+}
+
+variable "api_domain_name" {
+  description = "Hostname the Policy API is served from, and what Caddy requests a certificate for. Stated rather than derived from domain_name (FZ-174): it is the URL that ends up in every customer's CI configuration."
   type        = string
 }
 

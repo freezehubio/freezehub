@@ -14,8 +14,13 @@
 # residency answer is unchanged; an EU buyer still gets "no".
 region = "us-east-2"
 
-# The domain the product is served from. The API is served from api.<domain_name>.
-domain_name = "freezehub.example.com"
+# The domain the SPA is served from, and separately the one the Policy API is served from.
+# The API hostname is stated rather than derived (FZ-174): it is the URL that ends up in
+# every customer's CI configuration through freeze-check.sh, so it should not inherit
+# whatever subdomain the SPA happens to use. Both are certificate subject names and cannot
+# be changed after the first apply without reissuing.
+domain_name     = "app.freezehub.example"
+api_domain_name = "api.freezehub.example"
 
 # A Route 53 hosted zone that already delegates that domain. Both certificates are
 # validated through it, so it must exist before the first apply.
@@ -27,3 +32,9 @@ hosted_zone_id = "Z0123456789ABCDEFGHIJ"
 # to master, so getting this wrong is the difference between only this repository deploying
 # and anyone's doing so.
 # github_repository = "freezehubio/freezehub"
+
+# The GitHub Actions OIDC provider and deploy role. Off by default: this account denies
+# iam:*Provider* through a service control policy that cannot be modified (OI-43), so an
+# apply with this on fails on the first resource. Turn it on after activating advanced
+# features (D-37), then apply again — nothing else in this module changes.
+# github_oidc_enabled = true

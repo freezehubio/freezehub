@@ -8,9 +8,10 @@
 # where the identities already are.
 region = "us-east-2"
 
-# The API is served from api.<domain_name>, which is what the load balancer's certificate
+# The API hostname is stated separately (FZ-174); it is what the load balancer's certificate
 # is issued for.
-domain_name    = "freezehub.example.com"
+domain_name     = "app.freezehub.example"
+api_domain_name = "api.freezehub.example"
 hosted_zone_id = "Z0123456789ABCDEFGHIJ"
 
 # ——— from ../shared ——————————————————————————————————————————————————————————————————

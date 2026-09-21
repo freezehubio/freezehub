@@ -160,15 +160,18 @@ them except two outputs in `outputs.tf`. It depends on exactly three things from
 of `shared/` — `aws_ecr_repository.backend.arn`, `aws_s3_bucket.frontend.arn` and
 `aws_cloudfront_distribution.frontend.arn`.
 
-Two workable shapes, and the choice is genuinely open:
+**Resolved as a `count` toggle** (`FZ-174`): `var.github_oidc_enabled`, default `false`,
+on the provider, the assume-role policy document, the role and its inline policy, with
+`one()` on the two outputs. The alternative — a fourth root module, matching `FZ-159`'s
+precedent of lifecycle boundaries as module boundaries — was rejected because these
+resources *share* the shared estate's lifecycle. They are absent only because of an
+account capability we intend to remove, and a module boundary would assert a difference
+that is not there.
 
-- **A fourth root module**, taking those three ARNs as variables the way `singlebox/`
-  already takes `ecr_repository_arn`. Matches `FZ-159`'s precedent — lifecycle boundaries
-  as module boundaries — and this module's lifecycle is "after advanced features", which
-  is nobody else's.
-- **A `count` toggle** on the three resources plus `one()` on the two outputs. Twenty
-  lines, no plumbing, one tfvars line to flip. Honest about what it represents: an account
-  capability that does not exist yet.
+So `shared/` applies today with the toggle off. **Turning it on is the last step of
+activating advanced features**, not a separate migration: set `github_oidc_enabled = true`
+and apply again. Until then `github_deploy_role_arn` and `github_deploy_role_name` are
+`null`, which is what `../ecs` and the workflows would read.
 
 **The registrar does not matter, and AWS refuses to be one.** `route53domains:*` is
 permitted by the SCP and the API answers — but an actual registration fails with *"We can't

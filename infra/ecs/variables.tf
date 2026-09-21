@@ -15,7 +15,12 @@ variable "region" {
 }
 
 variable "domain_name" {
-  description = "Apex or subdomain the product is served from, e.g. freezehub.example.com. The API is served from api.<domain_name>."
+  description = "Apex or subdomain the SPA is served from, e.g. app.freezehub.example."
+  type        = string
+}
+
+variable "api_domain_name" {
+  description = "Hostname the Policy API is served from, e.g. api.freezehub.example. Stated rather than derived from domain_name (FZ-174): it is the URL that ends up in every customer's CI configuration."
   type        = string
 }
 

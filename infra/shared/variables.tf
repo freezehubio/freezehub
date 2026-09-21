@@ -19,6 +19,17 @@ variable "hosted_zone_id" {
   type        = string
 }
 
+variable "api_domain_name" {
+  description = "Hostname the Policy API is served from. Stated rather than derived from domain_name (FZ-174): it is the URL that ends up in every customer's CI configuration through freeze-check.sh, so it should not inherit whatever subdomain the SPA happens to use. No default, for the same reason domain_name has none — it is a certificate subject name."
+  type        = string
+}
+
+variable "github_oidc_enabled" {
+  description = "Whether to create the GitHub Actions OIDC provider and deploy role. Off by default because this account denies iam:*Provider* through an unmodifiable SCP (OI-43); an apply with it on fails. Turn it on after activating advanced features (D-37)."
+  type        = bool
+  default     = false
+}
+
 variable "github_repository" {
   description = "owner/name of the repository allowed to deploy. The OIDC trust policy is scoped to it and to master, so getting this wrong is the difference between only this repository deploying and anyone's doing so."
   type        = string
