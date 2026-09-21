@@ -4068,3 +4068,48 @@ Acceptance:
 - A Cognito failure writes nothing to the database.
 - Running without a pool still works and says plainly that the person cannot sign in.
 - No claim anywhere in the script that creating an identity is impossible.
+
+### FZ-178 — The Runbook Could Not Be Run on the Box
+**Status:** DONE · **Decided by:** the operator · **Raises** `OI-46`
+
+Every command in `14-operations.md` failed on the deployed box:
+
+```
+$ docker compose ps
+error while interpolating services.backend.environment.FREEZEHUB_COGNITO_CLIENT_ID:
+  required variable COGNITO_CLIENT_ID is missing a value
+```
+
+`compose.yaml` uses `${VAR:?}` throughout, and the deploy exported those values for the
+length of one command. Interpolation happens for `ps` and `logs` and `exec` too, not only
+for `up` — so **the runbook written to diagnose a broken box could not be run on one**, and
+`docker ps` showed all three containers healthy the whole time.
+
+Found by trying to use it: `provision-organization.sh` needs `docker compose exec` for
+psql, and failed on seven interpolation errors before touching the database.
+
+**Fixed by writing `/opt/freezehub/.env` at deploy time**, mode 0600, which compose reads
+automatically. Every runbook command works unchanged.
+
+**The cost is two secrets at rest, and it is smaller than it first appears.** The database
+password and the encryption key now sit in a root-owned file. They were already readable by
+anyone who can run docker on that box — `docker inspect`, or `/proc/<pid>/environ` — so the
+file does not widen who can read them. It removes a runbook nobody could use. The operator
+made this call; the alternative was rewriting every runbook command to plain `docker` and
+container names, which keeps nothing off disk that was ever off disk.
+
+**And it exposed something worse, which is not fixed here.** `deploy/backup.sh` also calls
+`docker compose exec`, so the nightly backup would have failed too — except it has never
+run at all, because **nothing installs it on the box**. No timer, no unit, no script, empty
+bucket. `OI-46`, owned by `FZ-155`, whose own description ("script written; the restore
+drill is what completes it") turns out to be wrong: there is nothing to drill.
+
+That is the seventh instance of two halves assuming each other, and the first that is a
+data-loss risk rather than an inconvenience. It is free to fix while there is no data.
+
+Acceptance:
+
+- `docker compose ps`, `logs` and `exec` work on the box without arguments.
+- `.env` is 0600 and gitignored, so it cannot reach the repository.
+- The secrets-at-rest trade is stated where the file is written, not only here.
+- The backup gap is raised rather than quietly folded in — it belongs to `FZ-155`.
