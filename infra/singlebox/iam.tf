@@ -77,6 +77,17 @@ resource "aws_iam_role_policy" "instance" {
         Action   = "s3:PutObject"
         Resource = "${aws_s3_bucket.backups.arn}/*"
       },
+      {
+        # Inviting a user creates a Cognito identity (FZ-046). Scoped to the one pool and
+        # to the two calls that adapter makes: it can create an identity and read one back,
+        # and it cannot delete, disable or list the pool -- so a foothold on this box cannot
+        # quietly remove an administrator or enumerate every customer. ../ecs grants exactly
+        # this pair; OI-44 was that this posture did not.
+        Sid      = "InviteUsers"
+        Effect   = "Allow"
+        Action   = ["cognito-idp:AdminCreateUser", "cognito-idp:AdminGetUser"]
+        Resource = var.cognito_user_pool_arn
+      },
     ]
   })
 }

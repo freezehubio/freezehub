@@ -273,7 +273,9 @@ does not depend on the application resolving a name correctly. The residual gap 
 meantime is a DNS rebind between FreezeHub's resolution and the client's own.
 
 ### OI-44 — The single box cannot reach Cognito
-**Severity:** Blocker (for the beta posture) · **Owner:** `FZ-123` · **Found in:** `FZ-046`
+**Severity:** Blocker · **RESOLVED by** `FZ-176` · **Found in:** `FZ-046`
+
+**Closed.** The instance role gained an `InviteUsers` statement scoped to the pool ARN and to the two calls the adapter makes; `compose.yaml` gained the issuer URI, the pool id and the region; the deploy workflow exports all three. `FZ-176` also found the API hostname still being derived in the deploy path and fixed that.
 
 `FZ-046` made `CognitoIdentityProvider` the `IdentityProvider` outside the `local` profile, and
 `infra/ecs/backend.tf` already wires it: `cognito-idp:AdminCreateUser` and `AdminGetUser` on the

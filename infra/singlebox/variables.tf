@@ -56,3 +56,8 @@ variable "aws_account_id" {
     error_message = "An AWS account id is twelve digits."
   }
 }
+
+variable "cognito_user_pool_arn" {
+  description = "The user pool ../shared created. The instance role is scoped to it so the backend can invite users (FZ-046, OI-44)."
+  type        = string
+}

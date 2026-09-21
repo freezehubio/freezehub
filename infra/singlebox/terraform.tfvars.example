@@ -20,6 +20,10 @@ hosted_zone_id = "Z0123456789ABCDEFGHIJ"
 # The instance may pull from this repository and no other.
 ecr_repository_arn = "arn:aws:ecr:us-east-2:123456789012:repository/freezehub-beta-backend"
 
+# Likewise: `terraform -chdir=../shared output -raw cognito_user_pool_arn`. The instance
+# role is scoped to this one pool so the backend can invite users (FZ-046, OI-44).
+cognito_user_pool_arn = "arn:aws:cognito-idp:us-east-2:123456789012:userpool/us-east-2_XXXXXXXXX"
+
 # 2 GB carries the measured 353 MiB working set (D-28) plus PostgreSQL. t4g.medium buys a
 # second replica and removes the ~15s deploy gap.
 # instance_type = "t4g.small"

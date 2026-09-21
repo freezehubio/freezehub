@@ -39,7 +39,17 @@ services:
       SPRING_DATASOURCE_USERNAME: freezehub
       SPRING_DATASOURCE_PASSWORD: ${DATABASE_PASSWORD:?from SSM at boot}
       FREEZEHUB_SECRETS_ENCRYPTION_KEY: ${ENCRYPTION_KEY:?from SSM at boot}
-      FREEZEHUB_CORS_ALLOWED_ORIGINS: https://${ROOT_DOMAIN:?}
+      FREEZEHUB_CORS_ALLOWED_ORIGINS: https://${APP_DOMAIN:?}
+      # Cognito (FZ-046, OI-44). Without these the context does not start, which is the
+      # intended fail-fast and not something to paper over with a default -- the backend
+      # has none, deliberately.
+      #
+      # APP_DOMAIN and API_DOMAIN are separate because the API hostname is not derived
+      # from the SPA hostname (FZ-174): it is the URL in every customer CI configuration
+      # and should not inherit whichever subdomain the SPA happens to use.
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: https://cognito-idp.${AWS_REGION:?}.amazonaws.com/${COGNITO_USER_POOL_ID:?}
+      FREEZEHUB_COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:?}
+      FREEZEHUB_COGNITO_REGION: ${AWS_REGION:?}
       # server.forward-headers-strategy is already `framework` in the default document of
       # application.yml, and `none` only under `local`. Not repeated here: the rate limiter
       # (FZ-087) depends on it and config that matters should live in one place.
