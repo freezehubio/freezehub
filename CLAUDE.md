@@ -238,6 +238,12 @@ still answers when the application will not start.
 # turn a demo into a customer (FZ-086)
 ./scripts/provision-organization.sh --company "Contoso" --admin ops@contoso.test --plan GROWTH
 
+# against a deployed environment, where the Administrator needs a real Cognito identity
+# or they cannot sign in (FZ-177) — run it on the box, which is where psql and the
+# instance role both are
+./scripts/provision-organization.sh --company "Contoso" --admin ops@contoso.test \
+  --plan GROWTH --user-pool-id "$COGNITO_USER_POOL_ID"
+
 # who can sign in, and what cannot be tested with them (FZ-102) — see Test accounts below
 ./scripts/test-users.sh
 ```
