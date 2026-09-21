@@ -40,6 +40,16 @@ server:
   forward-headers-strategy: framework
 
 freezehub:
+  # cognito:
+  #   user-pool-id: ...
+  #   region: ...
+  #
+  # Deliberately absent rather than merely unset (FZ-046). Outside the `local` profile
+  # CognitoIdentityProvider is the IdentityProvider, and neither property has a default, so
+  # an environment that forgets them fails to start rather than failing at the first
+  # invitation — the same fail-fast as the encryption key and the missing JwtDecoder.
+  # Supplied as FREEZEHUB_COGNITO_USER_POOL_ID and FREEZEHUB_COGNITO_REGION. Under `local`
+  # neither is read, because LocalIdentityProvider is the bean there.
   cors:
     # Empty by default: a deployed environment must name its frontend origin explicitly
     # rather than inherit a permissive default. The local profile below fills in Vite.

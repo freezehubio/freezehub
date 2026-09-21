@@ -535,13 +535,55 @@ Acceptance:
 - A transient failure followed by a success still ends `SENT`, with the earlier error no longer presented as current.
 
 ### FZ-046 — Cognito Identity Provider
-**Status:** TODO
+**Status:** DONE · **Resolves** `OI-2` · **Raises** `OI-44`
 
-**Fixes `OI-2`.** Implements the real `AdminCreateUser` path behind the existing `IdentityProvider` port, so inviting a user works outside the `local` profile.
+`CognitoIdentityProvider` implements the existing port outside the `local` profile: one
+`AdminCreateUser` call, returning the `sub` Cognito issues, which is what
+`users.external_subject` stores. The pool created by `FZ-063` exists now, which is what
+`D-4` said to wait for.
 
-Until this exists the backend **cannot start at all** without the `local` profile, because no `IdentityProvider` bean is defined — deliberate fail-fast (`FZ-016`), but it blocks any deployed environment.
+**The fail-fast moved rather than disappeared.** `FZ-016` got it by defining no bean at all,
+which this story necessarily gives up. `freezehub.cognito.user-pool-id` and
+`freezehub.cognito.region` have no defaults in its place, so an environment that forgets
+them refuses to start — at boot, not at the first invitation. `application.yml` carries the
+names as a comment and no value, the same shape the encryption key already uses.
 
-Depends on a Cognito user pool existing, so sequence with `FZ-063`. Acceptance: an implementation selected outside the `local` profile, configured per environment rather than hardcoded, that creates the identity and returns its `sub`; failures surface as a clear error rather than a half-created user.
+**The subject is read from the response, never derived.** Cognito assigns `sub`; it is not
+the username, the email, or anything this application can compute. A missing or blank one
+is an error rather than a placeholder, because a wrong `external_subject` is a user who can
+never sign in and a row that looks correct.
+
+**Failures do not leave a half-created user.** `IdentityProviderException` is unchecked and
+`InviteService` does not catch it, so the transaction rolls back and no user row survives a
+failed invitation. `UsernameExistsException` is separated out because it is reachable
+despite `InviteService`'s own check — that one is scoped to an organization and the pool is
+shared across all of them. The message never carries the address; the log line carries the
+pool and the operation.
+
+**One dependency, and it is the first AWS coupling in the backend.** `OI-15` records
+cloud-neutrality as worth keeping, so it is the narrow `cognitoidentityprovider` module
+rather than a bundle, both bundled HTTP clients are excluded in favour of
+`url-connection-client`, and the whole of it sits behind one class. The alternative is not
+"no AWS code": Cognito's admin API cannot be called without SigV4, so hand-rolling the
+signature would be more AWS-specific code, not less.
+
+**`DevSignInAbsentOutsideLocalProfileTest` gained something rather than being patched
+around.** It was stubbing `IdentityProvider` to get a deployed-shaped context to boot; it
+now boots the real adapter, which asserts that the client constructs with **no AWS
+credentials present** — the situation in CI, and at container start before the instance
+profile is first used.
+
+**Not done here, and the reason it is an issue and not a silent addition:** the single box
+passes neither property and its instance role cannot call `AdminCreateUser`, so the backend
+will not start on the posture `D-35` actually deploys. `OI-44`, owned by `FZ-123`.
+
+Acceptance:
+
+- Selected outside `local`, configured per environment, no hardcoded pool.
+- Returns the `sub` Cognito issued; a missing or blank one fails loudly.
+- No SDK exception escapes the port, and no failure message carries the email address.
+- Seven tests, five of them negative — the shapes that produce a plausible-looking user
+  nobody can sign in as.
 
 ### FZ-047 — "Starting Soon" Notification
 **Status:** DONE
