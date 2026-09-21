@@ -2572,7 +2572,37 @@ bootstrap sequence and is history rather than a live schedule. The path lives in
 document.
 
 ### FZ-138 — Who Owns Production
-**Status:** TODO · **Owns:** `OI-32` · **How:** `docs/16-accounts.md` (`FZ-164`, corrected by `FZ-168`) · **Blocked on:** one human action
+**Status:** DONE · **Resolves** `OI-32` · **How:** `docs/16-accounts.md` (`FZ-164`, corrected by `FZ-168`, `FZ-170`, `FZ-171`)
+
+**Done, and verified against the account rather than asserted.** The estate runs in a
+standalone account of its own on `freezehubio@gmail.com`, created through AWS's new sign-up
+experience (`D-37`). What `iam:GetAccountSummary` reports:
+
+- **No root access keys** — `AccountAccessKeysPresent: 0`.
+- **One IAM user**, and it can do nothing. Its access key is deleted, and
+  `iam:*LoginProfile*` is denied by a service control policy, so it cannot be given console
+  access either. An inert artefact of the attempt that produced `FZ-170`; deletable.
+- **No long-lived credential is used.** `aws login` issues role sessions rotated every 15
+  minutes; Terraform reads them through a `credential_process` profile (`FZ-175`).
+- **Applying into the wrong account fails before creating anything** —
+  `allowed_account_ids` on all six providers, exercised both ways (`FZ-175`).
+- **The personal account holds nothing of this product**, verified after `FZ-175`'s
+  wrong-account apply was cleaned up.
+
+**One item is unresolved rather than done:** `AccountMFAEnabled` reports `0`. On this
+experience sign-in is through AWS Builder ID rather than a root password, so the flag may
+simply not apply — but `16-accounts.md` §2 says to enable root MFA and AWS says it is off,
+and those cannot both be right. Recorded as `OI-45` rather than waved through: the MFA that
+certainly matters, on the Google account behind the Builder ID, is not what this flag
+measures.
+
+**What it took, which is worth recording.** Eight stories (`FZ-164`, `FZ-168`, `FZ-170`,
+`FZ-171`, `FZ-172`, `FZ-173`, `FZ-175`, `FZ-176`) and five corrections, because every claim
+written from documentation was wrong in some way: the account model, the region, the
+registrar, the free tier, and which credentials Terraform can read. Each was found by
+something being run. The two guards that came out of it — the account assertion and the
+credential bridge — are the only parts that make the system catch the mistake instead of a
+person.
 
 `infra/README.md` told you to use an IAM role rather than account root and never said which
 account any of it belongs in. The target today is the operator's personal AWS account, where
