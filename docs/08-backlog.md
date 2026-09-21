@@ -4200,3 +4200,43 @@ Acceptance:
 - A mismatched `state`, a missing verifier, a refused exchange and a missing access token
   each fail with a message naming the cause.
 - The local development form still works and is still the only thing local gets.
+
+### FZ-180 — The Backend Had No Way Out
+**Status:** DONE · **Found by:** signing in
+
+Sign-in worked. Every screen behind it returned `500`:
+
+```
+java.net.UnknownHostException: cognito-idp.us-east-2.amazonaws.com
+  fetching .../.well-known/jwks.json
+```
+
+**The backend container had no outbound network.** `compose.yaml` put it on `internal`
+alone, and `internal` is declared `internal: true` — which denies routing entirely, so it
+could not resolve DNS, let alone fetch Cognito's signing keys.
+
+**The split was right and its application was not.** The comment above it says "so the
+database is not on the network that has a published port", and that is a good reason —
+PostgreSQL belongs on `internal` alone and still does. The backend was put there too,
+which grants the same isolation to a service whose job includes calling out.
+
+**`infra/ecs/network.tf` gets this right for the other posture**, down to the list:
+*"Outbound to webhooks, Slack, SES, Cognito"*. The compose file never had an equivalent,
+so nothing contradicted it and review had nothing to catch.
+
+**It was never only about sign-in.** The same denial breaks Slack notifications, SES mail,
+and every customer webhook (`FZ-043`, `FZ-044`) — none of which had run yet, so the
+`UnknownHostException` would have arrived later and looked like a different bug each time.
+
+Joining `edge` publishes nothing: there is no `ports:` block on the backend, and inbound
+still arrives only through Caddy. What it grants is egress.
+
+**Ninth instance of two halves assuming each other**, and the second found by using the
+product rather than reading it. Reading would not have found this one: both files are
+internally coherent, and the contradiction only exists between them.
+
+Acceptance:
+
+- The backend resolves and fetches the Cognito JWKS — verified in the container, `200`.
+- PostgreSQL remains on `internal` alone.
+- No port is published for the backend; Caddy is still the only ingress.
