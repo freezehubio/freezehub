@@ -3323,3 +3323,41 @@ actually have to run, in order, rather than by anything failing — nothing can 
 
 `14-operations.md` gains a *Releasing* section naming the three workflows in order, and
 saying not to run `Deploy` on this posture.
+
+### FZ-168 — Start the Estate on Its Own Account, Not a Personal One
+**Status:** DONE · **Corrects** `FZ-164`
+
+`16-accounts.md` told the operator to make their **existing personal account** the
+management account. That is worse than it reads, and the operator caught it before acting on
+it.
+
+**The management account is not a bystander.** It owns the Organization, can create and
+close member accounts, and reaches into any of them through
+`OrganizationAccountAccessRole`. Making it the personal account leaves a personal identity
+in permanent, unremovable control of production — which is `OI-32`'s objection moved up a
+level rather than answered. The guide was written anchored on `OI-32`'s phrasing ("the
+operator's personal account") instead of questioning whether that account should be in the
+picture at all.
+
+Corrected: a **fresh account on `freezehubio@gmail.com`** is the management account, and
+`freezehubio+prod@gmail.com` the production member account. The personal account is left
+alone and deliberately not invited into the Organization — it holds $0.007 of S3 and
+stranding it costs nothing, while keeping the separation total. When a company exists,
+transferring the product becomes a payment method and a root email on an account that has
+only ever held the product.
+
+**The free tier also changed, and the guide was quoting the old one.** AWS replaced the
+twelve-month service allowances with credits — $100 immediately and up to $100 more, roughly
+$200 over six months — so "750 hours of `db.t4g.micro`" is no longer a thing to check for.
+Two replacements, both verifiable only at creation:
+
+- whether a member account created *inside* an Organization receives its own credits, which
+  AWS does not document on the free-tier page and which is worth ~$200 against an $18/month
+  posture;
+- whether production lands on the **Free plan or the Paid plan**, because they differ when
+  credits run out. Production must not sit on a plan that can suspend it: a box that stops
+  because a credit balance hit zero blocks every customer's deployments, since
+  `freeze-check.sh` fails closed.
+
+`OI-15`'s free-tier line is corrected too — it described the old model for an account the
+estate will no longer use.

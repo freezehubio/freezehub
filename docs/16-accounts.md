@@ -11,22 +11,37 @@ sequence somebody can follow once, because it is done once and then relied on fo
 **Nothing here is Terraform.** The estate in `infra/` assumes these accounts already exist —
 it cannot create the account it runs in, and the role it assumes has to predate it.
 
-## Why two accounts
+## Why two accounts, and why neither is your personal one
 
-The alternative is running production in the operator's personal account, which is what
-`OI-32` records and what `infra/README.md` cannot advise against strongly enough: there, the
-operator *is* root, so the instruction to use a role rather than root cannot be followed.
+**Start from a fresh account, not the one you already have.** An earlier version of this
+guide said to make the existing personal account the management account. That is worse than
+it sounds: the management account owns the Organization, can create and close member
+accounts, and reaches into any of them through `OrganizationAccountAccessRole`. Making it
+the personal account leaves a personal identity in permanent, unremovable control of
+production — which is `OI-32`'s objection moved up a level rather than answered.
+
+`freezehubio@gmail.com` is the right owner, and creating it was the right instinct.
+
+**Leave the personal account alone.** Do not invite it into the Organization. It holds
+$0.007 of S3 (`OI-15`) and nothing that matters; stranding it costs nothing and keeps the
+separation total. When a company exists, transferring the product means changing a payment
+method and a root email on an account that has only ever held the product — not
+disentangling it from someone's personal history.
 
 Two accounts, both free — AWS Organizations costs nothing and member accounts cost nothing;
 you pay only for resources:
 
-| | Holds | Runs |
-|---|---|---|
-| **Management** | The Organization, consolidated billing | Nothing. No workloads, ever |
-| **Production** | Everything in `infra/` | The product |
+| | Root email | Holds | Runs |
+|---|---|---|---|
+| **Management** | `freezehubio@gmail.com` | The Organization, consolidated billing | Nothing. No workloads, ever |
+| **Production** | `freezehubio+prod@gmail.com` | Everything in `infra/` | The product |
 
 The management account is deliberately empty. Anything running there is something an
 Organization-level credential could reach, and that credential can create accounts.
+
+**Each AWS account needs its own unique root email.** Plus-addressing works and all of it
+arrives in one inbox. This is why the plain address goes to management: spend it on
+production and management needs a second mailbox.
 
 **The one irreversible part is the region, not the accounts.** A Cognito user pool is
 region-bound and `users.external_subject` stores the `sub` it issues, so `D-32`'s choice of
@@ -34,17 +49,25 @@ region-bound and `users.external_subject` stores the `sub` it issues, so `D-32`'
 
 ---
 
-## 1. The Organization
+## 1. The management account
 
-From the existing account, **Organizations → Create an organization** (choose *All
-features*, not consolidated billing only — Identity Center and service control policies both
-need it).
+**This is a brand-new AWS account.** Sign up at `aws.amazon.com` with:
 
-That account is now the management account. **Do not deploy into it.**
+| | |
+|---|---|
+| Root email | `freezehubio@gmail.com` |
+| Account name | `freezehub-management` |
+
+It needs a payment method even though it will run nothing — the Organization's consolidated
+bill lands here.
+
+Once in: **Organizations → Create an organization**, choosing **All features**, not
+consolidated billing only. Identity Center and service control policies both require it, and
+switching later is a support ticket rather than a setting.
 
 ## 2. The production account
 
-**Organizations → Add an AWS account → Create**.
+**Organizations → Add an AWS account → Create an AWS account**.
 
 | | |
 |---|---|
@@ -52,16 +75,29 @@ That account is now the management account. **Do not deploy into it.**
 | Email | `freezehubio+prod@gmail.com` |
 | Role name | leave the default `OrganizationAccountAccessRole` |
 
-**Every AWS account needs its own unique root email.** Plus-addressing works and all of it
-arrives in one mailbox. Spend the plain address on production and the management account
-needs a second mailbox — which is why the plain one stays with management.
+Created this way it is a member account from birth — no separate signup, no second payment
+method, and billing rolls up to management automatically.
 
-`OrganizationAccountAccessRole` is created automatically and is assumable from the management
+`OrganizationAccountAccessRole` is created for you and is assumable from the management
 account. It is the break-glass path in §6; do not delete it.
 
-**Check free-tier eligibility while you are here.** `OI-15` records that the existing
-account's twelve-month window expired in 2023. If a new member account qualifies, 750 hours
-of `db.t4g.micro` covers a large share of the beta year — and it is impossible to retrofit.
+### The free tier changed, and it matters which plan you land on
+
+**AWS replaced the twelve-month free tier with credits.** A new account now gets **$100 in
+credits immediately and up to $100 more** as you use services — up to $200 over six months —
+alongside the always-free monthly allowances on 30-odd services. `OI-15`'s note about a
+"twelve-month window expired in 2023" describes the old model and no longer applies.
+
+Two things to check at creation, because neither is easy to change afterwards:
+
+- **Whether a member account created inside an Organization gets its own credits.** AWS does
+  not document this on the free-tier page, and it is worth knowing before you create the
+  account rather than after. At ~$18 a month (`D-35`), $200 is most of a year.
+- **Whether the production account is on the Free plan or the Paid plan.** They behave
+  differently when credits run out, and **production must not sit on a plan that can suspend
+  it.** Move it to Paid before anything real depends on it — a box that stops because a
+  credit balance hit zero blocks every customer's deployments (`freeze-check.sh` fails
+  closed).
 
 ## 3. Secure both roots, then stop using them
 
