@@ -206,7 +206,9 @@ sentence saying so — leaving an instruction that cannot be followed is how a r
 to skip the ones that can.
 
 ### OI-46 — The nightly backup is not installed on the box, and never was
-**Severity:** Blocker · **Owner:** `FZ-155` · **Found in:** `FZ-178`
+**Severity:** Blocker · **RESOLVED by** `FZ-155` · **Found in:** `FZ-178`
+
+**Closed.** The deploy now ships `backup.sh`, the service and the timer, writes `backup.env`, and enables the timer. Verified on the instance: `freezehub-backup.timer` armed for 03:17 UTC, a backup run on demand, 55 715 bytes uploaded, and the dump restored into a scratch database with 0 errors — 21 tables, 28 changesets, 185 constraints. `14-operations.md` records the numbers.
 
 `deploy/backup.sh`, `freezehub-backup.service` and `freezehub-backup.timer` exist in the
 repository. **Nothing puts them on the box.** `deploy-singlebox.yml` sends `compose.yaml`

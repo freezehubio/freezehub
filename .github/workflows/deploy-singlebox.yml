@@ -58,6 +58,7 @@ jobs:
           API_DOMAIN: ${{ vars.API_DOMAIN }}
           COGNITO_USER_POOL_ID: ${{ vars.COGNITO_USER_POOL_ID }}
           COGNITO_CLIENT_ID: ${{ vars.COGNITO_CLIENT_ID }}
+          BACKUP_BUCKET: ${{ vars.BACKUP_BUCKET }}
         run: |
           set -euo pipefail
 
@@ -80,6 +81,15 @@ jobs:
           COMPOSE_B64=$(base64 < deploy/compose.yaml | tr -d '\n')
           CADDY_B64=$(base64 < deploy/Caddyfile | tr -d '\n')
 
+          # The backup travels with the deploy too (OI-46). Before this nothing installed
+          # it: no script on the box, no unit, no timer, and an empty bucket — while
+          # FZ-155 described itself as waiting only on a restore drill. With PostgreSQL on
+          # a root volume marked delete_on_termination, this dump is the only thing between
+          # an instance replacement and losing everything.
+          BACKUP_B64=$(base64 < deploy/backup.sh | tr -d '\n')
+          BACKUP_SERVICE_B64=$(base64 < deploy/freezehub-backup.service | tr -d '\n')
+          BACKUP_TIMER_B64=$(base64 < deploy/freezehub-backup.timer | tr -d '\n')
+
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name AWS-RunShellScript \
@@ -101,6 +111,15 @@ jobs:
           \"echo DATABASE_PASSWORD=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/database-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
           \"echo ENCRYPTION_KEY=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/encryption-key --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
           \"chmod 600 .env\",\
+          \"echo $BACKUP_B64 | base64 -d > backup.sh\",\
+          \"chmod 700 backup.sh\",\
+          \"echo BACKUP_BUCKET=${BACKUP_BUCKET} > backup.env\",\
+          \"echo AWS_REGION=${AWS_REGION} >> backup.env\",\
+          \"echo $BACKUP_SERVICE_B64 | base64 -d > /etc/systemd/system/freezehub-backup.service\",\
+          \"echo $BACKUP_TIMER_B64 | base64 -d > /etc/systemd/system/freezehub-backup.timer\",\
+          \"chmod 644 /etc/systemd/system/freezehub-backup.service /etc/systemd/system/freezehub-backup.timer\",\
+          \"systemctl daemon-reload\",\
+          \"systemctl enable --now freezehub-backup.timer\",\
           \"docker compose pull\",\
           \"docker compose up -d --wait --wait-timeout 180\",\
           \"docker image prune -f\"]" \
