@@ -3664,3 +3664,43 @@ Acceptance:
   that it need not be re-derived.
 - No Terraform changes. The story is a correction to documentation and a deliberate
   non-implementation.
+
+### FZ-173 — AWS Will Not Sell Us the Domain, and It Does Not Matter
+**Status:** DONE · **Corrects** `FZ-172`
+
+`FZ-172` ended by saying the domain could be registered inside the account, because
+`route53domains:*` is permitted by the SCP and `list-domains` answered. The operator tried
+it and got:
+
+> Registro de dominios con error: We can't finish registering your domain. Contact AWS
+> Support.
+
+**Amazon Registrar applies fraud-prevention checks to new accounts.** The restriction is
+account-level, the error is deliberately generic — there is no detail to look up — and it is
+lifted only through a support case. Basic support covers domain registration issues at no
+cost, so the case is available; it is simply not worth waiting on.
+
+**The same mistake as three stories running, in a smaller form.** An API being permitted by
+policy is not the same as an operation succeeding. `FZ-170` checked a service list and missed
+a second SCP; `FZ-171` checked one SCP and missed another; this checked the SCP and missed
+that registration is refused for reasons that have nothing to do with IAM. The reliable test
+has been the same every time: do the thing, then read the error.
+
+**It blocks nothing, which is the part worth recording.** `infra/shared/` declares
+`domain_name` and `hosted_zone_id` and never asks who the registrar is. So:
+
+1. Buy the domain at any registrar.
+2. Create a Route 53 hosted zone for it — about $0.50 a month, and not restricted.
+3. Point the registrar's nameservers at the four Route 53 returns.
+
+`hosted_zone_id` is then the zone's id and `shared/` has everything it needs. Route 53 stays
+in the picture because the Terraform creates `aws_route53_record` for certificate validation
+and the CloudFront alias; moving DNS elsewhere would be a Terraform change, and there is no
+reason to make one.
+
+Acceptance:
+
+- Both places that told the reader to register in-account now say what actually happens and
+  what to do instead.
+- The distinction is stated plainly: the registrar is interchangeable, the hosted zone is not.
+- No Terraform changes. Nothing in `infra/` was ever registrar-specific.
