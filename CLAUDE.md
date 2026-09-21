@@ -133,9 +133,9 @@ Additional documentation is created just-in-time when implementation requires it
 - `docs/11-commercial.md` — created by FZ-080
 - `docs/12-connectors.md`  — created by FZ-090
 - `docs/13-validation.md`  — created by FZ-137
-- `docs/14-data-protection.md` — created by FZ-161
 - `docs/14-operations.md`  — created by FZ-156
 - `docs/15-migration.md`   — created by FZ-157
+- `docs/16-data-protection.md` — created by FZ-161
 - `backend/CLAUDE.md`
 - `frontend/CLAUDE.md`
 
