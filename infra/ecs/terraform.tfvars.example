@@ -8,6 +8,12 @@
 # where the identities already are.
 region = "us-east-2"
 
+# The account this estate may be applied into. Every provider asserts it, so an apply with
+# the wrong credentials fails before creating anything (FZ-175) — which is not theoretical:
+# `aws login` writes a session only the AWS CLI can read, so Terraform silently fell through
+# to the [default] profile and applied into a personal account with root access keys.
+aws_account_id = "123456789012"
+
 # The API hostname is stated separately (FZ-174); it is what the load balancer's certificate
 # is issued for.
 domain_name     = "app.freezehub.example"

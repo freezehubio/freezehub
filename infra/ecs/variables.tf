@@ -91,3 +91,13 @@ variable "github_deploy_role_name" {
   description = "The role ../shared creates. This module attaches its ECS statements to it. `terraform -chdir=../shared output -raw github_deploy_role_name`."
   type        = string
 }
+
+variable "aws_account_id" {
+  description = "The AWS account this module may be applied into. Every provider asserts it, so an apply with the wrong credentials fails before creating anything (FZ-175). No default: the point is that it cannot be inherited."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.aws_account_id))
+    error_message = "An AWS account id is twelve digits."
+  }
+}

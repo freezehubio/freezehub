@@ -129,7 +129,7 @@ the Free Tier *and* the Paid Plan and that "cannot be modified", so **`terraform
 
 **Confirmed against the live account** (`FZ-171`), not just the published policy:
 `iam:ListOpenIDConnectProviders` returns `AccessDenied` with *"an explicit deny in a service
-control policy: …/p-gipyamec"*. The same check found `D-32` wrong — see below.
+control policy"*, naming one of the AWS-managed policies. The same check found `D-32` wrong — see below.
 
 **Nothing else is blocked.** `iam:CreateRole` is permitted and every service the one-box
 posture needs works in `us-east-2`, verified by calling each one. `D-35` is unaffected.

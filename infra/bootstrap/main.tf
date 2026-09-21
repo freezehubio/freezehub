@@ -13,7 +13,8 @@ terraform {
 }
 
 provider "aws" {
-  region = var.region
+  region              = var.region
+  allowed_account_ids = [var.aws_account_id]
 
   default_tags {
     tags = {
@@ -28,6 +29,16 @@ provider "aws" {
 # in us-east-1 and s3:CreateBucket is not among them, so this bucket cannot be made there
 # (D-32, FZ-171). A default is kept here, unlike the other modules, because bootstrap runs
 # once before anything exists and a wrong region fails immediately rather than silently.
+variable "aws_account_id" {
+  description = "The AWS account this module may be applied into. Every provider asserts it, so an apply with the wrong credentials fails before creating anything (FZ-175). No default: the point is that it cannot be inherited."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.aws_account_id))
+    error_message = "An AWS account id is twelve digits."
+  }
+}
+
 variable "region" {
   type    = string
   default = "us-east-2"

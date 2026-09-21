@@ -46,3 +46,13 @@ variable "backup_retention_days" {
   type        = number
   default     = 30
 }
+
+variable "aws_account_id" {
+  description = "The AWS account this module may be applied into. Every provider asserts it, so an apply with the wrong credentials fails before creating anything (FZ-175). No default: the point is that it cannot be inherited."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.aws_account_id))
+    error_message = "An AWS account id is twelve digits."
+  }
+}

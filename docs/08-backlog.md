@@ -3569,7 +3569,7 @@ chance to check claims by calling AWS instead of reading about it. Two of them w
 One held and one did not.
 
 **`OI-43` held.** `iam:ListOpenIDConnectProviders` returns `AccessDenied` with *"an explicit
-deny in a service control policy: …/p-gipyamec"*. GitHub OIDC is blocked exactly as
+deny in a service control policy"* naming one of the managed policies. GitHub OIDC is blocked exactly as
 documented, and now with the policy id.
 
 **`D-32` did not.** `FZ-170` claimed `RegionFloor` permits `us-east-1`, so `us-east-1`
@@ -3745,7 +3745,7 @@ moved.
 
 **The domain is live.** `freezehub.io` is registered at GoDaddy and delegated to Route 53 —
 the `.io` registry and public resolvers all return the four `awsdns` nameservers. Hosted
-zone `Z05328562QOD2HA2DHF83`.
+zone recorded in `infra/shared/terraform.tfvars`, which is gitignored.
 
 Acceptance:
 
@@ -3755,3 +3755,81 @@ Acceptance:
 - Every remaining `var.domain_name` use is genuinely the SPA: Cognito callback URLs, the
   CloudFront alias and certificate, the A record, and the CORS origin.
 - All four modules `validate`, and `fmt -check` passes.
+
+### FZ-175 — An Apply Went Into the Wrong Account, and Nothing Stopped It
+**Status:** DONE · **Owns** `OI-32`'s last residue · **Found by:** applying
+
+`terraform apply` on `bootstrap/` reported success. It had created the state bucket and lock
+table in the **operator's personal AWS account**, using that account's **root access keys**.
+Nothing failed, nothing warned, and the output was indistinguishable from a correct run.
+
+**Two causes, and the second is the one worth fixing.**
+
+`aws login` writes its session to the AWS CLI's own store — `~/.aws/cli/cache/session.db` and
+a `login_session` key in config. Terraform uses the AWS SDK for Go, which does not read that
+format. With `AWS_PROFILE` unset it fell through to `[default]`, which held root access keys
+for a 2022 personal account (`OI-15`). When the profile *is* named, the same gap produces a
+confusing error instead:
+
+```
+Error: No valid credential sources found
+... no EC2 IMDS role found
+```
+
+— the SDK reaching the bottom of the credential chain and looking for an instance profile on
+a laptop.
+
+That is the mechanism. The cause is that **nothing made the right credentials the default**,
+and `16-accounts.md` told the reader to `aws login` without saying that Terraform cannot use
+the result. Every guard in this repository up to now has been a sentence in a document.
+
+**The fix is an assertion, not a habit.** Every provider in all four modules now carries
+`allowed_account_ids = [var.aws_account_id]`, with the id a required variable — no default,
+validated as twelve digits. Proven both ways rather than assumed:
+
+```
+wrong credentials -> Error: AWS account ID not allowed: <the other account>
+right credentials -> plan proceeds
+```
+
+Six provider blocks, including the two `us_east_1` aliases that issue CloudFront
+certificates — an aliased provider takes its own credentials and would otherwise be
+unguarded.
+
+**The `credential_process` bridge is documented** in `16-accounts.md` §1 and
+`infra/README.md`, as a second profile:
+
+```ini
+[profile admin-tf]
+credential_process = aws configure export-credentials --profile admin --format process
+```
+
+It must be a second profile; pointing `admin` at itself recurses.
+
+**What the incident cost, and what it did not.** The bucket was empty — `bootstrap/` keeps
+its own state locally, so nothing had been written to it — and both resources were removed
+from the personal account. `prevent_destroy` on the state bucket blocked `terraform destroy`,
+which is the guard working correctly on a bucket that happened to be in the wrong place; the
+two empty resources were deleted directly rather than disarming it.
+
+Acceptance:
+
+- An apply with credentials for any other account fails **before** creating anything, shown
+  by running it.
+- Every provider is covered, aliases included.
+- `aws_account_id` cannot be inherited: no default, and a validation rule.
+- The `aws login` gap is stated in the guide *before* the first instruction that depends on
+  it, because the silent failure is worse than the loud one.
+
+**And no real identifier goes in the repository, because it is public.** The operator caught
+this on review: the account guard itself is fine — `var.aws_account_id`, with
+`123456789012` in every example — but three real identifiers had been written into
+documentation as evidence. An AWS account id is the one that matters: it is not a secret,
+but it is what an attacker needs to enumerate roles and guess bucket names, and publishing
+a *personal* one next to the sentence "this account had root access keys" is worse than
+publishing it alone. A hosted zone id and a service control policy id are lower, and were
+removed for consistency rather than because they were dangerous.
+
+The documentary value was always in the *shape* of the evidence, never the digits — the
+error message proves the guard fires whether or not the account id in it is real. Real
+values live in `terraform.tfvars`, which `infra/.gitignore` already covers.

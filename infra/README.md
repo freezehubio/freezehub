@@ -49,6 +49,13 @@ You need, and Terraform will not create for you:
    key to scope, rotate or lose, and on this experience there is no IAM user to hold one
    — `iam:*LoginProfile*` is denied.
 
+   **Terraform cannot read that session.** `aws login` writes to the CLI's own store and
+   the AWS SDK for Go does not understand it, so Terraform falls through to `[default]` —
+   silently, if `[default]` happens to hold credentials for another account. Bridge it
+   with a `credential_process` profile and use that for Terraform; `16-accounts.md` §1 has
+   the four lines. Every provider also asserts `var.aws_account_id`, so the silent case
+   fails before creating anything.
+
    **`shared/` will not apply as written** (`OI-43`): `github-oidc.tf` creates an
    `aws_iam_openid_connect_provider` and `iam:*Provider*` is denied by an SCP that cannot
    be modified. That file is separable — nothing outside it references its resources

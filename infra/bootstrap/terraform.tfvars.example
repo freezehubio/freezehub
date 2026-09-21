@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars and fill in. Applied once, before anything else, with local
+# state — see the header of main.tf for why.
+
+# The account this may be applied into. Every provider asserts it, so an apply with the
+# wrong credentials fails before creating anything (FZ-175).
+#
+# This exists because it already went wrong: `aws login` writes a session only the AWS CLI
+# can read, Terraform fell through to the [default] profile, and bootstrap created the
+# state bucket in a personal account using root access keys. Nothing makes the right
+# credentials the default, so the configuration asserts the account instead.
+aws_account_id = "123456789012"
+
+# us-east-2 (D-32). Not us-east-1: the project's SCP permits only a narrow set of global
+# actions there and s3:CreateBucket is not among them, so the bucket cannot be made there.
+# region = "us-east-2"
