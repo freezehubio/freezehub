@@ -196,7 +196,12 @@ resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   default_root_object = "index.html"
   aliases             = [var.domain_name]
-  price_class         = "PriceClass_100" # North America and Europe; widen when customers are elsewhere
+  # PriceClass_All, not PriceClass_100 (FZ-123). The cheaper class covers North America
+  # and Europe only — which excludes South America, where the company is and where its
+  # first customers are most likely to be. The SPA is a few hundred kilobytes inside
+  # CloudFront's perpetual free tier, so the wider class costs approximately nothing and
+  # the narrower one was serving Bogotá from Miami.
+  price_class = "PriceClass_All"
 
   origin {
     origin_id                = "frontend"

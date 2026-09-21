@@ -1857,7 +1857,12 @@ Acceptance: a measured CPU/memory pair, a `MaxRAMPercentage` value, and a writte
 choice with the egress and architecture questions answered rather than assumed.
 
 ### FZ-123 — Apply the Beta Deployment
-**Status:** TODO · **Blocked on:** `FZ-138` — an AWS account · **Resolves:** `OI-15`, `OI-21`
+**Status:** TODO · **Code landed; the apply is what completes it** · **Resolves:** `OI-15`, `OI-21`
+
+**No longer blocked.** The account exists (`FZ-175`), `bootstrap/` and `shared/` are applied,
+and the identity work the whole thing waited on is done (`FZ-046`, `FZ-128`, `FZ-176`).
+What remains is applying `singlebox/`, building an image and deploying — all human actions
+against a live account.
 
 **Rewritten by `FZ-159`, because `D-35` changed what "the beta deployment" means.** This
 entry described applying `infra/` — the ALB-and-ECS estate. The beta now applies
@@ -1872,10 +1877,12 @@ the `Deploy single-box` workflow (`FZ-154`) and follow `14-operations.md`.
 
 Still true, and still to do:
 
-- **`frontend.tf` moves to `PriceClass_All`.** It reads `PriceClass_100` — North America and
-  Europe — with the comment *"widen when customers are elsewhere."* The bundle sits inside
-  CloudFront's perpetual free tier, so every other market costs approximately nothing. One
-  line, and it now lives in `shared/`.
+- ~~**`frontend.tf` moves to `PriceClass_All`.**~~ **Done.** The old comment said "widen when
+  customers are elsewhere", which understated it: `PriceClass_100` is North America and
+  Europe, so it excluded **South America — where the company is**, and the first live check
+  of `app.freezehub.io` was duly served from Miami. The SPA is a few hundred kilobytes
+  inside CloudFront's perpetual free tier, so the wider class costs approximately nothing.
+  Applying this updates the distribution, which takes a few minutes and serves throughout.
 - **`terraform destroy` must be able to run** on `ecs/`: `deletion_protection` on RDS,
   `skip_final_snapshot = false`, and `prevent_destroy` on both secrets block it. Correct for
   production, wrong for a pre-customer beta. `singlebox/` has none of those blockers and is
