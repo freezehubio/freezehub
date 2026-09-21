@@ -33,9 +33,20 @@ on:
         type: choice
         options: [beta]
 
+# id-token is what makes this work without storing AWS credentials in GitHub: the runner
+# exchanges a short-lived OIDC token for a role, so there is no long-lived secret to leak
+# and nothing to rotate. The trust policy in infra/shared/github-oidc.tf is scoped to this
+# repository and this branch.
 permissions:
   contents: read
   id-token: write
+
+# Two deploys racing would leave the service on whichever image finished second, which is
+# not necessarily the newer one. Shared with the called workflows: a reusable workflow
+# inherits the caller's concurrency group, so this covers the build and the frontend too.
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
 
 jobs:
   image:
