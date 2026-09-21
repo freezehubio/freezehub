@@ -127,7 +127,10 @@ resource "aws_acm_certificate_validation" "frontend" {
 #                          directive, so allowing it here keeps <style> elements and
 #                          stylesheets strict. Without it the chart ships with every bar
 #                          collapsed to zero — the sort of thing a customer finds first.
-#   connect-src            the API, which is the only origin the application calls.
+#   connect-src            the API, and the Cognito Hosted UI's token endpoint. The SPA
+#                          exchanges its authorization code there itself (FZ-179), so
+#                          without it sign-in fails at the very last step, with a CSP
+#                          violation in the console and nothing useful on screen.
 #   frame-ancestors 'none' nothing embeds this, and a freeze console in somebody's iframe
 #                          is a clickjacking target with real consequences.
 #   img-src 'self'         no external image and no data: URI exists today. If one appears
@@ -148,7 +151,7 @@ resource "aws_cloudfront_response_headers_policy" "frontend" {
         "style-src-attr 'unsafe-inline'",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self'",
-        "connect-src 'self' https://${local.api_domain}",
+        "connect-src 'self' https://${local.api_domain} https://${local.cognito_domain}",
         "frame-ancestors 'none'",
         "base-uri 'none'",
         "form-action 'self'",

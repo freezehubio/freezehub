@@ -4113,3 +4113,53 @@ Acceptance:
 - `.env` is 0600 and gitignored, so it cannot reach the repository.
 - The secrets-at-rest trade is stated where the file is written, not only here.
 - The backup gap is raised rather than quietly folded in — it belongs to `FZ-155`.
+
+### FZ-179 — Nobody Could Sign In
+**Status:** DONE · **Raises** `OI-47`
+
+The product was deployed, creating real Cognito identities and validating real tokens, and
+**had no way for anyone to obtain one.** Signing in returned `401`.
+
+`SignInPage` posted to `/api/dev/token`, which exists only under the `local` profile. Its
+own comment said it would be *"replaced by a redirect to the Cognito Hosted UI at
+`FZ-063`"* — and `FZ-063` created the user pool without touching the frontend. **The
+replacement was never scheduled**, so it was never written, and nothing in the repository
+said so: the page looked finished and the comment pointed at a story that had shipped.
+
+**Authorization code with PKCE**, because the app client is public (`generate_secret =
+false`). Redirect to the Hosted UI, return to `/signin?code=`, exchange with the verifier
+this browser generated.
+
+**The access token is kept, not the ID token.** Cognito returns both from one issuer signed
+by one key, so anything checking only a signature accepts either — which is precisely what
+`FZ-128` refuses. Storing the ID token would produce a `401` that reads like a broken
+sign-in rather than a wrong token, and the test for it is named accordingly.
+
+**`state` is checked.** Without it a code from somebody else's authorization can be
+delivered to this callback and exchanged.
+
+**Local development is untouched.** The dev form remains when Cognito is unconfigured, and
+the choice is made by configuration rather than a mode flag — so there is no way to point
+the development sign-in at a deployed backend, whose endpoint would not exist anyway.
+
+**Three things had to change around it, none of them obvious from the page:**
+
+- **The CSP blocked the token exchange.** `connect-src 'self' https://api...` has no entry
+  for the Cognito domain, and the SPA POSTs there itself. Sign-in would have failed at the
+  last step with a console violation and nothing on screen.
+- **The build needs two more variables**, and the workflow now fails if they are missing —
+  without them the build silently ships the development form, which is `FZ-123`'s
+  localhost bug in a new place.
+- **The Hosted UI domain is derived in Terraform**, from the pool domain and the region,
+  rather than configured a third time.
+
+**Found by trying to sign in.** Nothing else would have: the backend was right, the pool
+was right, the certificates were right, and the gap was a story nobody wrote.
+
+Acceptance:
+
+- A deployed build redirects to Cognito and completes the exchange.
+- The stored credential is the access token, asserted by a test.
+- A mismatched `state`, a missing verifier, a refused exchange and a missing access token
+  each fail with a message naming the cause.
+- The local development form still works and is still the only thing local gets.
