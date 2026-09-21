@@ -89,7 +89,7 @@ authorization has to be *stored*: the timestamp, and the exact text shown at the
 given. An authorization that cannot be proven cannot be relied on.
 
 **This is not currently possible.** `demo_request` has no column for either, and the demo form
-has no such control. A checkbox alone would not close it — see `FZ-163`.
+has no such control. A checkbox alone would not close it — see `OI-37`.
 
 ## 5. Procedures
 
@@ -102,7 +102,7 @@ has no such control. A checkbox alone would not close it — see `FZ-163`.
 | **P-5** | Retention runs | Daily, one window per class, **emitting a count per class**. Silence is the failure mode that let a purge never execute once for as long as the application had existed (`FZ-114`). |
 | **P-6** | A secret leaks | API key → `revoked_at`, never cleared. Signing secret → rotate. Encryption key → re-encrypt everything, **which cannot currently be staged** (§7). |
 | **P-7** | A breach | Detect → contain → assess within 24h. As encargado, notify every affected responsable without delay. As responsable, notify the SIC. **Record every incident in a register regardless of notifiability** — "we had none" is not evidence. |
-| **P-8** | An operator touches production | Named operators, secrets from SSM Parameter Store, access reviewed quarterly. **`provision-organization.sh` writes no audit event** (`FZ-164`). |
+| **P-8** | An operator touches production | Named operators, secrets from SSM Parameter Store, access reviewed quarterly. **`provision-organization.sh` writes no audit event** (`OI-39`). |
 
 ## 6. Transmisión internacional
 
@@ -126,18 +126,19 @@ It is decided and not yet built (`FZ-149`); early deals are invoiced.
 
 ## 7. Known gaps
 
-| | Gap | Owner |
+None of these has a story yet. They are recorded in `09-open-issues.md`, which is where a gap
+with no owner belongs — naming a story ID before the story exists is how this section got its
+first version wrong, and the IDs it invented were claimed within a day by unrelated work.
+
+| | Gap | Issue |
 |---|---|---|
-| 1 | No way to delete a user — closes SOC 2 CC6.3 / ISO A.5.18 | `FZ-162` |
-| 2 | No way to delete an organization | `FZ-162` |
-| 3 | No export — serves both the access request and the grace-period takeout | `FZ-162` |
-| 4 | No pseudonymization on erasure | `FZ-162` |
-| 5 | No retention rule for `demo_request`, and no stored autorización | `FZ-163` |
-| 6 | Encrypted values carry `fzenc1:` — a *format* version, not a **key identifier** — so two keys cannot be live at once and rotation cannot be staged | `FZ-165` |
-| 7 | `provision-organization.sh` writes tenant rows and no audit event | `FZ-164` |
-| 8 | `notification.last_error` unbounded | `FZ-166` |
-| 9 | No DPA, subprocessor list, privacy notice or Política de Tratamiento | `FZ-167` |
-| 10 | No breach register | `FZ-168` |
+| 1 | **Nothing can be forgotten.** No way to delete a user, delete an organization, export an organization's data, or pseudonymize an identity on erasure | `OI-36` |
+| 2 | No retention rule for `demo_request`, and no stored autorización to prove under Art. 8(b) | `OI-37` |
+| 3 | Encrypted values carry `fzenc1:` — a *format* version, not a **key identifier** — so two keys cannot be live at once and rotation cannot be staged | `OI-38` |
+| 4 | `provision-organization.sh` writes tenant rows and no audit event | `OI-39` |
+| 5 | `notification.last_error` is unbounded `TEXT` | `OI-40` |
+| 6 | No DPA, subprocessor list, privacy notice or Política de Tratamiento | `OI-41` |
+| 7 | No breach register | `OI-42` |
 
 ## 8. What this does not cover
 
@@ -149,5 +150,5 @@ It is decided and not yet built (`FZ-149`); early deals are invoiced.
 - **No risk register, business continuity plan or vendor management policy.** Those describe a
   company, not a codebase.
 - **Legal wording is not drafted here.** The Política de Tratamiento, the DPA and the privacy
-  notice take their structure from this document and their language from a lawyer (`FZ-167`).
+  notice take their structure from this document and their language from a lawyer (`OI-41`).
 - **No SOC 2 report exists**, and nothing has run long enough to produce evidence for one.
