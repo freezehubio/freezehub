@@ -41,6 +41,23 @@ jobs:
             latest|main|master|"") echo "image_tag must be an exact tag, got '${{ inputs.image_tag }}'" >&2; exit 1 ;;
           esac
 
+      # FreezeHub asks FreezeHub (FZ-182). The connector this runs is the one customers
+      # run — `./connectors`, not a copy — so if it is wrong for us it is wrong for them.
+      #
+      # Before the AWS credentials step on purpose: a frozen deploy should not assume a
+      # role at all. The check needs no cloud access, only the Policy API and a key, which
+      # is also why it works while OI-43 keeps the rest of this workflow from running.
+      #
+      # It fails closed. If FreezeHub is unreachable this job stops, which is the
+      # behaviour we ask customers to accept and should therefore live with ourselves.
+      - name: Ask FreezeHub whether this may deploy
+        uses: ./connectors
+        with:
+          url: ${{ vars.FREEZEHUB_URL }}
+          api-key: ${{ secrets.FREEZEHUB_API_KEY }}
+          application: freezehub-backend
+          environment: ${{ vars.ENVIRONMENT || 'beta' }}
+
       - uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}

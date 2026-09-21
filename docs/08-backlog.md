@@ -4289,3 +4289,42 @@ Acceptance:
 - Every factual claim resolves to code, not to another document.
 - The scope semantics are demonstrated, not stated.
 - Nothing claims a capability that is not built.
+
+### FZ-182 — FreezeHub Asks FreezeHub
+**Status:** DONE · **Depends on** a catalog and an API key, both created by hand
+
+Both deploy workflows now call the deployment gate before deploying, using **the connector
+customers use** — `uses: ./connectors`, the composite action published as
+`ghcr.io/freezehubio/freeze-check:v1`, not a copy of it. If it is wrong for us it is wrong
+for them, which is the only version of dogfooding worth the name.
+
+**On deploy, not on pull requests.** The operator's first sketch put the check on PR
+checks. A freeze stops *deployments*, not merges — blocking a merge during a freeze is a
+different product, and wiring it that way would have taught us the wrong lesson about our
+own semantics on the first day of using it.
+
+**Before the AWS credentials step, in both.** A deploy that is not allowed should not
+assume a role at all. `deploy-frontend.yml` assumed credentials at step two, before
+anything needed them; that step now waits until after the check, so the reasoning holds in
+both files rather than being a sentence in one of them.
+
+**After the build, before the publish.** Building and testing during a freeze is fine —
+the freeze is about what reaches the environment. Checking first would also mean learning
+at minute zero of a ten-minute pipeline that you cannot ship, having wasted nothing but
+also having learned nothing the last step would not have told you.
+
+**It works despite `OI-43`.** The check needs the Policy API and a key, not AWS, so it runs
+while the rest of these workflows still cannot.
+
+**And it fails closed, against us.** If FreezeHub is unreachable, FreezeHub cannot deploy
+itself. That is the behaviour the guide asks customers to accept, and the first time it
+bites will be worth more than any amount of reasoning about whether it should.
+
+Acceptance:
+
+- Both workflows call `./connectors`, not an inlined script.
+- Neither assumes an AWS role before the check.
+- The application names match the catalog entries exactly: `freezehub-backend`,
+  `freezehub-frontend`.
+- `infra/README.md` lists the variable and the secret, with how to set the secret without
+  it reaching a shell history.
