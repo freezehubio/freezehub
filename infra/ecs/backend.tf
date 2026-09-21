@@ -226,6 +226,8 @@ resource "aws_ecs_task_definition" "backend" {
       value = "https://cognito-idp.${var.region}.amazonaws.com/${var.cognito_user_pool_id}" },
       { name = "FREEZEHUB_CORS_ALLOWED_ORIGINS", value = "https://${var.domain_name}" },
       { name = "FREEZEHUB_COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id },
+      { name = "FREEZEHUB_COGNITO_REGION", value = var.region },
+      { name = "FREEZEHUB_COGNITO_CLIENT_ID", value = var.cognito_user_pool_client_id },
       { name = "SPRING_DATASOURCE_URL",
       value = "jdbc:postgresql://${aws_db_instance.main.endpoint}/${aws_db_instance.main.db_name}" },
     ]
