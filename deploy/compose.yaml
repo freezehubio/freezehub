@@ -66,7 +66,19 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks: [internal]
+    # BOTH networks, and `edge` is the one that matters (FZ-180). `internal` is declared
+    # `internal: true`, which denies outbound routing entirely — so the backend could not
+    # resolve DNS, and every authenticated request failed 500 with an UnknownHostException
+    # fetching Cognito's JWKS.
+    #
+    # Joining `edge` publishes nothing: there is no `ports:` block here and inbound still
+    # only arrives through Caddy. What it grants is egress, which this application
+    # genuinely needs — Cognito's keys, SES, Slack, and customer webhooks.
+    # ../infra/ecs/network.tf spells out exactly that list for the other posture; this
+    # file never did, which is why the gap survived review.
+    #
+    # PostgreSQL stays on `internal` alone. That is what the split was always for.
+    networks: [edge, internal]
     logging: &logging
       driver: json-file
       options:
