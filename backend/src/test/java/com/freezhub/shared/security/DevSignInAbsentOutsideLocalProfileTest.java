@@ -9,9 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -41,10 +39,15 @@ import org.springframework.test.web.servlet.MockMvc;
         "freezehub.secrets.encryption-key=ZGV2ZWxvcG1lbnQtb25seS1rZXktbm90LXNlY3JldCE=",
         // Likewise, and for the same reason (FZ-046): neither has a default.
         "freezehub.cognito.user-pool-id=us-east-2_example",
-        "freezehub.cognito.region=us-east-2"
+        "freezehub.cognito.region=us-east-2",
+        // Since FZ-128 the deployed JwtDecoder is ours, and both of these are required
+        // for the same reason: a decoder that defaults its issuer trusts a pool nobody
+        // chose.
+        "freezehub.cognito.client-id=1baicl02uro0in2mv6gsr88mfk",
+        "spring.security.oauth2.resourceserver.jwt.issuer-uri=https://cognito-idp.us-east-2.amazonaws.com/us-east-2_example"
 })
 @AutoConfigureMockMvc
-@Import({ContainersConfig.class, DevSignInAbsentOutsideLocalProfileTest.DeployedShapedStubs.class})
+@Import(ContainersConfig.class)
 class DevSignInAbsentOutsideLocalProfileTest {
 
     @Autowired
@@ -71,22 +74,6 @@ class DevSignInAbsentOutsideLocalProfileTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"anyone@acme.test\"}"))
                 .andExpect(status().isUnauthorized());
-    }
-
-    @TestConfiguration
-    static class DeployedShapedStubs {
-
-        /** Stands in for the real Cognito decoder a deployed environment configures. */
-        @Bean
-        JwtDecoder jwtDecoder() {
-            return token -> {
-                throw new InvalidBearerTokenException("stub decoder");
-            };
-        }
-
-        // No IdentityProvider stub since FZ-046: the real CognitoIdentityProvider is the
-        // bean here, and that it constructs without credentials is part of what this
-        // context now proves.
     }
 
 }

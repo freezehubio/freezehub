@@ -50,6 +50,8 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: https://cognito-idp.${AWS_REGION:?}.amazonaws.com/${COGNITO_USER_POOL_ID:?}
       FREEZEHUB_COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:?}
       FREEZEHUB_COGNITO_REGION: ${AWS_REGION:?}
+      # The app client an access token must name in client_id, not aud (FZ-128).
+      FREEZEHUB_COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:?}
       # server.forward-headers-strategy is already `framework` in the default document of
       # application.yml, and `none` only under `local`. Not repeated here: the rate limiter
       # (FZ-087) depends on it and config that matters should live in one place.

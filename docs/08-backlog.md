@@ -2163,20 +2163,55 @@ once the date passes. That is the difference between a baseline and a blanket.
 entry — `CVE-2025-24813`, a tomcat CRITICAL — and it exits 1 and names it.
 
 ### FZ-128 — Enforce the Token Validation Rules
-**Status:** TODO · **Owns:** `OI-25` · **Sequenced with:** `FZ-046`
+**Status:** DONE · **Resolves** `OI-25` · **Sequenced after** `FZ-046`
 
-Implements what `06-security.md` § Token validation rules specifies: `token_use` is `access`,
-audience is validated against `client_id` rather than `aud`, and the issuer is configuration
-with no default.
+`CognitoJwtConfig` replaces the resource server's default `JwtDecoder` outside `local`.
+What it adds is the two checks the default does not make, because **Cognito issues ID
+tokens and access tokens from one issuer signed by one JWKS**: signature and expiry accept
+both.
 
-Acceptance is the negative half, because the positive half is what the library already does:
+- `token_use` must be `access` — the only claim that tells them apart.
+- The app client is read from `client_id`, **not** `aud`. Cognito populates `aud` on the
+  ID token only, so a validator configured on `aud` in the ordinary way validates an
+  absent claim: it passes everything while reporting that it checked something.
 
-- An **ID token** from the same pool is refused with `401`.
-- A token from **another pool** is refused with `401`.
-- A token for **another app client** is refused with `401`.
+**Two findings while building it, both of which changed the implementation.**
 
-Not built ahead of `FZ-046`, for the reason `D-4` gives about that adapter: a validator
-written against a pool nothing can reach is a validator that has never refused anything.
+*`withIssuerLocation` is not lazy.* It fetches the pool's OpenID configuration at bean
+creation, so the application could not start unless Cognito answered — which the
+deployed-shaped test proved immediately by failing to boot. A context that cannot start
+during a Cognito outage cannot serve the Policy API during one either, and that endpoint
+answers from the database and needs no human's token. `withJwkSetUri` against Cognito's
+documented constant path gets the same keys, lazily. Nothing is lost: the issuer is still
+validated, against the same configured value the URI is built from.
+
+*A 401 is too weak an assertion, and so is `invalid_token`.* `/api/me` answers both when
+the token is perfectly valid but its subject matches no user row — the application reports
+that as `invalid_token` too. Every rejection test would have passed with none of this
+story's code present. What discriminates is **how far the request got**: a token stopped
+by a validator never reaches user provisioning, so the tests assert on the presence or
+absence of that later failure. The positive case asserts it *is* reached, which is what
+proves the token was accepted.
+
+That second one is the `FZ-114`/`FZ-121` failure mode this repository has now hit three
+times — a guard whose test exercised a path production does not use — caught before merge
+rather than after.
+
+**The client id is wired where it is consumed, in this story.** `compose.yaml`, the deploy
+workflow, and `infra/ecs/backend.tf` — which also gained the `FREEZEHUB_COGNITO_REGION` it
+was missing. `OI-44` was exactly this omission one story ago; repeating it immediately
+afterwards would have been hard to excuse.
+
+Acceptance, all met by test:
+
+- An **ID token** from the same pool, a token from **another pool**, and a token for
+  **another app client** are each refused, with a correctly signed and unexpired token.
+- A local development token — no `token_use`, no `client_id` — is refused.
+- An access token with the client in `aud` instead of `client_id` is refused.
+- A genuine access token is **not** refused, without which none of the above means
+  anything.
+- The issuer is configuration with no default, so an environment that omits it does not
+  start.
 
 ### FZ-129 — Response Headers on the Distribution
 **Status:** DONE · **Owns:** `OI-26`

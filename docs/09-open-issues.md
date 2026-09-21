@@ -300,7 +300,9 @@ than with the adapter, which is why it is an issue and not a silent addition to 
 
 ### OI-25 — Token validation for a deployed environment is unspecified
 
-**Severity:** Decision · **Owner:** `FZ-128` · **Found in:** `FZ-125`
+**Severity:** Decision · **RESOLVED by** `FZ-128` · **Found in:** `FZ-125`
+
+**Closed.** `CognitoJwtConfig` replaces the resource server's default decoder outside `local`, carrying `CognitoTokenValidators.forPool` — issuer, `token_use=access`, and the app client read from `client_id` rather than `aud`. Thirteen tests, eleven of them negative; five present a correctly signed token to the real filter chain and assert a validator stopped it.
 
 There is no `issuer-uri` and no `JwtDecoder` outside the `local` profile, consistent with `OI-2`. So the rules a deployed environment will validate against have never been written, and `FZ-046` would otherwise choose them while implementing them.
 

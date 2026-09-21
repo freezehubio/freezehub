@@ -101,3 +101,8 @@ variable "aws_account_id" {
     error_message = "An AWS account id is twelve digits."
   }
 }
+
+variable "cognito_user_pool_client_id" {
+  description = "The app client an access token must name in client_id (FZ-128). Validated against, not merely configured: without it the decoder would accept any token the pool signed."
+  type        = string
+}

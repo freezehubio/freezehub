@@ -57,6 +57,7 @@ jobs:
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
           API_DOMAIN: ${{ vars.API_DOMAIN }}
           COGNITO_USER_POOL_ID: ${{ vars.COGNITO_USER_POOL_ID }}
+          COGNITO_CLIENT_ID: ${{ vars.COGNITO_CLIENT_ID }}
         run: |
           set -euo pipefail
 
@@ -80,6 +81,7 @@ jobs:
           \"export APP_DOMAIN=${APP_DOMAIN}\",\
           \"export AWS_REGION=${AWS_REGION}\",\
           \"export COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}\",\
+          \"export COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID}\",\
           \"export DATABASE_PASSWORD=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/database-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION)\",\
           \"export ENCRYPTION_KEY=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/encryption-key --with-decryption --query Parameter.Value --output text --region $AWS_REGION)\",\
           \"docker compose pull\",\
