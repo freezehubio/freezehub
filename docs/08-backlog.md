@@ -3609,3 +3609,8 @@ Acceptance:
 - No module can inherit a region by accident — `bootstrap/` keeps a default because it runs
   before anything exists, and it is now one that works.
 - Customer-facing residency wording still says United States, because it still is.
+
+**One thing arrived incidentally and is kept deliberately:** `infra/bootstrap/.terraform.lock.hcl`
+is now tracked. Every other module already tracked its lock file and `bootstrap/` did not —
+the same module, overlooked the same way, as the region default above. Disclosed rather
+than left to be noticed in a diff.
