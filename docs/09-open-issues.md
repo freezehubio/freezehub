@@ -205,6 +205,32 @@ guide's step applies and should be done. If it does not, `16-accounts.md` §2 ne
 sentence saying so — leaving an instruction that cannot be followed is how a reader learns
 to skip the ones that can.
 
+### OI-46 — The nightly backup is not installed on the box, and never was
+**Severity:** Blocker · **Owner:** `FZ-155` · **Found in:** `FZ-178`
+
+`deploy/backup.sh`, `freezehub-backup.service` and `freezehub-backup.timer` exist in the
+repository. **Nothing puts them on the box.** `deploy-singlebox.yml` sends `compose.yaml`
+and `Caddyfile` and nothing else; `user-data.sh` installs Docker and stops. Checked on the
+running instance: no timer, no unit, no `/opt/freezehub/backup.sh`, and an empty bucket.
+
+**`FZ-155` describes itself as "script written; the restore drill is what completes it".
+That premise is wrong** — there is nothing to drill. The script has never run and could not
+have, and even once installed it would have failed until `FZ-178`, because it calls
+`docker compose exec`.
+
+**Why this matters more here than it would elsewhere.** `D-35` puts PostgreSQL on the
+instance's root volume with `delete_on_termination = true`. The nightly `pg_dump` to S3 is
+the *only* thing between an instance replacement and total data loss. There is no RDS
+snapshot, no second volume, nothing else.
+
+**Free to fix today, expensive the moment it is not.** There is no data yet. The first
+provisioned organization changes that, and the interval between "first customer" and "first
+backup" is the one window in this product's life where losing the box loses everything.
+
+Two things, and the second is what `FZ-155` was always about: ship the three files and
+enable the timer as part of the deploy, then run a restore and prove the dump is readable.
+A backup nobody has restored is a file of unknown contents.
+
 ### OI-2 — No real Cognito identity provider
 
 **Severity:** Gap · **RESOLVED by** `FZ-046` · **Found in:** `FZ-016`

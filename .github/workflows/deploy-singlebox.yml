@@ -61,6 +61,20 @@ jobs:
         run: |
           set -euo pipefail
 
+          # The values go into /opt/freezehub/.env rather than being exported for the
+          # length of one command (FZ-178).
+          #
+          # Exporting them made every subsequent `docker compose` fail: compose.yaml uses
+          # ${VAR:?} throughout, so interpolation needs them for `ps` and `logs` and `exec`
+          # too, not only for `up`. Every command in 14-operations.md is a `docker compose`
+          # command, which meant the runbook written to diagnose a broken box could not be
+          # run on one. Found by trying to use it.
+          #
+          # The file holds the database password and the encryption key at 0600. That is a
+          # real cost and it is smaller than it looks: both values are already readable by
+          # anyone who can run docker here, through `docker inspect` or /proc/<pid>/environ.
+          # It does not widen who can read them; it removes a runbook nobody could use.
+          #
           # The stack files travel with the command rather than being baked into the AMI,
           # so what runs on the box is what is in this commit and can be diffed.
           COMPOSE_B64=$(base64 < deploy/compose.yaml | tr -d '\n')
@@ -76,14 +90,17 @@ jobs:
           \"echo $COMPOSE_B64 | base64 -d > compose.yaml\",\
           \"echo $CADDY_B64 | base64 -d > Caddyfile\",\
           \"aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${REGISTRY%%/*}\",\
-          \"export BACKEND_IMAGE=${REGISTRY}:${IMAGE_TAG}\",\
-          \"export API_DOMAIN=${API_DOMAIN}\",\
-          \"export APP_DOMAIN=${APP_DOMAIN}\",\
-          \"export AWS_REGION=${AWS_REGION}\",\
-          \"export COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}\",\
-          \"export COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID}\",\
-          \"export DATABASE_PASSWORD=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/database-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION)\",\
-          \"export ENCRYPTION_KEY=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/encryption-key --with-decryption --query Parameter.Value --output text --region $AWS_REGION)\",\
+          \"umask 077\",\
+          \"rm -f .env\",\
+          \"echo BACKEND_IMAGE=${REGISTRY}:${IMAGE_TAG} >> .env\",\
+          \"echo API_DOMAIN=${API_DOMAIN} >> .env\",\
+          \"echo APP_DOMAIN=${APP_DOMAIN} >> .env\",\
+          \"echo AWS_REGION=${AWS_REGION} >> .env\",\
+          \"echo COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID} >> .env\",\
+          \"echo COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID} >> .env\",\
+          \"echo DATABASE_PASSWORD=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/database-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
+          \"echo ENCRYPTION_KEY=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/encryption-key --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
+          \"chmod 600 .env\",\
           \"docker compose pull\",\
           \"docker compose up -d --wait --wait-timeout 180\",\
           \"docker image prune -f\"]" \

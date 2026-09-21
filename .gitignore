@@ -15,3 +15,7 @@ backend/target/
 design_handoff_*/
 *.zip
 FreezeHub?UI?mockups/
+
+# Written on the box by the deploy (FZ-178). It holds the database password and the
+# encryption key, so it must never reach the repository.
+.env
