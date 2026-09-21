@@ -205,6 +205,24 @@ it must use the raw bytes. `https://webhook.site` is enough to see the headers a
 
 ---
 
+## Releasing, on the single box
+
+Three workflows, because two of the three steps are shared with the ECS posture and one is
+not (`FZ-166`):
+
+| Order | Workflow | Does |
+|---|---|---|
+| 1 | **Build image** | Builds `linux/arm64`, pushes to ECR, prints the tag |
+| 2 | **Deploy single-box** | Sends the tag to the box by SSM and waits for the real outcome |
+| 3 | **Deploy frontend** | Builds the SPA, syncs to S3, invalidates CloudFront |
+
+Step 3 is independent of the other two — a frontend-only release is step 3 alone, and it
+touches no compute.
+
+**Do not run `Deploy`.** That workflow is the ECS posture: it builds, rolls out a task
+definition, and publishes the frontend in one dispatch. On this posture there is no cluster
+for it to roll out to, and it would fail after pushing the image.
+
 ## "A deploy failed"
 
 The workflow polls the command and fails on the real outcome rather than on the API having
@@ -215,7 +233,7 @@ aws ssm get-command-invocation --command-id "$COMMAND_ID" \
   --instance-id "$INSTANCE_ID" --query StandardErrorContent --output text
 ```
 
-**Rollback is the same workflow with an earlier `image_tag`.** There is nothing else to undo:
+**Rollback is `Deploy single-box` again with an earlier `image_tag`** — no rebuild, because the image for that tag is still in ECR. There is nothing else to undo:
 the stack files travel with each deploy, so redeploying a previous tag restores both the
 image and the configuration that shipped with it.
 

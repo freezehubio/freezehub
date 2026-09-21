@@ -2488,7 +2488,7 @@ bootstrap sequence and is history rather than a live schedule. The path lives in
 document.
 
 ### FZ-138 — Who Owns Production
-**Status:** TODO · **Owns:** `OI-32` · **Blocked on:** two human actions
+**Status:** TODO · **Owns:** `OI-32` · **How:** `docs/16-accounts.md` (`FZ-164`) · **Blocked on:** two human actions
 
 `infra/README.md` told you to use an IAM role rather than account root and never said which
 account any of it belongs in. The target today is the operator's personal AWS account, where
@@ -3169,7 +3169,7 @@ anyone can sign up for does not get to choose where its data subjects live.
 ### FZ-161 — Data Protection Specification
 **Status:** DONE
 
-Specification only, no code: `docs/16-data-protection.md`.
+Specification only, no code: `docs/17-data-protection.md`.
 
 **Two roles, and the document turns on the difference.** FreezeHub is *encargado* for what a
 customer puts in — `users`, `audit_event`, `deployment_check`, the catalog — and *responsable*
@@ -3228,6 +3228,67 @@ line and body disagree is the signature.
 
 Resolves `OI-35`: `FZ-123` is the beta apply, and the restored body says so.
 
+### FZ-163 — Each Module Gets Its Own tfvars Example
+**Status:** DONE
+
+`FZ-159` split the estate into three root modules and left `terraform.tfvars.example` at the
+old root, belonging to none of them. `infra/README.md` then told you to copy it *upwards*
+into `shared/` — which works, and hands that module a file full of `db_instance_class`,
+`backend_cpu` and `backend_desired_count`, none of which it declares. Terraform warns on
+on an undeclared value rather than failing, so the first apply of the project would have been
+preceded by a wall of warnings that are not wrong about anything.
+
+It is a small thing that sits in an expensive place: it is the **first file anybody touches**
+when applying, and warnings on a first apply are exactly when a person cannot tell noise from
+a real problem.
+
+Now one per module, each carrying only what that module declares:
+
+- `shared/` — region, domain, hosted zone, and the repository the OIDC trust policy is scoped
+  to. Applied first, because both compute postures read its outputs.
+- `ecs/` — the same three, plus the four values pasted from `shared`'s outputs, with the
+  exact `terraform -chdir=../shared output` commands in a comment above them.
+- `singlebox/` — unchanged from `FZ-152`.
+
+`ecs/`'s header says plainly that the beta runs on `singlebox/` and that applying both means
+paying for both — the same trap `FZ-159` fixed in the Terraform, restated where somebody
+about to run `apply` will actually read it.
+
+### FZ-164 — How to Create the Accounts
+**Status:** DONE · **Serves** `FZ-138`
+
+`FZ-138` says *what* must exist — an Organization, a production member account, root secured,
+a role for Terraform. It does not say how, and "create an AWS Organization" is an hour of
+console archaeology for somebody who has not done it before. `docs/16-accounts.md` is the
+sequence.
+
+**The decision inside it is Identity Center rather than an IAM user.** The obvious path is an
+IAM user with an access key in `~/.aws/credentials`, and it is the wrong one for the same
+reason `infra/README.md` gives about root keys: a long-lived credential on a laptop cannot be
+scoped down after issue, cannot be rotated without coordination, and survives the laptop
+being lost. Identity Center is free, issues temporary credentials, and is the piece that does
+not need redoing when a second person arrives.
+
+**It admits what it compromises on.** Terraform runs as an administrator-equivalent role,
+because Terraform creates IAM roles and policies — so a least-privilege Terraform role needs
+`iam:CreateRole` and `iam:PutRolePolicy`, which is escalation to anything it can create.
+Saying that plainly is better than a policy that looks scoped and is not. What makes it
+acceptable is the credential being temporary, MFA-gated and recorded; `D-23`'s trigger for
+revisiting is the same one — somebody who should not be an administrator needing to run it.
+
+**It documents break-glass and says to test it now.** `OrganizationAccountAccessRole` from
+the management account, and production root with its MFA device. A recovery path nobody has
+walked does not exist, which is `FZ-155`'s argument about restores applied to access.
+
+**One claim elsewhere in the repository depended on something nobody had checked.** `FZ-152`
+and `FZ-154` both say deploys are "recorded in CloudTrail". CloudTrail Event history is on by
+default, free, and retains **90 days** — so the claim holds, and now says for how long. It
+also notes what it does not cover: the API call that opened an SSM session is recorded, not
+what was typed inside it.
+
+Ends by naming the prerequisite AWS cannot satisfy on its own — a domain with a Route 53
+hosted zone that already delegates it, without which both certificate validations hang.
+
 ### FZ-165 — Owners That Belonged to Other Stories
 **Status:** DONE · **Fixes** two defects in `FZ-161` · **Owns:** `OI-36` … `OI-42`
 
@@ -3235,7 +3296,12 @@ Resolves `OI-35`: `FZ-123` is the beta apply, and the restored body says so.
 
 **It shared a number with the operations runbook.** `docs/14-operations.md` was `DONE` in the
 backlog when the number was chosen, but its file had not merged yet — so `docs/` looked free
-at 14 and was not. Renamed to `16-`; 15 is the migration guide.
+at 14 and was not.
+
+**Then the repair collided too.** This story first renamed it to `16-`, and `docs/16-accounts.md`
+landed from `FZ-164` while the pull request was open — the same mistake inside the fix for it.
+It is `17-` now, chosen by listing `docs/` across **every remote branch** rather than on
+`master`, which is the only check that would have caught either one.
 
 **Its §7 named seven stories that did not exist.** `FZ-162` through `FZ-168` were invented to
 give ten gaps an owner, and **every one of those IDs was claimed within a day by unrelated
@@ -3256,7 +3322,41 @@ enough — `FZ-147` exists because of this, and it was not run before §7 was wr
 Acceptance:
 
 - No file in `docs/` shares a number with another.
-- No reference in `16-data-protection.md` names a story that does not exist or belongs to
+- No reference in `17-data-protection.md` names a story that does not exist or belongs to
   unrelated work.
 - Every gap in §7 resolves to an issue in `09-open-issues.md`.
 - `CLAUDE.md` and the `FZ-161` entry name the new path.
+### FZ-166 — Nothing Built an Image for the Box
+**Status:** DONE
+
+`FZ-154` deploys the single box from an image tag that **must already exist in ECR**, which
+is right — it is what makes rollback a redeploy rather than a rebuild. Nothing produced one.
+
+`deploy.yml` was a single job that built the image, rolled out an ECS task definition and
+published the SPA. On the single-box posture (`D-35`) it cannot run: there is no cluster, so
+it would push the image and then fail on `aws ecs describe-task-definition` — **reporting
+red after a successful push**, which is the worst of both outcomes because the image is
+there and the workflow says it is not.
+
+**Two of those three steps are shared, and the split follows `FZ-159`'s.** The ECR repository
+and the SPA bucket both live in `infra/shared` and serve either posture, so building the
+image and publishing the frontend cannot be steps inside an ECS rollout.
+
+| | Runs on | Callable |
+|---|---|---|
+| `build-image.yml` | both | dispatched, and called by `deploy.yml` |
+| `deploy-frontend.yml` | both | dispatched, and called by `deploy.yml` |
+| `deploy.yml` | ECS only | dispatched; now `image → rollout → frontend` |
+| `deploy-singlebox.yml` | the box | unchanged |
+
+**`deploy-singlebox.yml` is deliberately untouched.** It still takes an exact tag rather than
+building one, because a workflow that builds on every deploy cannot roll back — and rolling
+back to a tag already in ECR is the fastest recovery the box has.
+
+**The same class of gap as `FZ-159`, found the same way.** Each half assumed the other
+existed: the Terraform assumed a shared estate that could be applied alone, and the deploy
+workflows assumed a posture that could build. Both were found by reading what a person would
+actually have to run, in order, rather than by anything failing — nothing can fail yet.
+
+`14-operations.md` gains a *Releasing* section naming the three workflows in order, and
+saying not to run `Deploy` on this posture.

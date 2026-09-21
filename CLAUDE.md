@@ -135,7 +135,8 @@ Additional documentation is created just-in-time when implementation requires it
 - `docs/13-validation.md`  — created by FZ-137
 - `docs/14-operations.md`  — created by FZ-156
 - `docs/15-migration.md`   — created by FZ-157
-- `docs/16-data-protection.md` — created by FZ-161
+- `docs/16-accounts.md`    — created by FZ-164
+- `docs/17-data-protection.md` — created by FZ-161
 - `backend/CLAUDE.md`
 - `frontend/CLAUDE.md`
 

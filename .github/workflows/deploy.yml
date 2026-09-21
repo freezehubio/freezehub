@@ -14,6 +14,13 @@
 # time it runs. The one behaviour change that had to be read rather than watched is
 # `configure-aws-credentials` v5 altering how invalid *boolean* inputs are handled; this
 # workflow passes none, only `role-to-assume` and `aws-region`.
+#
+# **Three workflows since FZ-166, not one.** This file was a single job that built the
+# image, rolled out ECS and published the SPA. Two of those three are shared with the
+# single-box posture (D-35), and on that posture this workflow cannot run at all — it
+# would push the image and then fail on `aws ecs describe-task-definition`. The build and
+# the frontend publish are now `build-image.yml` and `deploy-frontend.yml`, callable
+# alone; what is left here is the part that is genuinely ECS.
 name: Deploy
 
 on:
@@ -28,20 +35,30 @@ on:
 
 # id-token is what makes this work without storing AWS credentials in GitHub: the runner
 # exchanges a short-lived OIDC token for a role, so there is no long-lived secret to leak
-# and nothing to rotate. The trust policy in infra/github-oidc.tf is scoped to this
+# and nothing to rotate. The trust policy in infra/shared/github-oidc.tf is scoped to this
 # repository and this branch.
 permissions:
-  id-token: write
   contents: read
+  id-token: write
 
 # Two deploys racing would leave the service on whichever image finished second, which is
-# not necessarily the newer one.
+# not necessarily the newer one. Shared with the called workflows: a reusable workflow
+# inherits the caller's concurrency group, so this covers the build and the frontend too.
 concurrency:
   group: deploy-${{ inputs.environment }}
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  image:
+    uses: ./.github/workflows/build-image.yml
+    with:
+      environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+
+  rollout:
+    needs: image
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
 
@@ -55,25 +72,6 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@v2
         id: ecr
-
-      # The commit, not `latest`: a tag always means one image, so a rollback is
-      # redeploying an older tag rather than rebuilding and hoping.
-      - name: Resolve the image tag
-        id: image
-        run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-
-      - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v4
-
-      # linux/arm64 because the Fargate task runs ARM64 — cheaper per vCPU-hour, and an
-      # amd64 image would simply fail to start there.
-      - name: Build and push the image
-        uses: docker/build-push-action@v7
-        with:
-          context: backend
-          platforms: linux/arm64
-          push: true
-          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ steps.image.outputs.tag }}
 
       # A new task definition revision, not `--force-new-deployment`: forcing a
       # deployment redeploys whatever revision the service currently has, and that one
@@ -92,7 +90,7 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: backend
-          image: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ steps.image.outputs.tag }}
+          image: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ needs.image.outputs.image_tag }}
 
       # Deliberately NOT `terraform apply`. Applying from CI would need a role able to
       # change the database, the certificates and the user pool — far more than deploying
@@ -110,27 +108,11 @@ jobs:
           service: ${{ vars.ECS_SERVICE }}
           wait-for-service-stability: true
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Build the frontend
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build
-
-      # --delete so a file removed from the build is removed from the bucket; otherwise a
-      # deleted page keeps being served indefinitely.
-      - name: Publish the frontend
-        run: aws s3 sync frontend/dist "s3://${{ vars.FRONTEND_BUCKET }}" --delete
-
-      # Without this, CloudFront keeps serving the previous build until the cache expires,
-      # and the deploy looks like it did nothing.
-      - name: Invalidate the cache
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
-            --paths '/*'
+  frontend:
+    needs: rollout
+    uses: ./.github/workflows/deploy-frontend.yml
+    with:
+      environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write

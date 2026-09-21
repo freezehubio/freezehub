@@ -99,7 +99,7 @@ No DPA, no published subprocessor list, no privacy notice, and no Política de T
 Datos Personales — the last of which is a **statutory** instrument under Decreto 1377 Art. 13
 for a Colombian *responsable*, not an optional courtesy.
 
-`16-data-protection.md` supplies the structure and the substance for all four. What it cannot
+`17-data-protection.md` supplies the structure and the substance for all four. What it cannot
 supply is the wording, the company's identifying details, or the confirmation of whether the
 databases must be registered in the RNBD — that threshold turns on total assets in UVT and
 wants checking against the current figure.
