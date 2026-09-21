@@ -291,6 +291,35 @@ docker compose exec -T postgres psql -U freezehub -d restore_check -c \
 Compare those counts against the live database. **Record the output of a real run in this
 section** — a drill nobody wrote down is a drill nobody can prove happened.
 
+### The drill, performed 2026-09-21
+
+Against `freezehub-2026-09-21T16-58-30Z.sql.gz`, the first backup the service ever produced.
+Downloaded with operator credentials — the box cannot read its own backups — and restored
+into a scratch database, never the live one.
+
+```text
+dump                  55 715 bytes uncompressed, 7 735 gzipped
+restore               0 errors
+tables                21
+liquibase changesets  28
+constraints           185
+organization          0 rows
+```
+
+**Each number answers a different question**, which is why the check is not simply "did
+psql exit zero":
+
+- **21 tables** — the schema is whole, not the prefix of a truncated dump.
+- **28 changesets** — `databasechangelog` came through, so a restored box continues from
+  where the original was rather than re-running every migration.
+- **185 constraints** — foreign keys and checks survived. A dump that restores tables and
+  loses constraints looks healthy until the first bad write.
+- **0 organizations** — correct, the database was empty. This is the number to watch when
+  it should no longer be zero.
+
+The scratch database was dropped afterwards. **Run this again once there is real data**: a
+drill against an empty database proves the mechanism and nothing about the contents.
+
 The instance can write backups and not read them (`FZ-152`), deliberately: a backup the box
 can read back is one an attacker on the box can read back. Restores use your credentials,
 not the instance's.

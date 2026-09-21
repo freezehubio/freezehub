@@ -3111,7 +3111,7 @@ Acceptance:
 - Rollback is redeploying an earlier tag, and that is written down.
 
 ### FZ-155 — Backups, and a Restore Somebody Has Run
-**Status:** TODO · **Script written; the restore drill is what completes it**
+**Status:** DONE · **Resolves** `OI-46` · **Drill performed:** 2026-09-21
 
 Nightly `pg_dump` to S3, with lifecycle expiry.
 
@@ -4113,3 +4113,40 @@ Acceptance:
 - `.env` is 0600 and gitignored, so it cannot reach the repository.
 - The secrets-at-rest trade is stated where the file is written, not only here.
 - The backup gap is raised rather than quietly folded in — it belongs to `FZ-155`.
+
+### FZ-155 — the drill, and what it found
+**Appended 2026-09-21, completing the entry above.**
+
+**The script was never installed.** `OI-46`: no `backup.sh` on the box, no unit, no timer,
+an empty bucket. `deploy-singlebox.yml` shipped `compose.yaml` and `Caddyfile` and nothing
+else, and `user-data.sh` installs Docker and stops. This entry said "script written; the
+restore drill is what completes it", which was wrong in a way nobody could see from the
+repository — the script existed, it simply had never been anywhere near the box.
+
+The deploy now ships all three files, writes `backup.env`, and enables the timer. Armed for
+03:17 UTC, confirmed on the instance.
+
+**The drill, performed rather than described:**
+
+```text
+dump                  55 715 bytes uncompressed, 7 735 gzipped
+restore               0 errors
+tables                21
+liquibase changesets  28
+constraints           185
+```
+
+**Four numbers because "psql exited zero" is not a passing restore.** The schema is whole
+rather than a truncated prefix; `databasechangelog` survived, so a restored box continues
+instead of re-running every migration; constraints survived, and a dump that restores
+tables but loses foreign keys looks healthy until the first bad write; and the row count
+is the one to watch when it should stop being zero.
+
+**The restore used operator credentials, not the box's** — `WriteBackupsNeverReadThem`
+means the instance can upload and cannot download, so the drill exercised the same path a
+real recovery would. That guard turned out to shape the procedure rather than obstruct it,
+which is the good outcome for a guard.
+
+**It proves the mechanism and not the contents.** The database was empty. The entry stays
+useful only if the drill runs again once there is something to lose — `14-operations.md`
+says so where the numbers are recorded.
