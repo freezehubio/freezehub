@@ -1857,7 +1857,7 @@ Acceptance: a measured CPU/memory pair, a `MaxRAMPercentage` value, and a writte
 choice with the egress and architecture questions answered rather than assumed.
 
 ### FZ-123 — Apply the Beta Deployment
-**Status:** TODO · **Code landed; the apply is what completes it** · **Resolves:** `OI-15`, `OI-21`
+**Status:** DONE · **Resolves** `OI-15`, `OI-21` · **Deployed:** 2026-09-21
 
 **No longer blocked.** The account exists (`FZ-175`), `bootstrap/` and `shared/` are applied,
 and the identity work the whole thing waited on is done (`FZ-046`, `FZ-128`, `FZ-176`).
@@ -1892,9 +1892,42 @@ Still true, and still to do:
 No longer applicable: `backend_desired_count` is an `ecs/` variable that the box does not
 use, and `FZ-121` shipped the locking its old note was waiting on.
 
-Acceptance is unchanged in substance — a public URL serving the frontend and the API, with
-certificates valid and Liquibase migrated — and `FZ-153` has already confirmed by execution
-that none of it can serve anything until `FZ-046` exists.
+**Acceptance met.** `https://app.freezehub.io` serves the SPA and
+`https://api.freezehub.io/actuator/health` answers `{"status":"UP"}`, both on valid
+certificates, with Liquibase migrated and protected routes answering `401`. The API's
+certificate is Let's Encrypt, obtained by Caddy without intervention — which is the saving
+`D-35` is built on, working rather than assumed.
+
+What was applied, in order: `bootstrap/`, `shared/`, `singlebox/`. One `linux/arm64` image
+built under emulation and pushed to ECR as `:v1`. Deployed by hand, because `OI-43` still
+blocks the workflow.
+
+**Three things the deploy found, none of which any test could have.**
+
+*The deploy script used the wrong profile.* `terraform output` cannot read the session
+`aws login` writes, so every value it fetched failed. `FZ-175` documented exactly this gap
+and the script still defaulted to the wrong profile — knowing a trap is not the same as
+having removed it.
+
+*Transcribing the workflow's escaping was wrong even though transcribing the workflow was
+right.* `deploy-singlebox.yml` escapes for YAML, then JSON, then shell. A hand-run has no
+YAML layer, so the literal `\\\$(` lost its `$` and the remote shell died on a bare `(`.
+Rebuilt with `jq`, which constructs the JSON array rather than counting backslashes: the
+commands stay byte-identical to the workflow's and the quoting is correct for its context.
+**The workflow still hand-escapes**, which is the fragile half of this and now has a known
+better pattern next to it.
+
+*The frontend would have shipped pointing at localhost.* `client.ts` falls back to
+`http://localhost:8099` when `VITE_API_BASE_URL` is unset, its comment says "any deployed
+build sets VITE_API_BASE_URL", and `deploy-frontend.yml` **never set it**. The value is
+baked in at build time with no runtime override, so a browser could not have been told
+otherwise. Found by building by hand and checking what was in the bundle. The workflow now
+sets it from `vars.API_BASE_URL` and **fails if it is empty**, because a deploy that
+silently produces a broken site is worse than one that stops.
+
+The same shape as `FZ-159`, `FZ-166`, `OI-44` and `FZ-176` before it: two halves built in
+different stories, each assuming the other. This is the fifth, and the first found by a
+thing actually running rather than by reading.
 
 ## Milestone 14 — What Beta Found
 

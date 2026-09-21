@@ -145,6 +145,10 @@ ENVIRONMENT                (beta)
 APP_DOMAIN                 domain_name                 the SPA host, e.g. app.example.com
 API_DOMAIN                 api_domain_name             the API host, e.g. api.example.com
 COGNITO_USER_POOL_ID       cognito_user_pool_id        (../shared)
+COGNITO_CLIENT_ID          cognito_user_pool_client_id (../shared)
+FRONTEND_BUCKET            frontend_bucket             (../shared)
+CLOUDFRONT_DISTRIBUTION_ID cloudfront_distribution_id  (../shared)
+API_BASE_URL               https://<api_domain_name>   baked into the bundle at build time
 ```
 
 **`API_DOMAIN` is set, not derived.** It used to be `api.$APP_DOMAIN` here, which produced `api.app.example.com` once the SPA moved to a subdomain — and that hostname is the one in every customer's CI configuration (`FZ-174`, `FZ-176`).
