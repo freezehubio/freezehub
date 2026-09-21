@@ -22,6 +22,102 @@ Severity is about consequence if it reaches beta, not effort:
 
 ## Open
 
+### OI-36 — Nothing can be forgotten
+**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
+
+There is no way to delete a user, no way to delete an organization, no export, and no
+pseudonymization on erasure. Not in the API, not in a script. **Every account ever created is
+permanent**, along with its Cognito identity and every `deployment_check` row naming a
+deploying engineer.
+
+Four capabilities, one issue, because they are the same request arriving from different
+directions: a departing employee, a cancelled customer, an access request, an erasure demand.
+Building any one of them alone leaves the others answered by hand against the database.
+
+**Deletion closes SOC 2 CC6.3 and ISO A.5.18**, and pseudonymization is what lets erasure
+coexist with the unlimited audit retention `11-commercial.md` sells — one random token per
+erasure, applied to every row naming the person, mapping stored nowhere. The event survives,
+the attribution does not.
+
+**Urgent before `FZ-082`, not after.** While accounts are hand-provisioned this is a gap.
+Self-serve signup turns it into a promise that cannot be kept, made to people nobody has met.
+
+### OI-37 — `demo_request` has no retention and no provable autorización
+**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
+
+Two problems in the one table FreezeHub is *responsable* for.
+
+**No retention.** Rows are kept forever, holding name, email, company and free text about
+people who never became customers. Empty today, which is why it reads as a design note rather
+than a defect — `FZ-111` is what fills it.
+
+**No provable autorización.** Ley 1581 Art. 9 makes *autorización previa, expresa e informada*
+the general basis, and Art. 8(b) gives the titular the right to demand **proof** of it. Proof
+means the timestamp and the exact text shown at the moment it was given. `demo_request` has a
+column for neither, so **a checkbox on the form would not close this** — it is a schema
+change.
+
+### OI-38 — Encryption key rotation cannot be staged
+**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
+
+`AesGcmSecretProtector` stores values as `fzenc1:` plus Base64. That prefix is a **format**
+version, not a **key** identifier, so nothing records which key encrypted a given value and
+two keys cannot be live at once.
+
+Rotation is therefore an all-at-once re-encryption with downtime, and a partially completed
+one is unrecoverable — there is no way to tell a value encrypted under the old key from one
+encrypted under the new.
+
+**A key identifier in the prefix is a small change now and a live-data migration later.**
+Nothing is deployed, so today it costs almost nothing.
+
+### OI-39 — Provisioning writes tenant rows and records nothing
+**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
+
+`scripts/provision-organization.sh` inserts directly into `organization`, `users` and
+`subscription`, and writes no `audit_event`.
+
+Provisioning is a script rather than an admin console on purpose (`D-23`), which means an
+operator with production database credentials is a standing part of the design. A privileged
+path that creates identities and leaves no trace is the first finding an access review
+produces, and there is no way to answer "who created this organization, and when" without it.
+
+### OI-40 — `notification.last_error` is unbounded
+**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
+
+An unbounded `TEXT` column holding a failed delivery's error, with no retention rule and no
+classification.
+
+If that error ever carries a response body from a customer's webhook endpoint, arbitrary
+third-party content lands in a column nobody classified and nothing purges. Needs a length cap
+and a stated rule about what may go in it.
+
+### OI-41 — No contract or notice documents exist
+**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
+
+No DPA, no published subprocessor list, no privacy notice, and no Política de Tratamiento de
+Datos Personales — the last of which is a **statutory** instrument under Decreto 1377 Art. 13
+for a Colombian *responsable*, not an optional courtesy.
+
+`17-data-protection.md` supplies the structure and the substance for all four. What it cannot
+supply is the wording, the company's identifying details, or the confirmation of whether the
+databases must be registered in the RNBD — that threshold turns on total assets in UVT and
+wants checking against the current figure.
+
+**This blocks selling, not just compliance.** *"Send us your DPA"* and *"who are we actually
+buying from"* are two of the objections in `gtm/02-objections.md` most likely to end a real
+deal.
+
+### OI-42 — No breach register
+**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
+
+There is no register of security incidents and no runbook for one.
+
+As *encargado* every affected *responsable* must be told without undue delay; as *responsable*
+the SIC must be informed. Neither has a procedure, and **every incident should be recorded
+whether or not it was notifiable** — the register is what an auditor asks to see, and "we have
+had none" is not evidence of anything.
+
 ### OI-2 — No real Cognito identity provider
 **Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-016`
 

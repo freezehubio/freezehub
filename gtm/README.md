@@ -15,13 +15,18 @@ produces a roadmap driven by a pitch deck.
 | `01-positioning.md` | internal | the foundation — everything else derives from it |
 | `02-objections.md` | internal | what to say when a buyer pushes back |
 | `03-discovery.md` | internal | what to ask, and who to walk away from |
+| `customer/` | **give to a buyer** | one-pager, technical overview, security brief, FAQ |
 
 Internal means *do not hand it to a customer*. These name what the product cannot do yet,
 which is essential for selling honestly and unhelpful read over someone's shoulder.
 
-Customer-facing pieces — one-pager, business case, technical overview, security brief,
-FAQ — are separate stories and land in `gtm/customer/`. Contract documents land in
-`gtm/legal/`.
+`customer/` is the opposite: written to be handed over or published. It states limits a
+buyer would reasonably ask about — no SOC 2 report, no EU residency, no self-serve signup —
+because they will find out anyway and it is better coming from us. It does not carry the
+internal material: what a competitor costs us, who to walk away from, or how to run a price.
+
+Contract documents — DPA, subprocessor page, privacy notice, Política de Tratamiento — are
+still missing (`OI-41`) and land in `gtm/legal/` when counsel has been through them.
 
 ## The rule this directory runs on
 

@@ -3169,7 +3169,7 @@ anyone can sign up for does not get to choose where its data subjects live.
 ### FZ-161 — Data Protection Specification
 **Status:** DONE
 
-Specification only, no code: `docs/14-data-protection.md`.
+Specification only, no code: `docs/17-data-protection.md`.
 
 **Two roles, and the document turns on the difference.** FreezeHub is *encargado* for what a
 customer puts in — `users`, `audit_event`, `deployment_check`, the catalog — and *responsable*
@@ -3289,6 +3289,43 @@ what was typed inside it.
 Ends by naming the prerequisite AWS cannot satisfy on its own — a domain with a Route 53
 hosted zone that already delegates it, without which both certificate validations hang.
 
+### FZ-165 — Owners That Belonged to Other Stories
+**Status:** DONE · **Fixes** two defects in `FZ-161` · **Owns:** `OI-36` … `OI-42`
+
+`FZ-161` shipped `docs/14-data-protection.md`, and it was wrong twice over.
+
+**It shared a number with the operations runbook.** `docs/14-operations.md` was `DONE` in the
+backlog when the number was chosen, but its file had not merged yet — so `docs/` looked free
+at 14 and was not.
+
+**Then the repair collided too.** This story first renamed it to `16-`, and `docs/16-accounts.md`
+landed from `FZ-164` while the pull request was open — the same mistake inside the fix for it.
+It is `17-` now, chosen by listing `docs/` across **every remote branch** rather than on
+`master`, which is the only check that would have caught either one.
+
+**Its §7 named seven stories that did not exist.** `FZ-162` through `FZ-168` were invented to
+give ten gaps an owner, and **every one of those IDs was claimed within a day by unrelated
+work** — `FZ-162` is the repair of a split backlog entry, `FZ-163` a tfvars example, `FZ-164`
+the account layout. A reader following §7 landed on infrastructure stories.
+
+**The fix is to stop inventing IDs.** `09-open-issues.md` exists for exactly this: *"Every
+entry names the story that will resolve it. If none exists, that is itself the next action —
+'no owner' is not a status."* The ten gaps are now seven issues, `OI-36` to `OI-42`, each
+marked *needs a story*, which is the sanctioned state for work nobody has scheduled. Seven
+rather than ten because deleting a user, deleting an organization, exporting, and
+pseudonymizing are one request arriving from four directions.
+
+**Why the numbering keeps failing is worth naming.** A story ID is claimed by creating a
+branch, and a branch is invisible to anyone reading `docs/`. Checking the backlog is not
+enough — `FZ-147` exists because of this, and it was not run before §7 was written.
+
+Acceptance:
+
+- No file in `docs/` shares a number with another.
+- No reference in `17-data-protection.md` names a story that does not exist or belongs to
+  unrelated work.
+- Every gap in §7 resolves to an issue in `09-open-issues.md`.
+- `CLAUDE.md` and the `FZ-161` entry name the new path.
 ### FZ-166 — Nothing Built an Image for the Box
 **Status:** DONE
 
@@ -3323,6 +3360,42 @@ actually have to run, in order, rather than by anything failing — nothing can 
 
 `14-operations.md` gains a *Releasing* section naming the three workflows in order, and
 saying not to run `Deploy` on this posture.
+
+### FZ-167 — What a Buyer Actually Reads
+**Status:** DONE
+
+`gtm/customer/` — the four documents handed to a prospect: one-pager, technical overview,
+security brief, FAQ. `FZ-158` decided what to say; this is the half a customer sees.
+
+**The security brief was blocked and is not any more.** It needed `17-data-protection.md`,
+which landed with `FZ-161`/`FZ-165`. It answers the security questionnaire directly — what is
+held and what is not, authentication, tenant isolation, encryption, residency, retention,
+subprocessors — and then names what does not exist: **no SOC 2 report, no published DPA, no
+EU residency, deletion done by hand, and a backup whose restore has never been drilled**
+(`FZ-155`). A buyer finds all of that out anyway; the only question is whether they find it
+out from us.
+
+**Every technical claim was checked against the code, and two came back sharper than
+written.** The connector exits non-zero on `BLOCK` and prints advisories on `ALLOW`
+(`freeze-check.sh`), and retry is 30 seconds doubling to a 15-minute cap over six attempts
+before a terminal failure (`FZ-044`) — specific enough for a reviewer to verify, which vague
+phrasing is not.
+
+**What the customer documents deliberately omit** is the internal half: what an alternative
+costs us, who to walk away from, how to run a price. `01-positioning.md` §8 stays internal
+because it is written for someone about to speak, not someone about to buy.
+
+Contract documents — DPA, subprocessor page, privacy notice, Política de Tratamiento — remain
+missing (`OI-41`). They need counsel and the company's own details, so no placeholder version
+of them is in the repository.
+
+Acceptance:
+
+- Every factual claim resolves to `docs/`, `connectors/` or a decision record.
+- The security brief states what does not exist, by name, rather than omitting it.
+- No customer document claims a capability that is not built — no self-serve signup, no
+  trial link, no references, no SLA below Enterprise.
+- Nothing internal leaks into `customer/`.
 
 ### FZ-168 — Start the Estate on Its Own Account, Not a Personal One
 **Status:** DONE · **Corrects** `FZ-164`
