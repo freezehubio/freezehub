@@ -4240,3 +4240,52 @@ Acceptance:
 - The backend resolves and fetches the Cognito JWKS — verified in the container, `200`.
 - PostgreSQL remains on `internal` alone.
 - No port is published for the backend; Caddy is still the only ingress.
+
+### FZ-181 — The Guide a Customer Configures From
+**Status:** DONE · **Corrects** `technical-overview.md`
+
+`connectors/README.md` explains the CI half well — four systems, exit codes, configuration.
+It starts from "you have an API key and an application name" and nothing said how to get
+either, or how to decide what the names should be. `gtm/customer/setup-guide.md` is the
+half before it.
+
+**Written because the operator could not answer the question themselves.** Asked how to
+model applications, teams and environments for FreezeHub's own dogfooding, the honest
+answer was "I am not sure how to test this part" — and if the person who built it cannot
+work that out, nobody evaluating it will.
+
+**The answer, which nothing said anywhere:** the catalog is names. FreezeHub does not
+discover them, validate them against infrastructure, or care whether they exist. An
+environment called `production` can exist here before you have one. They only have to match
+what the pipeline sends.
+
+**Scope is the section that earns the guide.** Entries within a dimension are OR'd, the
+dimensions AND'd, and an empty dimension is a wildcard — so naming *more* things makes a
+restriction match *less*. That is the opposite of what people assume, and it is worked
+through in a table rather than asserted.
+
+**Writing it found a defect in a document already given to buyers.**
+`technical-overview.md` said "Scoping to nothing means the whole organization".
+`ChangeRestrictionService:246` enforces the opposite — invariant 3, at least one target
+required. A prospect planning "leave the scope empty for the release window" would have
+been designing against a `400`. Corrected, and the real semantics put in its place.
+
+**Four claims were checked against code rather than written from memory**, and one was
+wrong: the guide first said an API key can read the catalog. `ApiKeySecurityConfig` has
+`securityMatcher("/api/policy/**")` and nothing else, so a key evaluates policy and can do
+nothing else at all — which is a better sentence for a security-conscious reader than the
+one it replaced. The exit code for a setup failure is `2`, not "other". `X-Request-Id` is
+set on the response, not only logged. The preview endpoint exists and is on the human
+chain, which is where the guide puts it.
+
+**What it admits, in its own section rather than by omission:** the check is voluntary, no
+self-serve signup, no SSO, **no email notifications yet**, one region, no SOC 2 and no DPA.
+A buyer finds all of that out anyway.
+
+Acceptance:
+
+- Someone with an account and a pipeline can reach a blocked deploy without asking us a
+  question.
+- Every factual claim resolves to code, not to another document.
+- The scope semantics are demonstrated, not stated.
+- Nothing claims a capability that is not built.

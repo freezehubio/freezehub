@@ -18,8 +18,12 @@ your pipelines** — the integration runs one outbound HTTPS request from your C
 A **restriction** is one announcement with a window and a scope.
 
 - **Level** — `HARD_FREEZE` blocks; `ADVISORY` announces and permits.
-- **Scope** — any combination of teams, applications and environments. Scoping to nothing
-  means the whole organization.
+- **Scope** — any combination of teams, applications and environments. Each is a
+  dimension: entries within one are OR'd, the dimensions are AND'd, and a dimension you
+  leave empty places no constraint. Naming only `production` freezes every application
+  deploying there. **At least one target is required** — a restriction with every
+  dimension empty is refused, so "freeze absolutely everything" is never something you can
+  type by accident.
 - **Window** — start and end, stored and compared in UTC. A restriction moves through
   scheduled → active → completed on its own.
 
