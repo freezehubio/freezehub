@@ -233,6 +233,22 @@ Two things, and the second is what `FZ-155` was always about: ship the three fil
 enable the timer as part of the deploy, then run a restore and prove the dump is readable.
 A backup nobody has restored is a file of unknown contents.
 
+### OI-47 — The frontend suite fails locally and passes in CI
+**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-179`
+
+`npm run test` fails three to six tests on a developer machine, and the same commit passes
+`frontend` in CI every time. Verified on `master` with no changes applied — six failures
+there, three on a branch, and a different set between consecutive runs.
+
+**Every failing file passes in isolation.** `CreateRestrictionPage`, `DeployCheck` and
+`DeploymentChecksPage` each pass alone and fail under full-suite parallelism, which points
+at shared state or timing rather than at any assertion being wrong.
+
+**The cost is not the failures, it is what they teach.** A suite that cries wolf locally is
+a suite developers stop reading, and the next real regression arrives in a run that already
+had three red lines in it. CI being green is not a defence — it means the machine that
+notices is the one nobody watches.
+
 ### OI-2 — No real Cognito identity provider
 
 **Severity:** Gap · **RESOLVED by** `FZ-046` · **Found in:** `FZ-016`

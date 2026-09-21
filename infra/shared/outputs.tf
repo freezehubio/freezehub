@@ -46,3 +46,10 @@ output "cloudfront_distribution_id" {
   description = "Invalidate this after a frontend deploy."
   value       = aws_cloudfront_distribution.frontend.id
 }
+
+# The SPA needs both at build time: it redirects to the Hosted UI and exchanges its code
+# there (FZ-179). Neither is a secret — they are visible in the redirect URL.
+output "cognito_hosted_ui_domain" {
+  description = "Set as VITE_COGNITO_DOMAIN when building the frontend."
+  value       = local.cognito_domain
+}
