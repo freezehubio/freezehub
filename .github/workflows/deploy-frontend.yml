@@ -39,11 +39,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-
       - uses: actions/setup-node@v7
         with:
           node-version: '20'
@@ -70,6 +65,32 @@ jobs:
           test -n "$VITE_COGNITO_CLIENT_ID" || { echo "COGNITO_CLIENT_ID is not set; the build would ship the development sign-in"; exit 1; }
           npm ci
           npm run build
+
+      # FreezeHub asks FreezeHub (FZ-182). The connector this runs is the one customers
+      # run — `./connectors`, not a copy — so if it is wrong for us it is wrong for them.
+      #
+      # Deliberately AFTER the build and immediately BEFORE the publish. A freeze stops
+      # deployments, not work: building and testing during one is fine, and finding out at
+      # the start of a ten-minute pipeline that you cannot ship wastes the ten minutes
+      # anyway. This is the last step that costs nothing to abandon.
+      #
+      # It fails closed. If FreezeHub is unreachable this job stops, which is the
+      # behaviour we ask customers to accept and should therefore live with ourselves.
+      - name: Ask FreezeHub whether this may deploy
+        uses: ./connectors
+        with:
+          url: ${{ vars.FREEZEHUB_URL }}
+          api-key: ${{ secrets.FREEZEHUB_API_KEY }}
+          application: freezehub-frontend
+          environment: ${{ inputs.environment }}
+
+      # After the freeze check, for the same reason it is before it in
+      # deploy-singlebox.yml: a deploy that is not allowed should not assume a role. The
+      # build above needs no AWS access, so nothing is lost by waiting.
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       # --delete so a file removed from the build is removed from the bucket; otherwise a
       # deleted page keeps being served indefinitely.

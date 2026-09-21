@@ -149,9 +149,16 @@ COGNITO_CLIENT_ID          cognito_user_pool_client_id (../shared)
 FRONTEND_BUCKET            frontend_bucket             (../shared)
 CLOUDFRONT_DISTRIBUTION_ID cloudfront_distribution_id  (../shared)
 API_BASE_URL               https://<api_domain_name>   baked into the bundle at build time
+
+FREEZEHUB_URL              https://<api_domain_name>   FreezeHub checking FreezeHub (FZ-182)
 ```
 
 **`API_DOMAIN` is set, not derived.** It used to be `api.$APP_DOMAIN` here, which produced `api.app.example.com` once the SPA moved to a subdomain — and that hostname is the one in every customer's CI configuration (`FZ-174`, `FZ-176`).
+
+**One repository *secret*, not a variable: `FREEZEHUB_API_KEY`.** Both deploy workflows ask
+FreezeHub whether the deployment may proceed, using the same connector customers use
+(`FZ-182`). Set it with `gh secret set FREEZEHUB_API_KEY`, which reads from stdin so the key
+never reaches a shell history. The key reaches `/api/policy/**` and nothing else.
 
 **`COGNITO_USER_POOL_ID` is not optional.** Without it the backend has no issuer URI and no pool, and the container will not start — deliberately (`FZ-046`). The instance role carries the matching `InviteUsers` grant, scoped to that pool.
 
