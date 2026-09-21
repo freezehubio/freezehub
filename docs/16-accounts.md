@@ -254,20 +254,31 @@ access, and the first thing to turn on when that stops being true.
 
 ---
 
-## What this unblocks
+## What this unblocks, and in what order
 
-With the project in place and `aws login` working:
+With the project in place and `aws login` working, one thing still gates everything:
 
 ```
-bootstrap/ → shared/ → FZ-046 → singlebox/ → deploy → restore drill
-                ↑
-        needs advanced features (§2)
+domain → hosted zone → shared/ → Cognito pool → FZ-046 → singlebox/ → deploy → CI
+                                                                                ↑
+                                                                  needs advanced features (§2)
 ```
 
-`shared/` creates the Cognito pool, which is what `FZ-046` needs to exist before it can be
-written against anything real (`D-4`). `infra/README.md` § *Three modules, and which ones you
-apply* has the rest.
+**The domain is first, and not optionally.** `infra/shared/` has two required variables with
+no default — `domain_name` and `hosted_zone_id` — and creates an
+`aws_acm_certificate_validation` that blocks until DNS resolves. Nothing downstream starts
+without it.
 
-**Also required and not created here: a domain, and a Route 53 hosted zone that already
-delegates it.** Both certificates validate through that zone, so an apply hangs without it.
-It is the one prerequisite in `infra/README.md` that cannot be satisfied inside AWS alone.
+`shared/` then creates the Cognito pool, which is what `FZ-046` needs before it can be
+written against anything real (`D-4`). `infra/README.md` § *Three modules, and which ones
+you apply* has the rest.
+
+**The OIDC restriction bites last, not at `shared/`.** An earlier revision of this section
+put "needs advanced features" under `shared/`, which reads as though the whole module is
+unreachable. It is not: `github-oidc.tf` is the only part denied, and it is separable —
+nothing outside it references its resources except two outputs. As written `shared/` does
+still fail, so separating it is a prerequisite; `OI-43` scopes that to two small options.
+The decision is due when CI is wired up, which is after a deploy exists.
+
+**`route53domains:*` is permitted**, so the domain can be registered inside the account
+rather than delegated from elsewhere. A hosted zone is about $0.50 a month.

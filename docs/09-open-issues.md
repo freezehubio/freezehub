@@ -141,6 +141,38 @@ project's enforced spend limit. Until then deploys are by hand, which means no r
 what shipped — the thing `FZ-152` built the workflows to provide. The stopgap is acceptable
 only while nothing is live.
 
+**This is not what blocks the first deploy, and it is worth being clear about the order.**
+`infra/shared/` has two required variables with no default — `domain_name` and
+`hosted_zone_id` — and creates an `aws_acm_certificate_validation` that blocks until DNS
+resolves. So `shared/` cannot be applied without a domain whatever happens to the OIDC
+provider, and the chain is:
+
+```
+domain → hosted zone → shared/ → Cognito pool → FZ-046 → singlebox/ → deploy → CI
+```
+
+This issue bites at the last step. Anything done about it before the domain exists is
+speculative.
+
+**When it does bite, the split is small.** Scoped while investigating, so it is not
+re-derived: `github-oidc.tf` holds three resources and nothing outside the file references
+them except two outputs in `outputs.tf`. It depends on exactly three things from the rest
+of `shared/` — `aws_ecr_repository.backend.arn`, `aws_s3_bucket.frontend.arn` and
+`aws_cloudfront_distribution.frontend.arn`.
+
+Two workable shapes, and the choice is genuinely open:
+
+- **A fourth root module**, taking those three ARNs as variables the way `singlebox/`
+  already takes `ecr_repository_arn`. Matches `FZ-159`'s precedent — lifecycle boundaries
+  as module boundaries — and this module's lifecycle is "after advanced features", which
+  is nobody else's.
+- **A `count` toggle** on the three resources plus `one()` on the two outputs. Twenty
+  lines, no plumbing, one tfvars line to flip. Honest about what it represents: an account
+  capability that does not exist yet.
+
+`route53domains:*` is permitted on the Free Tier and the API answers, so the domain can be
+registered in the account itself rather than delegated from elsewhere.
+
 ### OI-2 — No real Cognito identity provider
 
 **Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-016`

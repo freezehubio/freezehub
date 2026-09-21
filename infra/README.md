@@ -49,9 +49,11 @@ You need, and Terraform will not create for you:
    key to scope, rotate or lose, and on this experience there is no IAM user to hold one
    — `iam:*LoginProfile*` is denied.
 
-   **`shared/` cannot be applied until advanced features are activated** (`OI-43`).
-   `github-oidc.tf` creates an `aws_iam_openid_connect_provider` and `iam:*Provider*` is
-   denied by an SCP that cannot be modified. `bootstrap/` and `singlebox/` are unaffected.
+   **`shared/` will not apply as written** (`OI-43`): `github-oidc.tf` creates an
+   `aws_iam_openid_connect_provider` and `iam:*Provider*` is denied by an SCP that cannot
+   be modified. That file is separable — nothing outside it references its resources
+   except two outputs — so the rest of `shared/` is reachable once it is split out or
+   toggled off. `bootstrap/` and `singlebox/` are unaffected.
 4. **A verified SES identity**, if email notifications are wanted. The task role can send;
    SES still has to be out of the sandbox to send anywhere.
 

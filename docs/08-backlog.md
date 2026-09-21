@@ -3614,3 +3614,53 @@ Acceptance:
 is now tracked. Every other module already tracked its lock file and `bootstrap/` did not —
 the same module, overlooked the same way, as the region default above. Disclosed rather
 than left to be noticed in a diff.
+
+### FZ-172 — The Domain Is the Gate, and the OIDC Block Is Not
+**Status:** DONE · **Extends** `OI-43` · **Corrects** `FZ-170`'s ordering
+
+Went to scope separating `github-oidc.tf` so `shared/` could be applied, and found the work
+was not needed yet. Recording why, because the same investigation would otherwise be
+repeated.
+
+**`shared/` cannot be applied without a domain, whatever happens to OIDC.** It has two
+required variables with no default — `domain_name` and `hosted_zone_id` — and creates an
+`aws_acm_certificate_validation`, which blocks until DNS resolves. So the order is:
+
+```
+domain → hosted zone → shared/ → Cognito pool → FZ-046 → singlebox/ → deploy → CI
+```
+
+`OI-43` bites at the last step. `FZ-170` drew the diagram with "needs advanced features"
+under `shared/`, which reads as though the module is unreachable and puts the blocker three
+steps too early. Corrected in `16-accounts.md` and `infra/README.md`.
+
+**The separability was scoped anyway, since the investigation was done.** `github-oidc.tf`
+holds three resources; nothing outside the file references them except two outputs. It
+depends on exactly three things from the rest of `shared/` — the ECR repository ARN, the
+frontend bucket ARN and the CloudFront distribution ARN — all of which `singlebox/` already
+demonstrates passing between root modules as variables.
+
+Two shapes, left open rather than chosen, because the choice belongs with whoever wires up
+CI:
+
+- a **fourth root module**, matching `FZ-159`'s precedent of lifecycle boundaries as module
+  boundaries — this one's lifecycle is "after advanced features", which is nobody else's;
+- a **`count` toggle** on three resources and `one()` on two outputs — twenty lines, one
+  tfvars line to flip, and an honest representation of an account capability that does not
+  exist yet.
+
+**`route53domains:*` is permitted on the Free Tier** and the API answers, so the domain can
+be registered inside the account rather than delegated from elsewhere. That removes the last
+reason the one remaining prerequisite has to be satisfied outside AWS.
+
+**Nothing was built.** The finding is that building it now would be speculative, which is
+`FZ-170`'s own lesson applied one step earlier: check what actually blocks before fixing what
+looks like it does.
+
+Acceptance:
+
+- The ordering is stated once, in the two places that previously implied a different one.
+- The separability is recorded precisely enough — three resources, two outputs, three ARNs —
+  that it need not be re-derived.
+- No Terraform changes. The story is a correction to documentation and a deliberate
+  non-implementation.
