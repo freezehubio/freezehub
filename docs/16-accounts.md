@@ -201,16 +201,24 @@ application's own, held as SSM SecureStrings encrypted at rest (`D-3`).
 
 If FreezeHub were on **Sign up for AWS (advanced)** instead, the shape `D-36` chose applies:
 one standalone account, upgraded to the Paid plan, one IAM user whose only permission is
-`sts:AssumeRole` on an MFA-gated administrator role, and an Organization deferred. Two things
-that revision got wrong and that still catch people there:
+`sts:AssumeRole` on an MFA-gated administrator role, and an Organization deferred. Five things
+that revision got wrong, and that still catch people there:
 
 - **The user must exist before the role.** IAM *"transforms the ARN to the user's unique
   principal ID when you save the policy"*, so a trust policy naming a user that does not yet
   exist returns `MalformedPolicyDocument: Invalid principal in policy`.
 - **`mfa_serial` needs a TOTP code**, not a passkey. The CLI *"prompts the user to enter the
   one-time password (OTP) that the MFA device provides"*, and a FIDO2 key cannot produce one.
+- **`mfa_serial` names the MFA *device*, not the user.** The console defaults one to the
+  other and they do not have to match; read the ARN off the user's Security credentials tab.
+- **A role's maximum session duration defaults to 1 hour**, so `duration_seconds = 28800`
+  is rejected until it is raised to 8.
+- **The billing setting is called Activate IAM Access**, only root can change it, and AWS
+  is explicit that it grants nothing on its own — a policy still has to allow the actions.
 
-Neither applies to the new experience, where there is no IAM user to make.
+Neither of the first two applies to the new experience, where there is no IAM user to make.
+`FZ-169` found all five by walking the sequence; they are kept because activating advanced
+features (§3) restores full IAM, and a reader may end up making roles by hand after all.
 
 ## 7. Break-glass
 
