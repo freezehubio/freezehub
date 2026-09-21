@@ -280,5 +280,10 @@ nothing outside it references its resources except two outputs. As written `shar
 still fail, so separating it is a prerequisite; `OI-43` scopes that to two small options.
 The decision is due when CI is wired up, which is after a deploy exists.
 
-**`route53domains:*` is permitted**, so the domain can be registered inside the account
-rather than delegated from elsewhere. A hosted zone is about $0.50 a month.
+**Register the domain anywhere; AWS will not do it.** `route53domains:*` is permitted by
+the SCP, but a registration fails with *"We can't finish registering your domain. Contact
+AWS Support"* — a fraud-prevention restriction on new accounts, lifted only by a support
+case. It does not block anything: `shared/` wants `domain_name` and a `hosted_zone_id`, not
+a registrar. Buy the domain wherever it is cheapest, create a Route 53 hosted zone (about
+$0.50 a month, not blocked), and point the registrar's nameservers at the four Route 53
+gives you.
