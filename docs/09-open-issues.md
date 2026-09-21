@@ -157,7 +157,7 @@ The MVP answer is that support fixes it by hand, which is honest at this volume 
 
 **64% is redundancy and network plumbing for zero customers.** One task in a public subnet behind the same strict security group removes about $47 and is reversible before any customer's security review. VPC interface endpoints — the "proper" replacement for the NAT — run about $7.20 each for ECR, ECR-DKR, CloudWatch and Secrets Manager, which is *worse* than the NAT at this scale.
 
-**Free tier does not apply.** The account dates from 2022-10-23, so the twelve-month window covering 750 hrs of both ALB and `db.t4g.micro` expired years ago.
+**Free tier does not apply — and the tier itself has since changed.** The personal account dates from 2022-10-23, so the twelve-month window covering 750 hrs of both ALB and `db.t4g.micro` expired years ago. AWS has since replaced that model with credits — $100 on signup and up to $100 more — which is one reason `FZ-168` starts the estate on a fresh account rather than this one. Neither model applies to the account these figures were measured in.
 
 **Other providers were assessed and AWS is retained.** Worth recording what the assessment found rather than re-deriving it: the backend has **no AWS coupling at all** — no SDK, nothing in `pom.xml`, nothing in `application.yml`. It needs Postgres over JDBC, an OIDC issuer, SMTP and outbound HTTPS. Every "Cognito" reference is a comment, the `cognito_subject` column name, or the `IdentityProvider` port. Cloud Run, Fly, Render and Railway all bundle TLS and egress, so the $49 of ALB-plus-NAT does not exist as a line item there; the saving against a reduced AWS posture is roughly $15–25 a month. Not decisive, and the portability means this stays cheap to revisit.
 
@@ -221,7 +221,9 @@ The target account is the operator's personal one, dating from 2022-10-23 (`OI-1
 
 What it costs to leave alone: a security questionnaire asks whether production is isolated, who holds root, and whether MFA is enforced, and the honest answers are no, the operator, and maybe. An unrelated suspension of the personal account takes production with it. And `D-23` already requires "an operator with production access", which here can only ever be one person.
 
-The fix is an AWS Organization with the existing account as management and a new member account for production — free, and worth checking for free-tier eligibility, since `OI-15` records that the current account's expired in 2023.
+**The fix is a fresh account, and it is no longer the Organization this issue proposed.** `FZ-168` established that a personal identity in permanent control of production is the whole of the objection, and that an account owned by `freezehubio@gmail.com` answers it. The Organization on top was refused by AWS's own terms: joining one expires a new account's free credits immediately — about $200, or eleven months at `D-35`'s $18 a month — so it is deferred to a named trigger (`D-36`, `16-accounts.md` §7).
+
+**What stays open until `FZ-138` runs.** The account does not exist yet, and one consequence of the single-account shape is new: with no Organization there is no Identity Center path into the account, so a long-lived IAM access key exists on one laptop. It is scoped to `sts:AssumeRole` on one role and refused without MFA, and no key reaches CI (`FZ-064` uses OIDC) — but it is a real residual, and removing it is step 5 of the migration.
 
 ### OI-34 — Free organizations never expire, and nothing bounds them
 **Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-142`
