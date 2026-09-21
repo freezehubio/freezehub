@@ -1,13 +1,13 @@
 # Copy to terraform.tfvars and fill in. Everything else has a working default.
 
-# The region everything runs in — every store that holds customer data: the database, the
-# Cognito user pool, the logs and the secrets. Only the CloudFront certificate lives
-# elsewhere, in us-east-1, because AWS accepts it from nowhere else; a certificate holds no
-# customer data.
+# The region this estate runs in. The user pool is the part that matters: it is region-bound,
+# and the `sub` it issues is what `users.external_subject` stores. Only the CloudFront
+# certificate lives elsewhere, in us-east-1, because AWS accepts it from nowhere else; a
+# certificate holds no customer data.
 #
 # There is no default (FZ-135). It cannot be changed after the first apply without moving
-# the database and re-creating every identity — a user pool is region-bound, and the `sub`
-# it issues is what `users.external_subject` stores. Decide it once, here, before applying.
+# the database and re-creating every identity. Apply this module first: both compute
+# postures take their values from its outputs.
 #
 # Decided: us-east-1 (`D-32`). eu-west-1 would answer an EU buyer's residency question;
 # us-east-1 is the cheapest and the one the cost estimate in README.md was made against.
@@ -21,3 +21,8 @@ domain_name = "freezehub.example.com"
 hosted_zone_id = "Z0123456789ABCDEFGHIJ"
 
 # environment = "beta"
+
+# owner/name of the repository allowed to deploy. The OIDC trust policy is scoped to it and
+# to master, so getting this wrong is the difference between only this repository deploying
+# and anyone's doing so.
+# github_repository = "freezehubio/freezehub"
