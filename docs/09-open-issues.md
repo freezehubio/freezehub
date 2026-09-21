@@ -221,7 +221,9 @@ The target account is the operator's personal one, dating from 2022-10-23 (`OI-1
 
 What it costs to leave alone: a security questionnaire asks whether production is isolated, who holds root, and whether MFA is enforced, and the honest answers are no, the operator, and maybe. An unrelated suspension of the personal account takes production with it. And `D-23` already requires "an operator with production access", which here can only ever be one person.
 
-The fix is an AWS Organization with the existing account as management and a new member account for production — free, and worth checking for free-tier eligibility, since `OI-15` records that the current account's expired in 2023.
+**The fix is a fresh account, and it is no longer the Organization this issue proposed.** `FZ-168` established that a personal identity in permanent control of production is the whole of the objection, and that an account owned by `freezehubio@gmail.com` answers it. The Organization on top was refused by AWS's own terms: joining one expires a new account's free credits immediately — about $200, or eleven months at `D-35`'s $18 a month — so it is deferred to a named trigger (`D-36`, `16-accounts.md` §7).
+
+**What stays open until `FZ-138` runs.** The account does not exist yet, and one consequence of the single-account shape is new: with no Organization there is no Identity Center path into the account, so a long-lived IAM access key exists on one laptop. It is scoped to `sts:AssumeRole` on one role and refused without MFA, and no key reaches CI (`FZ-064` uses OIDC) — but it is a real residual, and removing it is step 5 of the migration.
 
 ### OI-34 — Free organizations never expire, and nothing bounds them
 **Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-142`

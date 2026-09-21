@@ -2488,7 +2488,7 @@ bootstrap sequence and is history rather than a live schedule. The path lives in
 document.
 
 ### FZ-138 — Who Owns Production
-**Status:** TODO · **Owns:** `OI-32` · **How:** `docs/16-accounts.md` (`FZ-164`) · **Blocked on:** two human actions
+**Status:** TODO · **Owns:** `OI-32` · **How:** `docs/16-accounts.md` (`FZ-164`, corrected by `FZ-168`) · **Blocked on:** one human action
 
 `infra/README.md` told you to use an IAM role rather than account root and never said which
 account any of it belongs in. The target today is the operator's personal AWS account, where
@@ -2506,16 +2506,17 @@ layout, the one-unique-root-email-per-account constraint, and the plus-addressed
 that satisfies it. That last part is worth writing down rather than discovering: spend the
 plain address on production and the management account needs a second mailbox.
 
-**Blocked on two human actions**, in the shape `FZ-099` uses:
+**Blocked on one human action**, in the shape `FZ-099` uses:
 
-1. **An AWS Organization**, with the existing account as management, holding billing and no
-   workloads.
-2. **A production member account** created under it, with root secured by MFA and no access
-   keys, and an IAM role for Terraform to assume.
+1. **A standalone AWS account** on `freezehubio@gmail.com`, upgraded to the Paid plan, with
+   root secured by MFA and no root access keys, and an IAM user whose only permission is to
+   assume an MFA-gated administrator role for Terraform.
 
-Worth checking while doing it: whether a newly created member account is free-tier eligible.
-`OI-15` records that the current account's expired in 2023, and 750 hours of `db.t4g.micro`
-and an ALB would cover a large share of the beta year.
+**This was two actions and an Organization until `FZ-168`.** Joining an Organization expires
+a new account's free credits immediately — about $200, or eleven months at `D-35`'s $18 a
+month — so it is deferred to a named trigger (`D-36`). The free-tier question this entry
+used to ask is answered there, and the answer is the reason the shape changed. The old
+twelve-month model it assumed no longer exists either.
 
 **Not done here, deliberately:** nothing is applied and no account is created. This story
 makes the decision legible and leaves it where `D-23` leaves provisioning — with an operator
@@ -3255,7 +3256,12 @@ paying for both — the same trap `FZ-159` fixed in the Terraform, restated wher
 about to run `apply` will actually read it.
 
 ### FZ-164 — How to Create the Accounts
-**Status:** DONE · **Serves** `FZ-138`
+**Status:** DONE · **Serves** `FZ-138` · **Corrected by** `FZ-168`
+
+> **Superseded in part.** This entry describes the guide as first written: two accounts in
+> an Organization, Identity Center, `OrganizationAccountAccessRole` as break-glass. AWS does
+> not permit that on a new account, and `FZ-168` replaced it with one standalone account. The
+> CloudTrail and Route 53 findings below still stand.
 
 `FZ-138` says *what* must exist — an Organization, a production member account, root secured,
 a role for Terraform. It does not say how, and "create an AWS Organization" is an hour of
@@ -3397,40 +3403,58 @@ Acceptance:
   trial link, no references, no SLA below Enterprise.
 - Nothing internal leaks into `customer/`.
 
-### FZ-168 — Start the Estate on Its Own Account, Not a Personal One
-**Status:** DONE · **Corrects** `FZ-164`
+### FZ-168 — One Account of Its Own, and the Organization Deferred
+**Status:** DONE · **Corrects** `FZ-164` · **Decision:** `D-36`
 
-`16-accounts.md` told the operator to make their **existing personal account** the
-management account. That is worse than it reads, and the operator caught it before acting on
-it.
+`16-accounts.md` was wrong twice, in opposite directions, and the operator caught both
+before acting on either.
 
-**The management account is not a bystander.** It owns the Organization, can create and
-close member accounts, and reaches into any of them through
-`OrganizationAccountAccessRole`. Making it the personal account leaves a personal identity
-in permanent, unremovable control of production — which is `OI-32`'s objection moved up a
-level rather than answered. The guide was written anchored on `OI-32`'s phrasing ("the
-operator's personal account") instead of questioning whether that account should be in the
-picture at all.
+**First error: the personal account as management account.** The guide was written anchored
+on `OI-32`'s phrasing — "the operator's personal account" — instead of asking whether that
+account belonged in the picture at all. The management account is not a bystander: it owns
+the Organization, can create and close member accounts, and reaches into any of them
+through `OrganizationAccountAccessRole`. Making it the personal one is `OI-32`'s objection
+moved up a level rather than answered.
 
-Corrected: a **fresh account on `freezehubio@gmail.com`** is the management account, and
-`freezehubio+prod@gmail.com` the production member account. The personal account is left
-alone and deliberately not invited into the Organization — it holds $0.007 of S3 and
-stranding it costs nothing, while keeping the separation total. When a company exists,
-transferring the product becomes a payment method and a root email on an account that has
-only ever held the product.
+**Second error: keeping the Organization.** The correction kept a two-account Organization
+on a fresh `freezehubio@gmail.com`, and left an open question — "does a member account get
+its own credits?" — for the operator to check. They checked, and AWS refused: **AWS
+Organizations are not available on the free account plan.**
 
-**The free tier also changed, and the guide was quoting the old one.** AWS replaced the
-twelve-month service allowances with credits — $100 immediately and up to $100 more, roughly
-$200 over six months — so "750 hours of `db.t4g.micro`" is no longer a thing to check for.
-Two replacements, both verifiable only at creation:
+The answer to the question the guide left open is worse than "no":
 
-- whether a member account created *inside* an Organization receives its own credits, which
-  AWS does not document on the free-tier page and which is worth ~$200 against an $18/month
-  posture;
-- whether production lands on the **Free plan or the Paid plan**, because they differ when
-  credits run out. Production must not sit on a plan that can suspend it: a box that stops
-  because a credit balance hit zero blocks every customer's deployments, since
-  `freeze-check.sh` fails closed.
+- *"When your account joins an AWS Organization … your Free Tier credits expire
+  immediately, and your account will be ineligible to earn more AWS Free Tier credits"*,
+  and the free plan *"will automatically be upgraded to a paid plan"*.
+- A new account gets **$100 at signup plus up to $100 earned**, and the comparison table
+  grants them on *both* plans — so it is the Organization that destroys them, not the plan.
+- At `D-35`'s $18 a month, that is **about eleven months of the box**, spent on day one.
 
-`OI-15`'s free-tier line is corrected too — it described the old model for an account the
-estate will no longer use.
+**A third finding, which decided the shape.** Without an Organization there is no Identity
+Center path into the account either: *"Account instances do not support permission sets and
+therefore do not support access to AWS accounts."* So the cheap option is not free — it
+costs a long-lived access key, and the guide says so rather than implying the two options
+are equivalent.
+
+Resolved as **one standalone account** (`D-36`): the personal account is untouched, which
+was the whole of `OI-32`'s objection; the Organization is deferred to a trigger, because
+the credits are destroyed whenever it is created and doing it later costs the same minus
+eleven months. §7 is the migration, including deleting the access key.
+
+**And the Free plan is not an option regardless.** It *closes the account* after six months
+or when credits run out, whichever comes first. For a product whose connector fails closed,
+an account closing on a timer blocks every customer's deployments. Production upgrades to
+Paid before anything depends on it — the credits apply either way.
+
+`OI-15`'s free-tier line is corrected too: it described the old twelve-month model, for an
+account the estate will no longer use.
+
+Acceptance:
+
+- Every claim about the free tier, Organizations and Identity Center cites the AWS page it
+  came from, because all three are things the guide previously got wrong from memory.
+- The cost of the single-account shape is stated as a list, not implied — access key, root
+  as sole break-glass, no SCPs.
+- The migration back is a numbered sequence with a named trigger, and ends by deleting the
+  key.
+- Nothing in `infra/` changes; there is no account id in it.

@@ -973,3 +973,66 @@ Any one of these ends this posture, and `FZ-157` is the route:
 3. **A security review asking about isolation** — same answer as 2.
 
 Because the SPA, identity, registry and DNS are untouched, the migration is: stand the existing Terraform up, restore a dump into RDS, and move one DNS record.
+
+## D-36 — One standalone AWS account for the beta, and the Organization deferred
+
+**Date:** 2026-09-20 · **Specified by:** `FZ-168` · **Supersedes:** `OI-32`'s proposed fix
+
+### Decision
+
+The beta runs in **a single standalone AWS account** on `freezehubio@gmail.com`, upgraded to
+the **Paid account plan**, with one IAM user whose sole permission is to assume an
+MFA-gated administrator role. **No AWS Organization**, and therefore no IAM Identity Center
+access to the account.
+
+The Organization is added later, on a named trigger, by the route in `16-accounts.md` §7.
+
+### Why
+
+`OI-32` proposed an Organization with a separate production member account. AWS prices that
+higher than it looks:
+
+- **Joining an Organization expires the free credits immediately** and makes the account
+  ineligible to earn more ([Free Tier FAQs](https://aws.amazon.com/free/free-tier-faqs/)).
+  A new account has **$100 at signup and up to $100 earned**, and both plans grant them — so
+  it is the Organization, not the plan, that destroys them.
+- At `D-35`'s **$18 a month** that is about **eleven months of the box**, paid on day one for
+  separation that currently protects one person and zero customers.
+
+**The defect `OI-32` actually named is fixed without the Organization.** Its objection was a
+personal identity in permanent control of production. A fresh account owned by the product's
+own mailbox answers that. The Organization was a layer above the answer.
+
+**Deferring is free, which is what settles it.** The credits are destroyed whenever the
+Organization is created — now or in a year. Creating it after they are spent costs the same
+and keeps the eleven months.
+
+### What it costs, and where that is written down
+
+Not free, and `16-accounts.md` names each one rather than burying it:
+
+- **A long-lived access key exists.** Without an Organization there is no Identity Center
+  path to the account — *"Account instances do not support permission sets and therefore do
+  not support access to AWS accounts."* Mitigated to `sts:AssumeRole` on one role, refused
+  without MFA, on one laptop; **not** eliminated. No key reaches CI, which authenticates by
+  OIDC (`FZ-064`).
+- **Root is the only break-glass.** There is no second account to assume from.
+- **No service control policies.** They require an Organization.
+
+### The Free plan is not an option, separately from all of this
+
+The **Free account plan closes the account** after six months or when credits are exhausted,
+whichever comes first. For a product whose connector fails closed, an account closing on a
+timer blocks every customer's deployments. Production is on the Paid plan from the start; the
+credits apply to the bill either way.
+
+### What ends this
+
+Any one, and `16-accounts.md` §7 is the route:
+
+1. **The credits are exhausted or expire** — the date is recorded at account creation.
+2. **A second person needs AWS access** — the point at which Identity Center stops being a
+   nicety.
+3. **A security review asks whether production is isolated.**
+
+The migration touches no Terraform: there is no account id anywhere in `infra/`.
