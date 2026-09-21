@@ -133,6 +133,24 @@ CLOUDFRONT_DISTRIBUTION_ID cloudfront_distribution_id
 
 Set `github_repository` in `terraform.tfvars` before applying: the OIDC trust policy is scoped to it, and getting it wrong is the difference between only this repository being able to deploy and anyone's being able to.
 
+### The single box needs a different set
+
+That table is the ECS posture's (`deploy.yml`). The beta deploys `singlebox/` through `deploy-singlebox.yml`, which reads:
+
+```text
+AWS_DEPLOY_ROLE_ARN        github_deploy_role_arn      (../shared, once OI-43 is lifted)
+AWS_REGION                 (your region)
+ECR_REPOSITORY_URL         ecr_repository_url          (../shared)
+ENVIRONMENT                (beta)
+APP_DOMAIN                 domain_name                 the SPA host, e.g. app.example.com
+API_DOMAIN                 api_domain_name             the API host, e.g. api.example.com
+COGNITO_USER_POOL_ID       cognito_user_pool_id        (../shared)
+```
+
+**`API_DOMAIN` is set, not derived.** It used to be `api.$APP_DOMAIN` here, which produced `api.app.example.com` once the SPA moved to a subdomain — and that hostname is the one in every customer's CI configuration (`FZ-174`, `FZ-176`).
+
+**`COGNITO_USER_POOL_ID` is not optional.** Without it the backend has no issuer URI and no pool, and the container will not start — deliberately (`FZ-046`). The instance role carries the matching `InviteUsers` grant, scoped to that pool.
+
 By hand:
 
 ```bash

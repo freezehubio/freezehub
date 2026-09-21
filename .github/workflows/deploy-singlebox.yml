@@ -54,7 +54,9 @@ jobs:
           REGISTRY: ${{ vars.ECR_REPOSITORY_URL }}
           AWS_REGION: ${{ vars.AWS_REGION }}
           ENVIRONMENT: ${{ vars.ENVIRONMENT || 'beta' }}
-          ROOT_DOMAIN: ${{ vars.ROOT_DOMAIN }}
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          API_DOMAIN: ${{ vars.API_DOMAIN }}
+          COGNITO_USER_POOL_ID: ${{ vars.COGNITO_USER_POOL_ID }}
         run: |
           set -euo pipefail
 
@@ -74,8 +76,10 @@ jobs:
           \"echo $CADDY_B64 | base64 -d > Caddyfile\",\
           \"aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${REGISTRY%%/*}\",\
           \"export BACKEND_IMAGE=${REGISTRY}:${IMAGE_TAG}\",\
-          \"export API_DOMAIN=api.${ROOT_DOMAIN}\",\
-          \"export ROOT_DOMAIN=${ROOT_DOMAIN}\",\
+          \"export API_DOMAIN=${API_DOMAIN}\",\
+          \"export APP_DOMAIN=${APP_DOMAIN}\",\
+          \"export AWS_REGION=${AWS_REGION}\",\
+          \"export COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}\",\
           \"export DATABASE_PASSWORD=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/database-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION)\",\
           \"export ENCRYPTION_KEY=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/encryption-key --with-decryption --query Parameter.Value --output text --region $AWS_REGION)\",\
           \"docker compose pull\",\

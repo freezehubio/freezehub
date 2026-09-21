@@ -3875,3 +3875,46 @@ removed for consistency rather than because they were dangerous.
 The documentary value was always in the *shape* of the evidence, never the digits — the
 error message proves the guard fires whether or not the account id in it is real. Real
 values live in `terraform.tfvars`, which `infra/.gitignore` already covers.
+
+### FZ-176 — Wiring the Box to Cognito, and an API Hostname Still Being Derived
+**Status:** DONE · **Resolves** `OI-44` · **Completes** `FZ-174` in the deploy path
+
+`FZ-046` made `CognitoIdentityProvider` the `IdentityProvider` outside `local`. `infra/ecs/`
+was already wired for it; the single box — the posture `D-35` actually deploys — was not, so
+the backend would not have started there at all. Three additions and one correction.
+
+**The instance role can invite users.** An `InviteUsers` statement scoped to the pool ARN and
+to `AdminCreateUser` and `AdminGetUser` — the two calls the adapter makes. Not `AdminDeleteUser`,
+not `AdminDisableUser`, not `ListUsers`: a foothold on this box cannot quietly remove an
+administrator or enumerate every customer. `../ecs` already granted exactly this pair, which
+is what made the omission easy to miss.
+
+**The container gets the configuration it refuses to start without.** The issuer URI, the pool
+id and the region, exported by the deploy workflow and read in `compose.yaml`. All three use
+`${VAR:?}` rather than a default, matching the database password and the encryption key: the
+backend has no default for these deliberately (`FZ-046`), and a default here would defeat that
+from the outside.
+
+**`API_DOMAIN` is set rather than derived, which `FZ-174` fixed in Terraform and missed here.**
+`deploy-singlebox.yml` still had `export API_DOMAIN=api.${ROOT_DOMAIN}`. With the SPA at
+`app.freezehub.io` that yields `api.app.freezehub.io` — the exact outcome `FZ-174` decoupled
+the variables to avoid, and the hostname that ends up in every customer's CI configuration.
+The decoupling was only half applied.
+
+**`ROOT_DOMAIN` is renamed `APP_DOMAIN`.** It was never the root: it feeds
+`FREEZEHUB_CORS_ALLOWED_ORIGINS`, so it is the SPA's origin, and calling it the root while the
+apex is deliberately unused is the kind of name that produces the mistake above. Free to
+change because no repository variable is set yet — checked rather than assumed.
+
+**Fourth instance of the same shape** (`FZ-159`, `FZ-166`, `OI-44`, and the derivation above).
+Two halves built in different stories, each assuming the other, and every one found by reading
+what has to be true for something to run rather than by anything failing. Nothing is deployed,
+so nothing can fail yet — which is precisely why the reading has to happen.
+
+Acceptance:
+
+- The box can create a Cognito identity, and can do nothing else to the pool.
+- Every new value is required, none defaulted, consistent with the backend.
+- No `api.` hostname is derived from another hostname anywhere.
+- `infra/README.md` lists the single box's repository variables, which it never did — the
+  table there was the ECS posture's.
