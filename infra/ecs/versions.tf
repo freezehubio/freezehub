@@ -25,7 +25,8 @@ terraform {
 }
 
 provider "aws" {
-  region = var.region
+  region              = var.region
+  allowed_account_ids = [var.aws_account_id]
 
   default_tags {
     tags = {
@@ -40,6 +41,7 @@ provider "aws" {
 # The API certificate is regional, but the ALB listener needs it in var.region. Kept for
 # parity with ../shared so a file moved between them does not lose its provider.
 provider "aws" {
-  alias  = "us_east_1"
-  region = "us-east-1"
+  alias               = "us_east_1"
+  region              = "us-east-1"
+  allowed_account_ids = [var.aws_account_id]
 }

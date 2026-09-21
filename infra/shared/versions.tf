@@ -27,7 +27,8 @@ terraform {
 }
 
 provider "aws" {
-  region = var.region
+  region              = var.region
+  allowed_account_ids = [var.aws_account_id]
 
   default_tags {
     tags = {
@@ -42,8 +43,9 @@ provider "aws" {
 # CloudFront certificates must live in us-east-1 whatever region the rest runs in. A
 # certificate holds no customer data, so this is not a residency question (D-32).
 provider "aws" {
-  alias  = "us_east_1"
-  region = "us-east-1"
+  alias               = "us_east_1"
+  region              = "us-east-1"
+  allowed_account_ids = [var.aws_account_id]
 
   default_tags {
     tags = {

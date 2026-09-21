@@ -62,6 +62,44 @@ the console, and the CLI receives role session credentials that it rotates every
 valid up to the role's session duration (12 hours maximum). It needs AWS CLI **2.32.0 or
 later** and the `SignInLocalDevelopmentAccess` managed policy on the principal.
 
+### `aws login` is a CLI feature, and Terraform cannot see it
+
+**This is the single most expensive gap in this document, so it is stated before anything
+uses it.** `aws login` writes its session to the CLI's own store — `~/.aws/cli/cache/session.db`
+and a `login_session` key in `~/.aws/config`. Nothing else reads that format. Terraform uses
+the AWS SDK for Go, which looks for access keys, an SSO cache, or an instance role, finds
+none, and reports:
+
+```
+Error: No valid credential sources found
+... no EC2 IMDS role found
+```
+
+That message is the SDK reaching the bottom of the credential chain and looking for an
+instance profile on a laptop. It does not mean the login failed.
+
+**Worse than the error is the silent case.** If `AWS_PROFILE` is unset and `[default]` holds
+credentials for some other account, Terraform uses *those* — no error, a successful apply,
+and resources in the wrong account. That happened: `bootstrap/` created its state bucket in
+a personal account using root access keys, and the apply reported success.
+
+The bridge is `credential_process`, which the SDKs do understand. A second profile, because
+pointing `admin` at itself would recurse:
+
+```ini
+# ~/.aws/config
+[profile admin-tf]
+credential_process = aws configure export-credentials --profile admin --format process
+region             = us-east-2
+```
+
+Then `AWS_PROFILE=admin-tf terraform apply`. The SDK runs the command, gets JSON credentials,
+and re-runs it when they expire. Use `admin` for `aws` commands and `admin-tf` for Terraform.
+
+**And the configuration asserts the account anyway.** Every provider carries
+`allowed_account_ids = [var.aws_account_id]` (`FZ-175`), so the silent case above now fails
+before creating anything. A habit protects nothing; the check does.
+
 That erases the single real residual `D-36` accepted. The guide used to spend two pages
 making one long-lived access key survivable; on this experience the key does not exist.
 

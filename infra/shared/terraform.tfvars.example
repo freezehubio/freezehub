@@ -14,6 +14,12 @@
 # residency answer is unchanged; an EU buyer still gets "no".
 region = "us-east-2"
 
+# The account this estate may be applied into. Every provider asserts it, so an apply with
+# the wrong credentials fails before creating anything (FZ-175) — which is not theoretical:
+# `aws login` writes a session only the AWS CLI can read, so Terraform silently fell through
+# to the [default] profile and applied into a personal account with root access keys.
+aws_account_id = "123456789012"
+
 # The domain the SPA is served from, and separately the one the Policy API is served from.
 # The API hostname is stated rather than derived (FZ-174): it is the URL that ends up in
 # every customer's CI configuration through freeze-check.sh, so it should not inherit

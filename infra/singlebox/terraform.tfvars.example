@@ -4,6 +4,12 @@
 # inherits a region, which cannot be changed later without re-creating every identity.
 region = "us-east-2"
 
+# The account this estate may be applied into. Every provider asserts it, so an apply with
+# the wrong credentials fails before creating anything (FZ-175) — which is not theoretical:
+# `aws login` writes a session only the AWS CLI can read, so Terraform silently fell through
+# to the [default] profile and applied into a personal account with root access keys.
+aws_account_id = "123456789012"
+
 # The SPA's hostname, and the API's — the latter is what Caddy requests a certificate for.
 # Stated separately rather than derived (FZ-174). Must match what ../shared was applied with.
 domain_name     = "app.freezehub.example"
