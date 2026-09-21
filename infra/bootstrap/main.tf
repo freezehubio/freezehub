@@ -24,9 +24,13 @@ provider "aws" {
   }
 }
 
+# us-east-2, not us-east-1. The project's SCP permits only a narrow set of global actions
+# in us-east-1 and s3:CreateBucket is not among them, so this bucket cannot be made there
+# (D-32, FZ-171). A default is kept here, unlike the other modules, because bootstrap runs
+# once before anything exists and a wrong region fails immediately rather than silently.
 variable "region" {
   type    = string
-  default = "us-east-1"
+  default = "us-east-2"
 }
 
 data "aws_caller_identity" "current" {}

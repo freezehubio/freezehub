@@ -66,7 +66,7 @@ would keep a leaked secret working for exactly as long as it lasted.
 
 ## Where your data lives
 
-**AWS, `us-east-1`.** PostgreSQL runs with its volume on encrypted storage and is not
+**AWS, `us-east-2`.** PostgreSQL runs with its volume on encrypted storage and is not
 reachable from outside the application. Runtime secrets are held in AWS Systems Manager
 Parameter Store, never in the repository or an image.
 

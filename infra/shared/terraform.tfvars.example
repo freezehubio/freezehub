@@ -9,9 +9,10 @@
 # the database and re-creating every identity. Apply this module first: both compute
 # postures take their values from its outputs.
 #
-# Decided: us-east-1 (`D-32`). eu-west-1 would answer an EU buyer's residency question;
-# us-east-1 is the cheapest and the one the cost estimate in README.md was made against.
-region = "us-east-1"
+# Decided: us-east-2 (`D-32`). It is the region the project is assigned, and the SCP denies
+# Cognito, RDS, ECR, SSM and load balancers everywhere else. Still the United States, so the
+# residency answer is unchanged; an EU buyer still gets "no".
+region = "us-east-2"
 
 # The domain the product is served from. The API is served from api.<domain_name>.
 domain_name = "freezehub.example.com"

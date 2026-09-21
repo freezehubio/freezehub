@@ -127,9 +127,14 @@ the Free Tier *and* the Paid Plan and that "cannot be modified", so **`terraform
 `infra/shared/` fails** and `build-image.yml`, `deploy-frontend.yml` and
 `deploy-singlebox.yml` lose the only credential path they have (`FZ-064`).
 
-**Nothing else is blocked.** `iam:CreateRole` is permitted, every service the one-box
-posture needs is on the Free Tier list, and `RegionFloor` permits `us-east-1`, so `D-32`
-and `D-35` are unaffected. This is CI alone.
+**Confirmed against the live account** (`FZ-171`), not just the published policy:
+`iam:ListOpenIDConnectProviders` returns `AccessDenied` with *"an explicit deny in a service
+control policy: …/p-gipyamec"*. The same check found `D-32` wrong — see below.
+
+**Nothing else is blocked.** `iam:CreateRole` is permitted and every service the one-box
+posture needs works in `us-east-2`, verified by calling each one. `D-35` is unaffected.
+`D-32` was **not** — `us-east-1` turned out to permit only global services, so the region
+moved to `us-east-2` (`FZ-171`). This issue is CI alone.
 
 **The fix is activating advanced features** (`D-37`), which is irreversible and removes the
 project's enforced spend limit. Until then deploys are by hand, which means no record of

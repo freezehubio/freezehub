@@ -18,7 +18,7 @@ terraform {
   backend "s3" {
     # bucket         = "freezehub-tfstate-<account-id>"
     # key            = "beta/ecs.tfstate"
-    # region         = "us-east-1"
+    # region         = "us-east-2"
     # dynamodb_table = "freezehub-tfstate-lock"
     # encrypt        = true
   }

@@ -106,7 +106,7 @@ has no such control. A checkbox alone would not close it — see `OI-37`.
 
 ## 6. Transmisión internacional
 
-The deployment runs in **AWS `us-east-1`** (`FZ-141`, `D-35`). Colombian law distinguishes
+The deployment runs in **AWS `us-east-2`** (`FZ-141`, `D-35`). Colombian law distinguishes
 **transferencia** (to another responsable) from **transmisión** (to an encargado processing on
 the responsable's behalf). This is a transmisión, governed by Decreto 1377 Art. 25, and the
 route is a **contrato de transmisión** with clauses on scope, purposes, security and

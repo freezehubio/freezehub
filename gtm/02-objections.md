@@ -105,7 +105,7 @@ in production long enough to have a figure worth stating.
 
 ## "Where does our data live?"
 
-`us-east-1`, in AWS. Say it directly; hedging on this question is worse than the answer.
+`us-east-2`, in AWS. Say it directly; hedging on this question is worse than the answer.
 
 For an EU buyer this is a real objection and currently a real gap — recorded internally,
 with the trigger being exactly this conversation. What can be said truthfully: the backend

@@ -36,9 +36,11 @@ You need, and Terraform will not create for you:
    AWS account; it sits in an Organization AWS owns and manages. `docs/16-accounts.md` §0
    tells you which experience you are on, and `D-37` is the reasoning.
 
-   **`us-east-1` works even though the project is assigned a different home Region.** The
-   `RegionFloor` SCP permits `unspecified`, `us-east-1`, the project's Region and
-   `us-west-2` — so `D-32` stands and CloudFront's certificate is not blocked.
+   **The region is `us-east-2`** (`D-32`, amended by `FZ-171`). A second SCP,
+   `UsEast1Partitional`, denies everything in `us-east-1` except global services — Cognito,
+   RDS, ECR, SSM, load balancers and `s3:CreateBucket` among them. CloudFront's certificate
+   still goes to `us-east-1`, because `acm` is on the allowed list and AWS accepts it from
+   nowhere else.
 
 2. **A domain and a Route 53 hosted zone that already delegates it.** Both certificates
    are DNS-validated through that zone, so an apply hangs without it.
@@ -162,7 +164,7 @@ a rebuild and hope.
 
 ## Rough monthly cost
 
-Order of magnitude, us-east-1, beta scale, before data transfer. This is the posture `D-28`
+Order of magnitude, beta scale, before data transfer. This is the posture `D-28`
 decided, not the one `FZ-063` wrote: **two tasks in a public subnet, and no NAT gateway.**
 
 | | |
