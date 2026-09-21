@@ -3458,3 +3458,61 @@ Acceptance:
 - The migration back is a numbered sequence with a named trigger, and ends by deleting the
   key.
 - Nothing in `infra/` changes; there is no account id in it.
+
+### FZ-170 — There Are Two AWSes, and We Are on the Other One
+**Status:** DONE · **Supersedes** `D-36` · **Raises** `OI-43`
+
+The operator could not finish `16-accounts.md` §3. Creating the IAM user, the console said:
+
+> Los usuarios de IAM solo se deben utilizar para el acceso mediante programación. Si desea
+> conceder acceso a usuarios humanos, puede hacerlo en la página del equipo.
+
+Not advice — a service control policy. `iam:*LoginProfile*` is denied, so an IAM user cannot
+be given console access at all. **§3 was unfinishable, not merely awkward.**
+
+**The cause is that AWS now has two sign-up products, and the guide described the other
+one.** FreezeHub's account is on *Sign up for AWS (new)*: sign-in through AWS Builder ID, the
+account is a **project** inside an Organization **AWS owns and manages**, human access is
+**team members** in an AWS-run Identity Center, and CLI credentials come from **`aws login`**
+— a browser flow issuing role sessions rotated every 15 minutes.
+
+**Which dissolves `D-36` rather than contradicting it.** `D-36` weighed $200 of free credits
+against having an Organization and accepted a long-lived access key as the price of keeping
+the credits. On this experience:
+
+- the Organization already exists, at no cost, so there is nothing to weigh;
+- Identity Center already exists — `sso:CreateInstance` is denied because AWS runs it;
+- there are no access keys, so the residual `D-36` accepted does not exist.
+
+Two stories of reasoning about a trade-off that was never real. Worth naming plainly: the
+guide was written from documentation about a different product, and only creating the
+account revealed which one we were on.
+
+**What survives, checked service by service rather than assumed.** Every service the one-box
+posture needs is on the Free Tier list — EC2, RDS, Cognito, CloudFront, Route 53, ACM, SSM,
+ECR, S3, SES, ELB, ECS, CloudWatch, CloudTrail, Secrets Manager, KMS, STS, VPC, EBS, IAM. And
+`RegionFloor` permits `unspecified`, `us-east-1`, the project's Region and `us-west-2`, so
+**`D-32` holds and CloudFront's `us-east-1` certificate is not blocked** — the risk that
+looked most likely to break the SPA, and did not.
+
+**What does not survive is CI** (`OI-43`). `iam:*Provider*` is denied, and
+`infra/shared/github-oidc.tf:7` creates an `aws_iam_openid_connect_provider`, so `shared/`
+cannot be applied and every deploy workflow loses its credential path. The SCP applies on the
+Free Tier *and* the Paid Plan and cannot be modified.
+
+**Resolved as `D-37`: activate advanced features, but immediately before wiring CI, not
+now.** Activation is irreversible and removes the project's **spend limit** — a hard enforced
+monthly ceiling ordinary AWS does not offer. While the cost shape of a live box is unmeasured
+that ceiling is worth more than a budget alarm that only sends email, and until something is
+deployed there is nothing for CI to deploy. Deploys are by hand until then, and that is named
+as a stopgap rather than a plan: a hand-deploy leaves no record of what shipped.
+
+Acceptance:
+
+- The guide opens by establishing **which** AWS the reader is on, because every instruction
+  below depends on it and the two are not distinguishable from inside one of them.
+- Every restriction quoted from the published SCP, with the statement that imposes it.
+- The blocker is separated from the inconveniences — one thing stops the deploy, the rest do
+  not.
+- The classic shape is kept as one reference section rather than deleted, including the two
+  defects `FZ-169` found in it.

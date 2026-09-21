@@ -1036,3 +1036,64 @@ Any one, and `16-accounts.md` §7 is the route:
 3. **A security review asks whether production is isolated.**
 
 The migration touches no Terraform: there is no account id anywhere in `infra/`.
+
+## D-37 — FreezeHub is on "Sign up for AWS (new)", and advanced features wait for CI
+
+**Date:** 2026-09-20 · **Specified by:** `FZ-170` · **Supersedes:** most of `D-36`
+
+### Decision
+
+FreezeHub's AWS account is a **project on AWS's new sign-up experience** — a member account
+of an Organization AWS owns and manages, with AWS Builder ID as the identity source, team
+members instead of IAM users, and `aws login` instead of access keys.
+
+**Advanced features are not activated yet.** They are activated immediately before wiring up
+CI, and an AWS Budget with an alarm is set the same day.
+
+### Why this is not the shape `D-36` chose
+
+`D-36` weighed keeping ~$200 of free credits against having an Organization, and chose one
+standalone account with an MFA-gated IAM access key. **The new experience makes that
+comparison meaningless**, discovered when the console refused to give an IAM user console
+access:
+
+- **An AWS Organization already exists**, created and managed by AWS. Nothing was forfeited
+  to get it and there is nothing left to buy.
+- **IAM Identity Center already exists.** `sso:CreateInstance` is denied because AWS runs it.
+- **There are no access keys.** `aws login` issues role session credentials rotated every 15
+  minutes. The one real residual `D-36` accepted does not exist here.
+- **`iam:*LoginProfile*` is denied**, so `D-36`'s IAM user could not have been finished.
+
+Every service the one-box posture needs is on the Free Tier list, and `RegionFloor` permits
+`us-east-1`, so **`D-32` and `D-35` both survive unchanged**.
+
+### Why advanced features are needed at all, and why not yet
+
+**`iam:*Provider*` is denied** by an SCP that applies on the Free Tier and the Paid Plan and
+"cannot be modified". `infra/shared/github-oidc.tf` creates an
+`aws_iam_openid_connect_provider`, so `terraform apply` on `shared/` fails and every deploy
+workflow loses its only credential path (`FZ-064`). Only activating advanced features lifts
+this.
+
+Deferring costs one thing and buys another:
+
+- **Costs:** deploys are done by hand until then, with no record of what shipped — which is
+  what `FZ-152` built the workflows to provide.
+- **Buys:** the **spend limit**, a hard enforced monthly ceiling that ordinary AWS does not
+  offer and that activation removes permanently. While the cost shape of a live box is
+  unmeasured, an enforced ceiling is worth more than a budget alarm that only sends email.
+
+Activation is **irreversible**, so the trigger is the point where the cost is known and CI is
+the thing standing between the product and its users — not before.
+
+### What activation gives, when it happens
+
+The management account, the Organization, `OrganizationAccountAccessRole`, full IAM
+including OIDC providers, all Regions, all services, and SCPs of your own. In other words
+exactly the separation `OI-32` asked for and `D-36` deferred, at no credit cost.
+
+### What ends this posture
+
+1. **Wiring up CI** — the trigger above.
+2. **A service outside the supported list.** Checked and not currently the case.
+3. **A second Region.** `D-32` says United States and one Region, so not soon.

@@ -31,34 +31,25 @@ it means a new pool, new subjects, and a forced password reset for every custome
 
 You need, and Terraform will not create for you:
 
-1. **A dedicated AWS account for the product** — `freezehubio@gmail.com`, not an account
-   also used for anything else, and **not** the operator's personal one. Upgraded to the
-   **Paid account plan**: the Free plan closes the account after six months or when its
-   credits run out, which for a connector that fails closed is an outage on a timer.
+1. **A project on AWS's new sign-up experience** — `freezehubio@gmail.com`, not an account
+   also used for anything else, and **not** the operator's personal one. A project *is* an
+   AWS account; it sits in an Organization AWS owns and manages. `docs/16-accounts.md` §0
+   tells you which experience you are on, and `D-37` is the reasoning.
 
-   **No AWS Organization, for now.** Joining one expires a new account's free credits
-   immediately — about $200, or eleven months of the beta box — and it is deferred to a
-   named trigger. `docs/16-accounts.md` is the full sequence and `D-36` is the reasoning.
-
-   **Each AWS account needs its own unique root email**, which matters when the second one
-   arrives. Plus-addressing works and all of it lands in one mailbox, so keep
-   `freezehubio+mgmt@gmail.com` in reserve for the management account that shows up with
-   the Organization.
-
-   That mailbox can reset the account root, which makes it the strongest credential in the
-   system. It wants MFA before it owns anything.
+   **`us-east-1` works even though the project is assigned a different home Region.** The
+   `RegionFloor` SCP permits `unspecified`, `us-east-1`, the project's Region and
+   `us-west-2` — so `D-32` stands and CloudFront's certificate is not blocked.
 
 2. **A domain and a Route 53 hosted zone that already delegates it.** Both certificates
    are DNS-validated through that zone, so an apply hangs without it.
-3. **A role for Terraform to assume — not account root.** Root access keys cannot be
-   scoped, cannot be limited, and cannot be revoked without disrupting everything else.
-   This is also the item a personal account cannot satisfy, because there the operator
-   *is* root — which is the practical reason item 1 comes first.
+3. **Credentials from `aws login`, not an access key.** AWS CLI 2.32.0 or later opens a
+   browser and issues role session credentials it rotates every 15 minutes. There is no
+   key to scope, rotate or lose, and on this experience there is no IAM user to hold one
+   — `iam:*LoginProfile*` is denied.
 
-   Without an Organization there is no IAM Identity Center path into the account
-   (account instances do applications, not accounts), so this is an IAM user whose *only*
-   permission is `sts:AssumeRole` on one administrator role that refuses without MFA.
-   `docs/16-accounts.md` §3 has the two policies and the `~/.aws/config` profile.
+   **`shared/` cannot be applied until advanced features are activated** (`OI-43`).
+   `github-oidc.tf` creates an `aws_iam_openid_connect_provider` and `iam:*Provider*` is
+   denied by an SCP that cannot be modified. `bootstrap/` and `singlebox/` are unaffected.
 4. **A verified SES identity**, if email notifications are wanted. The task role can send;
    SES still has to be out of the sandbox to send anywhere.
 
