@@ -3360,3 +3360,39 @@ actually have to run, in order, rather than by anything failing — nothing can 
 
 `14-operations.md` gains a *Releasing* section naming the three workflows in order, and
 saying not to run `Deploy` on this posture.
+
+### FZ-167 — What a Buyer Actually Reads
+**Status:** DONE
+
+`gtm/customer/` — the four documents handed to a prospect: one-pager, technical overview,
+security brief, FAQ. `FZ-158` decided what to say; this is the half a customer sees.
+
+**The security brief was blocked and is not any more.** It needed `17-data-protection.md`,
+which landed with `FZ-161`/`FZ-165`. It answers the security questionnaire directly — what is
+held and what is not, authentication, tenant isolation, encryption, residency, retention,
+subprocessors — and then names what does not exist: **no SOC 2 report, no published DPA, no
+EU residency, deletion done by hand, and a backup whose restore has never been drilled**
+(`FZ-155`). A buyer finds all of that out anyway; the only question is whether they find it
+out from us.
+
+**Every technical claim was checked against the code, and two came back sharper than
+written.** The connector exits non-zero on `BLOCK` and prints advisories on `ALLOW`
+(`freeze-check.sh`), and retry is 30 seconds doubling to a 15-minute cap over six attempts
+before a terminal failure (`FZ-044`) — specific enough for a reviewer to verify, which vague
+phrasing is not.
+
+**What the customer documents deliberately omit** is the internal half: what an alternative
+costs us, who to walk away from, how to run a price. `01-positioning.md` §8 stays internal
+because it is written for someone about to speak, not someone about to buy.
+
+Contract documents — DPA, subprocessor page, privacy notice, Política de Tratamiento — remain
+missing (`OI-41`). They need counsel and the company's own details, so no placeholder version
+of them is in the repository.
+
+Acceptance:
+
+- Every factual claim resolves to `docs/`, `connectors/` or a decision record.
+- The security brief states what does not exist, by name, rather than omitting it.
+- No customer document claims a capability that is not built — no self-serve signup, no
+  trial link, no references, no SLA below Enterprise.
+- Nothing internal leaks into `customer/`.
