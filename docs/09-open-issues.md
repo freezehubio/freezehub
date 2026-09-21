@@ -186,7 +186,11 @@ worth opening only if AWS as registrar is wanted for its own sake.
 
 ### OI-2 — No real Cognito identity provider
 
-**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-016`
+**Severity:** Gap · **RESOLVED by** `FZ-046` · **Found in:** `FZ-016`
+
+**Closed.** `CognitoIdentityProvider` implements the port outside the `local` profile, calling `AdminCreateUser` and returning the `sub` Cognito issues. The fail-fast moved rather than disappeared: `freezehub.cognito.user-pool-id` and `freezehub.cognito.region` have no defaults, so an environment that forgets them still refuses to start — at boot, not at the first invitation.
+
+**One consequence is not closed.** The single-box posture passes neither property and its instance role cannot call `AdminCreateUser`, so the backend will not start there. See `OI-44`.
 
 `IdentityProvider` has only `LocalIdentityProvider`, a `@Profile("local")` fake that invents a subject. Inviting a user in any deployed environment requires a real `AdminCreateUser` implementation.
 
@@ -268,7 +272,32 @@ durable one and left to `FZ-123`: a security group or an egress proxy, so that t
 does not depend on the application resolving a name correctly. The residual gap in the
 meantime is a DNS rebind between FreezeHub's resolution and the client's own.
 
+### OI-44 — The single box cannot reach Cognito
+**Severity:** Blocker (for the beta posture) · **Owner:** `FZ-123` · **Found in:** `FZ-046`
+
+`FZ-046` made `CognitoIdentityProvider` the `IdentityProvider` outside the `local` profile, and
+`infra/ecs/backend.tf` already wires it: `cognito-idp:AdminCreateUser` and `AdminGetUser` on the
+pool ARN, `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI`, and
+`FREEZEHUB_COGNITO_USER_POOL_ID`. **The single box — the posture `D-35` actually deploys — has
+none of it.**
+
+- `deploy/compose.yaml` passes the profile, the datasource, the encryption key and the CORS
+  origin. No issuer URI and no pool id, so the context will not start.
+- `infra/singlebox/iam.tf` grants ECR login, ECR pull, SSM parameter reads, KMS decrypt and
+  backup writes. No Cognito, so even configured it could not create a user.
+
+**The same shape as `FZ-159` and `FZ-166`, a third time:** two halves built in different
+stories, each assuming the other. The ECS estate was wired for an adapter that did not exist;
+the adapter now exists for a posture that is not wired. Found by reading what has to be true
+for the box to boot, not by anything failing — nothing is deployed yet.
+
+Three additions, none of them large: two environment variables in `compose.yaml` (plumbed from
+Terraform like `ROOT_DOMAIN` already is), one IAM statement scoped to the pool ARN, and
+`FREEZEHUB_COGNITO_REGION` alongside them. Belongs with applying the beta deployment rather
+than with the adapter, which is why it is an issue and not a silent addition to `FZ-046`.
+
 ### OI-25 — Token validation for a deployed environment is unspecified
+
 **Severity:** Decision · **Owner:** `FZ-128` · **Found in:** `FZ-125`
 
 There is no `issuer-uri` and no `JwtDecoder` outside the `local` profile, consistent with `OI-2`. So the rules a deployed environment will validate against have never been written, and `FZ-046` would otherwise choose them while implementing them.

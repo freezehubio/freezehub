@@ -101,6 +101,36 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!--
+            The only AWS dependency in the backend (`FZ-046`). Everything else here is
+            cloud-neutral and `OI-15` records that as worth keeping, so this is the narrow
+            service module rather than a bundle, and it is reachable through one class behind
+            the `IdentityProvider` port. The alternative is not "no AWS code": Cognito's admin
+            API cannot be called without SigV4, so hand-rolling the signature would be more
+            AWS-specific code, not less.
+
+            The two bundled HTTP clients are excluded in favour of `url-connection-client`,
+            which is a fraction of the size. This application makes one call, at invite time.
+        -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>cognitoidentityprovider</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -158,6 +188,18 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
                 <version>2.0.5</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!--
+                The AWS SDK, imported the same way and for the same reason: the service
+                module, the core and the HTTP client must be one version, and pinning each
+                separately is how they drift.
+            -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>2.46.7</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
