@@ -121,12 +121,17 @@ unnoticed.
 
 Signed in as root:
 
-1. **Enable MFA.** A hardware key if you have one.
+1. **Enable MFA.** A passkey or hardware security key is the strongest choice here, because
+   root only ever signs in at the console. **The IAM user in §3 is the opposite case** — read
+   the note there before buying one device and expecting it to serve both.
 2. **Delete any root access keys.** There should be none; if there are, that is the single
    most valuable credential in the account sitting in a file somewhere.
 3. Set a strong unique password and put it in a password manager.
-4. **Billing → IAM access to billing → activate**, so the admin role below can read costs
-   without anyone signing in as root.
+4. **Activate IAM Access** — the setting of that name on the Billing and Cost Management
+   console's account settings page, which only root can change. Without it the admin role
+   cannot open the Billing console at all, whatever its policy says; with it, checking the
+   credit balance (§1) stops requiring a root sign-in. `AdministratorAccess` supplies the
+   other half AWS requires — the setting alone grants nothing.
 
 Then create the user and role in §3 — **that is the last routine thing root does.** With no
 Organization, root is also the only break-glass path (§5), so it matters more here than it
@@ -142,10 +147,32 @@ Identity Center cannot grant access to the account without an Organization (rule
 this is an IAM user. The design makes the access key worthless by itself: the user's **only**
 permission is to assume a role, and the role refuses without MFA.
 
-**As root, once:**
+**Order matters here, and getting it wrong fails immediately.** IAM *"transforms the ARN to
+the user's unique principal ID when you save the policy"*, so the user named in the role's
+trust policy has to exist **before** the role does. Creating the role first returns
+`MalformedPolicyDocument: Invalid principal in policy`.
 
-**a. Role `FreezeHubAdmin`** — permissions `AdministratorAccess`, **maximum session duration
-8 hours**, trust policy:
+**As root, once, in this order:**
+
+**a. User `<your-user>`** — IAM → Users → Create user, with console access.
+
+**Give it a virtual MFA device — an authenticator app, not a security key.** This is the
+one place a passkey does not work: the CLI profile below makes the AWS CLI *"prompt the user to
+enter the one-time password (OTP) that the MFA device provides"*, and a FIDO2 key cannot
+produce an OTP. A hardware **TOTP** token works; a passkey or security key does not. Root
+can still use one (§2) — it never touches the CLI.
+
+Note the device's ARN from the user's **Security credentials** tab. The console defaults
+the device name to the user name, but it does not have to match, and `mfa_serial` needs the
+real one:
+
+```text
+arn:aws:iam::<account-id>:mfa/<device-name>
+```
+
+**b. Role `FreezeHubAdmin`** — IAM → Roles → Create role → **Custom trust policy**,
+permissions `AdministratorAccess`, and **maximum session duration 8 hours** (the default is
+1; `duration_seconds` below cannot exceed it).
 
 ```json
 {
@@ -162,8 +189,7 @@ permission is to assume a role, and the role refuses without MFA.
 }
 ```
 
-**b. User `<your-user>`** — console access, MFA enabled, and one inline policy. Nothing else,
-no managed policies:
+**c. Attach one inline policy to the user** — nothing else, no managed policies:
 
 ```json
 {
@@ -176,7 +202,11 @@ no managed policies:
 }
 ```
 
-**c. An access key** for that user, stored in `~/.aws/credentials`.
+This is a second pass over the user because the role did not exist when it was created. Two
+passes is the price of the ordering constraint; the alternative is a wildcard `Resource`,
+which gives the key a broader grant than it needs.
+
+**d. An access key** for that user, stored in `~/.aws/credentials`.
 
 Then locally:
 
@@ -196,7 +226,7 @@ region = us-east-1
 region           = us-east-1
 role_arn         = arn:aws:iam::<account-id>:role/FreezeHubAdmin
 source_profile   = freezehub-cli
-mfa_serial       = arn:aws:iam::<account-id>:mfa/<your-user>
+mfa_serial       = arn:aws:iam::<account-id>:mfa/<device-name>
 duration_seconds = 28800
 ```
 
@@ -260,7 +290,8 @@ somewhere else, and this one has nothing behind root.
 So the things that make root work have to be true *now*, while nothing is at stake:
 
 - The root MFA device is not the same physical object as the IAM user's, or one lost phone
-  takes both paths.
+  takes both paths. §3 pushes the two apart anyway — root can be a passkey, the IAM user has
+  to be a TOTP authenticator — so use that rather than enrolling one device twice.
 - Recovery codes for `freezehubio@gmail.com` are stored offline.
 - The account id, the root email and the MFA backup live somewhere that does not depend on
   AWS being reachable.
