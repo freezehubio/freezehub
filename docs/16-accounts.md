@@ -5,355 +5,257 @@
 How to create the AWS account FreezeHub deploys into, and who is allowed to do what once
 it exists.
 
-`FZ-138` says **what** must exist and `OI-32` says why. This is the **how**, written as a
-sequence somebody can follow once, because it is done once and then relied on for years.
+`FZ-138` says **what** must exist and `OI-32` says why. This is the **how**.
 
 **Nothing here is Terraform.** The estate in `infra/` assumes the account already exists —
 it cannot create the account it runs in, and the credential it runs as has to predate it.
 
-## The shape, and why it is one account and not two
+---
 
-Two earlier versions of this guide were wrong in opposite directions. The first said to use
-the **existing personal account** as the management account of an Organization. The second
-fixed the personal-account half and kept the Organization. AWS does not allow the second
-either, not on a new account, and the operator found that out by trying it.
+## 0. Which AWS you are on
 
-### What AWS actually does
+**Read this first. It decides everything below, and there are two different AWSes.**
 
-Three rules, each verifiable on AWS's own pages, that together decide the shape:
+In 2026 AWS split sign-up into two products. They produce different account models, different
+identities, and different limits — and most writing about AWS, including earlier revisions of
+this guide, describes only the older one.
 
-1. **Joining an Organization destroys the free credits.** *"When your account joins an AWS
-   Organization … your Free Tier credits expire immediately, and your account will be
-   ineligible to earn more AWS Free Tier credits"* — [Free Tier
-   FAQs](https://aws.amazon.com/free/free-tier-faqs/). The same page: the free account plan
-   *"will automatically be upgraded to a paid plan"*, which is the message the operator hit.
-2. **The credits are not what the Free plan is for.** Both plans grant the same **$100 at
-   signup plus up to $100 earned** — [Choosing a
-   plan](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html)
-   says so in its comparison table. Upgrading to Paid does not forfeit them.
-3. **Without an Organization there is no Identity Center access to the account.** A
-   standalone account can enable an Identity Center *account instance*, but *"Account
-   instances do not support permission sets and therefore do not support access to AWS
-   accounts"* — [Account
-   instances](https://docs.aws.amazon.com/singlesignon/latest/userguide/account-instances-identity-center.html).
-   Account instances do applications, not accounts.
+| | **Sign up for AWS (new)** | **Sign up for AWS (advanced)** |
+|---|---|---|
+| You sign in with | A Google/GitHub/Apple/Amazon login, via **AWS Builder ID** | An email and password you set |
+| Your account is | A **project** inside an Organization **AWS owns and manages** | A standalone account, or one in an Organization you own |
+| Human access | **Team members** (workforce identities in an AWS-run Identity Center) | IAM users, or your own Identity Center |
+| CLI credentials | **`aws login`** — browser flow, temporary, rotated every 15 minutes | Access keys, or `aws configure sso` |
+| Guardrails | SCPs **AWS applies and you cannot modify** | None but your own |
 
-### So the choice is a real one, with a price on it
+**You are on the new experience if** `https://settings.aws.com` opens, the console has a
+*Manage projects* menu, or creating an IAM user shows this:
 
-| | Free credits | The credential on your laptop | Separation |
-|---|---|---|---|
-| **One standalone account** | **kept — up to $200** | An IAM user's access key, usable only with MFA | None |
-| **Two accounts, Organization** | **forfeited on day one** | Identity Center, temporary, no key | Management / production |
+> Los usuarios de IAM solo se deben utilizar para el acceso mediante programación. Si desea
+> conceder acceso a usuarios humanos, puede hacerlo en la página del equipo.
 
-At `D-35`'s **$18 a month**, $200 is **roughly eleven months of the box** — paid up front for
-account separation that, today, protects one person and zero customers. That is the
-"speculative infrastructure" the MVP constraints exclude, bought with the only money the
-project has.
+That message is not advice. It is an SCP: **`iam:*LoginProfile*` is denied**, so an IAM user
+*cannot* be given a console password on this experience. §3 of the previous revision of this
+guide could not be completed, and that is why.
 
-**One standalone account. Upgrade it to Paid. Add the Organization later.** `D-36` records
-this and §7 is the route back.
-
-**Deferring costs nothing extra, which is the tell.** The credits are destroyed whenever you
-create the Organization — this month or next year. Doing it once they are spent is the same
-price, minus the eleven months.
-
-**What the personal account has to do with it: nothing, and that was the real defect.**
-`OI-32`'s objection was a personal identity in permanent control of production. A fresh
-account on `freezehubio@gmail.com` answers that completely. The Organization was a second
-layer on top of the answer, not the answer.
-
-**Leave the personal account alone.** Do not invite it, do not use it. It holds $0.007 of S3
-(`OI-15`) and stranding it costs nothing.
-
-### What choosing one account actually costs
-
-Named here rather than buried, because §7 is how they come back:
-
-- **A long-lived access key exists** — one, on one laptop, useless without a TOTP (§3).
-- **Root is the only break-glass.** There is no `OrganizationAccountAccessRole` to assume
-  from somewhere else (§5).
-- **No service control policies.** They are an Organization feature; §6's optional guard
-  rails are not available.
-- **Billing and workloads share an account.** Irrelevant at one account, not at three.
-
-**The one irreversible part is the region, not any of this.** A Cognito user pool is
-region-bound and `users.external_subject` stores the `sub` it issues, so `D-32`'s choice of
-`us-east-1` has to be made before the first apply, not after (`FZ-135`).
+**The rest of this document assumes the new experience**, because that is what FreezeHub's
+account is on. `D-36` and `D-37` record the decisions; the old shape survives only as §6.
 
 ---
 
-## 1. Create the account
+## 1. What the new experience already gives you
 
-Sign up at `aws.amazon.com` with:
+This is the part worth understanding before changing anything, because it silently answers
+questions `FZ-168` spent a whole story on.
 
-| | |
-|---|---|
-| Root email | `freezehubio@gmail.com` |
-| Account name | `freezehub-production` |
+**An AWS Organization already exists.** Your projects are member accounts of an Organization
+AWS created and manages. So `D-36`'s central trade-off — *keep the $200 of free credits, or
+have an Organization* — **is moot**. You have one. Nothing was forfeited to get it, and there
+is nothing left to buy.
 
-`freezehubio+prod@gmail.com` is no longer needed. Keep plus-addressing in reserve: **each AWS
-account needs its own unique root email**, so it is what a management account uses in §7.
+**IAM Identity Center already exists**, with AWS Builder ID as its identity source. Team
+members are workforce identities in it. You do not create it; you cannot create it
+(`sso:CreateInstance` is denied).
 
-### Then upgrade to the Paid plan, before anything real depends on it
+**There are no access keys.** `aws login` opens a browser, you sign in the way you sign in to
+the console, and the CLI receives role session credentials that it rotates every 15 minutes,
+valid up to the role's session duration (12 hours maximum). It needs AWS CLI **2.32.0 or
+later** and the `SignInLocalDevelopmentAccess` managed policy on the principal.
 
-**The Free account plan closes your account.** Not throttles — closes. *"Your free account
-plan ends after six months or when your credits are fully used — whichever occurs first …
-After your free account plan expires, your account closes automatically, and you lose access
-to your resources and data."* AWS keeps the content 90 days.
+That erases the single real residual `D-36` accepted. The guide used to spend two pages
+making one long-lived access key survivable; on this experience the key does not exist.
 
-For a product whose connector **fails closed**, that is not a billing event. A box that stops
-because a six-month timer elapsed blocks every customer's deployments until someone notices.
+**Every service FreezeHub needs is on the Free Tier list.** Checked individually against
+AWS's published list rather than assumed: EC2, RDS, Cognito, CloudFront, Route 53, ACM,
+Systems Manager, ECR, S3, SES, ELB, ECS, CloudWatch, CloudTrail, Secrets Manager, KMS, STS,
+VPC, EBS, IAM. `D-35`'s one-box posture is buildable here as designed.
 
-The Paid plan changes nothing about the credits — they apply to the bill first and you pay
-only the excess, which at $18 a month is $0 until they are gone. It removes the closure, and
-it removes the Free plan's restriction to *select* services.
+**`us-east-1` is allowed**, even though your project is assigned a different home Region. The
+`RegionFloor` SCP permits `unspecified` (global services), `us-east-1`, your selected Region,
+and `us-west-2`. So **`D-32` survives unchanged**, and CloudFront's certificate — which AWS
+requires in `us-east-1` regardless — is not blocked.
 
-Do it at signup if the option is offered, otherwise **Billing → Upgrade plan** immediately.
+**Spend limits exist** on the paid plan, per project: a real monthly ceiling enforced by SCP,
+which ordinary AWS does not offer. For a pre-revenue solo founder that is worth more than it
+sounds.
 
-### Check the credits' expiry date
+---
 
-**Billing and Cost Management → Credits.** The $200 is only eleven months of runway if the
-credits live that long; they carry their own expiry and it caps what is actually usable.
-Write the date down — it is a cost event with a date, which is the kind that arrives
-unnoticed.
+## 2. What it takes away, and the one that stops the deploy
 
-## 2. Secure root, then stop using it
+Three restrictions, from SCPs marked **"cannot be modified"** that apply on the Free Tier
+*and* the Paid Plan. Only *activating advanced features* removes them.
 
-Signed in as root:
+**`iam:*Provider*` is denied. This blocks the deploy pipeline.**
 
-1. **Enable MFA.** A passkey or hardware security key is the strongest choice here, because
-   root only ever signs in at the console. **The IAM user in §3 is the opposite case** — read
-   the note there before buying one device and expecting it to serve both.
-2. **Delete any root access keys.** There should be none; if there are, that is the single
-   most valuable credential in the account sitting in a file somewhere.
-3. Set a strong unique password and put it in a password manager.
-4. **Activate IAM Access** — the setting of that name on the Billing and Cost Management
-   console's account settings page, which only root can change. Without it the admin role
-   cannot open the Billing console at all, whatever its policy says; with it, checking the
-   credit balance (§1) stops requiring a root sign-in. `AdministratorAccess` supplies the
-   other half AWS requires — the setting alone grants nothing.
+`infra/shared/github-oidc.tf:7` creates an `aws_iam_openid_connect_provider`, which needs
+`iam:CreateOpenIDConnectProvider`. The SCP denies it, so **`terraform apply` on `infra/shared/`
+fails**, and with it every workflow: `build-image.yml`, `deploy-frontend.yml` and
+`deploy-singlebox.yml` all authenticate by OIDC (`FZ-064`) and have no other path.
 
-Then create the user and role in §3 — **that is the last routine thing root does.** With no
-Organization, root is also the only break-glass path (§5), so it matters more here than it
-would in the two-account shape.
+This is the decision in §3. Everything else here is manageable; this is not.
 
-**And put MFA on `freezehubio@gmail.com` itself.** It can reset the account root *and* the
-GitHub organization. It is the strongest credential in the system and the only one with no
-recovery path above it.
+**`iam:*LoginProfile*` is denied.** IAM users cannot be given console access — the message in
+§0. Human access is team members, which is the better answer anyway.
 
-## 3. One IAM user, which on its own can do nothing
+**`iam:CreateGroup`, `iam:*Alias*`, `iam:*Organizations*` are denied**, and roles under
+`/managed/` are protected. Ordinary `iam:CreateRole` is **allowed**, so everything Terraform
+creates in §4 is fine.
 
-Identity Center cannot grant access to the account without an Organization (rule 3 above), so
-this is an IAM user. The design makes the access key worthless by itself: the user's **only**
-permission is to assume a role, and the role refuses without MFA.
+---
 
-**Order matters here, and getting it wrong fails immediately.** IAM *"transforms the ARN to
-the user's unique principal ID when you save the policy"*, so the user named in the role's
-trust policy has to exist **before** the role does. Creating the role first returns
-`MalformedPolicyDocument: Invalid principal in policy`.
+## 3. The decision: activate advanced features, or deploy by hand
 
-**As root, once, in this order:**
+**Activating advanced features cannot be reversed.** It hands you the Organization AWS has
+been managing, a management account, full IAM, all Regions and all services — and removes
+spend limits.
 
-**a. User `<your-user>`** — IAM → Users → Create user, with console access.
+| | **Activate advanced features** | **Stay on the managed experience** |
+|---|---|---|
+| GitHub Actions OIDC | Works | **Blocked** — deploy by hand |
+| `infra/shared/` applies | Yes | No — fails on the OIDC provider |
+| Organization | Yours, with a management account | AWS's, opaque |
+| Spend limit | **Gone** — budgets and alarms only, which do not stop spend | Kept — a real enforced ceiling |
+| SCPs | Yours to write | AWS's, unmodifiable |
+| Reversible | **No** | Yes — you can activate later |
 
-**Give it a virtual MFA device — an authenticator app, not a security key.** This is the
-one place a passkey does not work: the CLI profile below makes the AWS CLI *"prompt the user to
-enter the one-time password (OTP) that the MFA device provides"*, and a FIDO2 key cannot
-produce an OTP. A hardware **TOTP** token works; a passkey or security key does not. Root
-can still use one (§2) — it never touches the CLI.
+### Recommended: activate advanced features, but not yet
 
-Note the device's ARN from the user's **Security credentials** tab. The console defaults
-the device name to the user name, but it does not have to match, and `mfa_serial` needs the
-real one:
+**Activate it when you are ready to wire up CI, and not before.** The reasoning:
 
-```text
-arn:aws:iam::<account-id>:mfa/<device-name>
-```
+- It is the only path that preserves the deploy design. The alternative to OIDC is an access
+  key in a GitHub secret, which is worse than anything `D-36` contemplated and which
+  `FZ-064` exists to avoid.
+- **It costs nothing now.** The credits objection in `D-36` died with the discovery that AWS
+  already put you in an Organization — controlling it forfeits nothing further. Confirm this
+  in **Billing → Credits** before and after; it is the one number worth checking by eye.
+- It delivers precisely the separation `OI-32` asked for — a management account holding
+  billing and no workloads, production as a member account — which `D-36` deferred only
+  because it appeared to cost $200. It no longer does.
+- `aws login` continues to work afterwards, so the no-access-key property survives.
 
-**b. Role `FreezeHubAdmin`** — IAM → Roles → Create role → **Custom trust policy**,
-permissions `AdministratorAccess`, and **maximum session duration 8 hours** (the default is
-1; `duration_seconds` below cannot exceed it).
+**But it is irreversible and it removes your spend limit**, and until the product is
+deployed there is nothing for CI to deploy. So the order that loses least:
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": { "AWS": "arn:aws:iam::<account-id>:user/<your-user>" },
-    "Action": "sts:AssumeRole",
-    "Condition": {
-      "Bool": { "aws:MultiFactorAuthPresent": "true" },
-      "NumericLessThan": { "aws:MultiFactorAuthAge": "28800" }
-    }
-  }]
-}
-```
+1. **Now** — build and deploy by hand (§3b). Keep the spend limit while the cost shape is
+   unknown.
+2. **Before wiring CI** — activate advanced features, then set an AWS Budget with an alarm
+   *the same day*, because the enforced ceiling goes away and a budget only emails you.
+3. **Then** — `infra/shared/` applies, OIDC works, the workflows run.
 
-**c. Attach one inline policy to the user** — nothing else, no managed policies:
+### 3b. Deploying by hand, meanwhile
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": "sts:AssumeRole",
-    "Resource": "arn:aws:iam::<account-id>:role/FreezeHubAdmin"
-  }]
-}
-```
-
-This is a second pass over the user because the role did not exist when it was created. Two
-passes is the price of the ordering constraint; the alternative is a wildcard `Resource`,
-which gives the key a broader grant than it needs.
-
-**d. An access key** for that user, stored in `~/.aws/credentials`.
-
-Then locally:
-
-```ini
-# ~/.aws/credentials
-[freezehub-cli]
-aws_access_key_id     = AKIA...
-aws_secret_access_key = ...
-```
-
-```ini
-# ~/.aws/config
-[profile freezehub-cli]
-region = us-east-1
-
-[profile freezehub-prod]
-region           = us-east-1
-role_arn         = arn:aws:iam::<account-id>:role/FreezeHubAdmin
-source_profile   = freezehub-cli
-mfa_serial       = arn:aws:iam::<account-id>:mfa/<device-name>
-duration_seconds = 28800
-```
+Everything except the OIDC provider applies. The sequence:
 
 ```bash
-export AWS_PROFILE=freezehub-prod
-aws sts get-caller-identity     # prompts for the TOTP, then prints the FreezeHubAdmin ARN
+aws --version                      # needs 2.32.0 or later
+aws login                          # browser; temporary credentials, rotated every 15 min
+aws sts get-caller-identity        # confirm the account and role
 ```
 
-The CLI caches the assumed-role credentials until they expire and re-prompts after that.
-Every `terraform` and `aws` command in `infra/README.md` and `14-operations.md` works from
-here, including `aws ssm start-session`.
+Then `bootstrap/` and `singlebox/` as `infra/README.md` describes, skipping `shared/`'s
+`github-oidc.tf` — and building and pushing the image from the laptop rather than from
+`build-image.yml`. `14-operations.md` § *Releasing* names what the workflows would have done.
 
-**What this is and is not.** The key cannot read S3, cannot start an instance and cannot
-touch IAM — `sts:AssumeRole` is the whole grant, and it fails without a TOTP from a device
-that is not the laptop. What remains is real and is the price of no Organization: the key
-does not expire on its own, so **rotate it on the credits' expiry date** (§1) and keep the two
-events together. Identity Center's temporary credentials are strictly better, and §7 is how
-you get them.
+This is a stopgap and should be named as one: a hand-deploy has no record of what shipped,
+which is exactly what `FZ-152` built the workflows to provide.
 
-**No key goes near CI.** GitHub Actions authenticates by OIDC (`FZ-064`) and the box by its
-instance profile. This key exists on exactly one laptop, belonging to the person who holds
-root anyway.
+---
 
-### On Terraform running as administrator
+## 4. Team members, and the one you already made
 
-`FreezeHubAdmin` is administrator-equivalent and Terraform runs as it. That is a deliberate
-compromise and worth naming rather than dressing up: **Terraform creates IAM roles and
-policies**, so a genuinely least-privilege Terraform role needs `iam:CreateRole` and
-`iam:PutRolePolicy`, which is escalation to anything it can create. Scoping it properly is a
-real project and it buys little while one person holds the credential anyway.
+Human access is **team members**, not IAM users. From AWS Settings → **Projects** →
+**Actions → Manage team** → **Invite new team member**, by email address. After they accept,
+you grant them access to specific accounts in **AWS Account Access Manager**, which assigns
+IAM roles in your accounts to Identity Center users.
 
-What makes it acceptable here is everything around it: the session is temporary, MFA gates
-issuing it, and CloudTrail records what it did. Revisit when somebody who should not be an
-administrator needs to run an apply — which is the same trigger `D-23` names for building a
-provisioning console.
+`freezehubio+admin@gmail.com` is a reasonable second identity: AWS Builder ID is one per
+email address, so a separate address is the only way to hold a separate identity. Whether
+you need one yet is a different question — with one person, the owner identity already has
+the access, and a second identity mostly adds a second MFA device to keep safe. It costs
+nothing to keep.
 
-## 4. The roles the estate creates, and what each may do
+**Put MFA on the Google account behind the Builder ID.** That login can reset everything
+below it, and on this experience it *is* the root credential in every sense that matters.
 
-These are **created by Terraform**, not by hand. Listed so the segregation is legible in one
-place — none of them can do another's job, which is the point.
+---
+
+## 5. The roles the estate creates, and what each may do
+
+These are **created by Terraform**, not by hand. `iam:CreateRole` is permitted, so all of
+these work on the managed experience — except the OIDC provider the first one trusts.
 
 | Role | Assumed by | May do | May **not** do |
 |---|---|---|---|
-| `freezehub-beta-github-deploy` | GitHub Actions, by OIDC | Push an image, publish the SPA, invalidate the cache, send one SSM document to a tagged instance; on ECS, update the service | Change infrastructure. No `CreateService`, no `DeleteService` |
+| `freezehub-beta-github-deploy` | GitHub Actions, by OIDC — **needs advanced features** | Push an image, publish the SPA, invalidate the cache, send one SSM document to a tagged instance | Change infrastructure. No `CreateService`, no `DeleteService` |
 | `freezehub-beta-instance` | The EC2 box | Pull **one** repository, read **one** environment's SSM parameters, **write** backups | Read the backups back. Reach any other environment's secrets |
 | `freezehub-beta-task` | The Fargate task, on ECS | The application's own AWS calls | — |
 | `freezehub-beta-execution` | The ECS agent | Pull the image, fetch secrets at start | Anything at runtime |
-| `FreezeHubAdmin` | You, from §3, with MFA | Everything | — (which is why the key alone cannot assume it) |
 
-**Exactly one IAM user exists, and it is the one in §3.** Everything automated authenticates
-without a stored secret: GitHub by OIDC, the instance by its profile. The only other
-long-lived secrets are the ones the application itself holds, and those are SSM
-SecureStrings encrypted at rest (`D-3`).
+**No IAM users and no access keys exist anywhere in this design** — and on this experience
+that is enforced rather than merely intended. You authenticate with `aws login`, GitHub by
+OIDC once available, the instance by its profile. The only long-lived secrets are the
+application's own, held as SSM SecureStrings encrypted at rest (`D-3`).
 
-## 5. Break-glass
+## 6. The classic experience, for reference
 
-**Root, with its MFA device, is the only way back in.** That is the sharpest consequence of
-one account: the two-account shape has `OrganizationAccountAccessRole` assumable from
-somewhere else, and this one has nothing behind root.
+If FreezeHub were on **Sign up for AWS (advanced)** instead, the shape `D-36` chose applies:
+one standalone account, upgraded to the Paid plan, one IAM user whose only permission is
+`sts:AssumeRole` on an MFA-gated administrator role, and an Organization deferred. Five things
+that revision got wrong, and that still catch people there:
 
-So the things that make root work have to be true *now*, while nothing is at stake:
+- **The user must exist before the role.** IAM *"transforms the ARN to the user's unique
+  principal ID when you save the policy"*, so a trust policy naming a user that does not yet
+  exist returns `MalformedPolicyDocument: Invalid principal in policy`.
+- **`mfa_serial` needs a TOTP code**, not a passkey. The CLI *"prompts the user to enter the
+  one-time password (OTP) that the MFA device provides"*, and a FIDO2 key cannot produce one.
+- **`mfa_serial` names the MFA *device*, not the user.** The console defaults one to the
+  other and they do not have to match; read the ARN off the user's Security credentials tab.
+- **A role's maximum session duration defaults to 1 hour**, so `duration_seconds = 28800`
+  is rejected until it is raised to 8.
+- **The billing setting is called Activate IAM Access**, only root can change it, and AWS
+  is explicit that it grants nothing on its own — a policy still has to allow the actions.
 
-- The root MFA device is not the same physical object as the IAM user's, or one lost phone
-  takes both paths. §3 pushes the two apart anyway — root can be a passkey, the IAM user has
-  to be a TOTP authenticator — so use that rather than enrolling one device twice.
-- Recovery codes for `freezehubio@gmail.com` are stored offline.
-- The account id, the root email and the MFA backup live somewhere that does not depend on
-  AWS being reachable.
+Neither of the first two applies to the new experience, where there is no IAM user to make.
+`FZ-169` found all five by walking the sequence; they are kept because activating advanced
+features (§3) restores full IAM, and a reader may end up making roles by hand after all.
 
-Sign in as root once, deliberately, to confirm it works. A recovery path nobody has walked is
-a recovery path that does not exist — the same argument `FZ-155` makes about restores.
+## 7. Break-glass
 
-## 6. Auditing
+**The Builder ID login is the way back in** — the Google account, with its MFA and its
+recovery codes stored offline. There is no account root password to fall back on in the way
+the classic experience has one, because you never set one.
+
+After activating advanced features you also gain a management account with its own root, and
+`OrganizationAccountAccessRole` into members. At that point write down the management account
+id, its root email and its MFA backup somewhere that does not depend on AWS being reachable,
+and sign in once deliberately to confirm it works. A recovery path nobody has walked is a
+recovery path that does not exist — `FZ-155`'s argument about restores, applied to access.
+
+## 8. Auditing
 
 **CloudTrail Event history is on by default, free, and retains 90 days.** That is what makes
 `FZ-152`'s claim true — every SSM session and every deploy command is recorded, with the
-identity that made it.
+identity that made it. Multi-Region and organization trails are not available before advanced
+features; Event history in the working Region is.
 
-Ninety days is enough for the beta. A trail delivering to S3 is what gives longer retention
-and is worth adding before a customer's security questionnaire asks, not after.
+Ninety days is enough for the beta. A trail delivering to S3 gives longer retention and is
+worth adding before a customer's security questionnaire asks, not after.
 
-Worth knowing what it does *not* cover: CloudTrail records the API call that started a
-session, not what was typed inside it. For that, SSM session logging to S3 or CloudWatch is a
-separate setting — unnecessary while one person has access, and the first thing to turn on
-when that stops being true.
-
-**Service control policies are not available here.** Denying `cloudtrail:StopLogging` and
-`organizations:LeaveOrganization` needs an Organization. It moves to §7's list.
-
-## 7. When to add the Organization, and how
-
-**Any one of these:** the credits are exhausted or expired; a second person needs AWS access;
-a customer security review asks whether production is isolated. The first is a date you
-already wrote down in §1.
-
-The move, once triggered:
-
-1. **Create a new account** on `freezehubio+mgmt@gmail.com` and create the Organization from
-   *it*, choosing **All features**. It stays empty — an account that owns the Organization can
-   create and close members and reach into any of them, so nothing should run in it.
-2. **Invite `freezehub-production`** into that Organization. This is what expires its
-   credits, which by now are gone anyway.
-3. **Enable Identity Center** in the management account, `us-east-1`. Create a user, a
-   `FreezeHubAdmin` permission set with `AdministratorAccess` and an 8-hour session, and
-   assign it to the production account.
-4. `aws configure sso --profile freezehub-prod`, replacing the `role_arn`/`mfa_serial`
-   profile in §3.
-5. **Delete the IAM user and its access key.** This is the step that makes the migration
-   worth doing; leaving the key behind keeps the exposure and pays for nothing.
-6. Add the service control policies from §6 — deny `cloudtrail:StopLogging` and
-   `organizations:LeaveOrganization`.
-
-**Do not create the Organization from the production account.** It would become the
-management account, which is the shape §"The shape" rejects: the account running the product
-would also be the one that can create and close accounts. A new empty account is the point.
-
-**Nothing in `infra/` changes.** There is no account id anywhere in it (`OI-32`) — `locals.tf`
-reads `aws_caller_identity`. The migration is a credentials change, not a redeploy.
+CloudTrail records the API call that started an SSM session, not what was typed inside it.
+Session logging to S3 or CloudWatch is a separate setting — unnecessary while one person has
+access, and the first thing to turn on when that stops being true.
 
 ---
 
 ## What this unblocks
 
-With the account in place and `AWS_PROFILE=freezehub-prod`:
+With the project in place and `aws login` working:
 
 ```
 bootstrap/ → shared/ → FZ-046 → singlebox/ → deploy → restore drill
+                ↑
+        needs advanced features (§2)
 ```
 
 `shared/` creates the Cognito pool, which is what `FZ-046` needs to exist before it can be

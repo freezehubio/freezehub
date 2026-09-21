@@ -118,7 +118,26 @@ the SIC must be informed. Neither has a procedure, and **every incident should b
 whether or not it was notifiable** — the register is what an auditor asks to see, and "we have
 had none" is not evidence of anything.
 
+### OI-43 — GitHub Actions cannot authenticate to AWS on the managed experience
+**Severity:** Blocker (for CI only) · **Owner:** `FZ-138` · **Found in:** `FZ-170`
+
+`infra/shared/github-oidc.tf:7` creates an `aws_iam_openid_connect_provider`. AWS's new
+sign-up experience denies `iam:*Provider*` through a service control policy that applies on
+the Free Tier *and* the Paid Plan and that "cannot be modified", so **`terraform apply` on
+`infra/shared/` fails** and `build-image.yml`, `deploy-frontend.yml` and
+`deploy-singlebox.yml` lose the only credential path they have (`FZ-064`).
+
+**Nothing else is blocked.** `iam:CreateRole` is permitted, every service the one-box
+posture needs is on the Free Tier list, and `RegionFloor` permits `us-east-1`, so `D-32`
+and `D-35` are unaffected. This is CI alone.
+
+**The fix is activating advanced features** (`D-37`), which is irreversible and removes the
+project's enforced spend limit. Until then deploys are by hand, which means no record of
+what shipped — the thing `FZ-152` built the workflows to provide. The stopgap is acceptable
+only while nothing is live.
+
 ### OI-2 — No real Cognito identity provider
+
 **Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-016`
 
 `IdentityProvider` has only `LocalIdentityProvider`, a `@Profile("local")` fake that invents a subject. Inviting a user in any deployed environment requires a real `AdminCreateUser` implementation.
