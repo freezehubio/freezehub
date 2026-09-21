@@ -3560,3 +3560,57 @@ Acceptance:
   not.
 - The classic shape is kept as one reference section rather than deleted, including the two
   defects `FZ-169` found in it.
+
+### FZ-171 — The Region Was Wrong, and Only the Account Could Say So
+**Status:** DONE · **Amends** `D-32` · **Corrects** `FZ-170`
+
+`aws login` worked, which gave the first real credentials into the account — and the first
+chance to check claims by calling AWS instead of reading about it. Two of them were checked.
+One held and one did not.
+
+**`OI-43` held.** `iam:ListOpenIDConnectProviders` returns `AccessDenied` with *"an explicit
+deny in a service control policy: …/p-gipyamec"*. GitHub OIDC is blocked exactly as
+documented, and now with the policy id.
+
+**`D-32` did not.** `FZ-170` claimed `RegionFloor` permits `us-east-1`, so `us-east-1`
+survived as the region. It read one policy and missed a second. `UsEast1Partitional` then
+denies everything in `us-east-1` outside a short allow-list, and the allow-list is global
+services:
+
+| Allowed in `us-east-1` | Denied in `us-east-1` |
+|---|---|
+| `acm`, `cloudfront`, `route53`, `iam`, `sts`, `kms`, `logs` | `cognito-idp`, `rds`, `ecr`, `ssm`, `elasticloadbalancing`, `secretsmanager` |
+| three `ec2:Describe*` calls | every other `ec2:*`, and `s3:CreateBucket` |
+
+Confirmed by calling each one: `ec2:DescribeAvailabilityZones` in `us-east-1` and `us-west-2`
+denied, in `us-east-2` returns `us-east-2a`; `cognito-idp` denied in `us-east-1`, fine in
+`us-east-2`; `acm` fine in both.
+
+**So `D-32`'s region was unbuildable, and `us-east-2` replaces it.** Which matters more than
+a string: a Cognito user pool is region-bound and `users.external_subject` stores the `sub`
+it issues (`FZ-135`), so this had to be found **before** `FZ-046` creates the pool. After the
+first real user it is a new pool, new subjects and a forced password reset for everyone. It
+was found with three read-only API calls and nothing deployed.
+
+**`bootstrap/` would have failed on its own default.** `infra/bootstrap/main.tf` defaulted
+`region` to `us-east-1` and creates the state bucket, and `s3:CreateBucket` is denied there.
+The other modules were safe only because `FZ-135` had already removed their defaults — the
+same class of bug, caught once and missed once, in the one module that story did not touch.
+
+**The residency answer is unchanged.** Ohio is the United States, which is what `D-32`
+promised. `17-data-protection.md`, the security brief, the FAQ and `02-objections.md` change
+one string each and say the same thing.
+
+Acceptance:
+
+- Every claim about what is permitted comes from an API call against the account, named in
+  the story, rather than from the published policy alone.
+- The Cognito region is settled before `FZ-046`, not after.
+- No module can inherit a region by accident — `bootstrap/` keeps a default because it runs
+  before anything exists, and it is now one that works.
+- Customer-facing residency wording still says United States, because it still is.
+
+**One thing arrived incidentally and is kept deliberately:** `infra/bootstrap/.terraform.lock.hcl`
+is now tracked. Every other module already tracked its lock file and `bootstrap/` did not —
+the same module, overlooked the same way, as the region default above. Disclosed rather
+than left to be noticed in a diff.

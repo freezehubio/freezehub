@@ -795,16 +795,28 @@ Two things, it turns out, and neither is the number.
 
 ---
 
-## D-32 — The region is `us-east-1`, and the residency question is answered "United States"
+## D-32 — The region is `us-east-2`, and the residency question is answered "United States"
 
 **Date:** 2026-09-15 · **Asked by:** `FZ-135` · **Decided by:** the operator · **Recorded by:** `FZ-141`
 
 ### Decision
 
-`var.region` is `us-east-1`. Every store that holds customer data — the database, the Cognito
+`var.region` is `us-east-2`. Every store that holds customer data — the database, the Cognito
 user pool, the CloudWatch log groups, the Secrets Manager entries — lives there. The
-CloudFront certificate already lived in `us-east-1` because AWS accepts it from nowhere else,
-so there is now exactly one region in the picture.
+CloudFront certificate lives in `us-east-1`, because AWS accepts it from nowhere else, so
+there are two regions in the picture and only one of them holds anything.
+
+**Amended 2026-09-21 by `FZ-171`: this said `us-east-1` until the account existed.** The
+project's service control policy permits only a narrow set of global actions there —
+`acm`, `cloudfront`, `route53`, `iam`, `sts`, `kms`, `logs`, and three `ec2:Describe*` calls.
+**Cognito, RDS, ECR, SSM, load balancers and `s3:CreateBucket` are all denied in
+`us-east-1`**, verified against the live account, so the original decision was unbuildable.
+`us-east-2` is the region the project was assigned and the only one where the estate can
+run.
+
+**The residency answer does not change.** Ohio is the United States, which is what `D-32`
+actually promised and what `17-data-protection.md` and the security brief say. An EU buyer
+still gets "no".
 
 ### Why
 

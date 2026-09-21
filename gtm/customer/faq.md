@@ -87,7 +87,7 @@ No. Nothing has run in production long enough to produce the evidence. The secur
 sets out what is actually in place, and we will answer your questionnaire directly.
 
 **Where is our data?**
-AWS, `us-east-1`. EU residency is not available today.
+AWS, `us-east-2`. EU residency is not available today.
 
 **What do you store about our engineers?**
 Email addresses for people with accounts, and — if your pipeline sends them — the deploying

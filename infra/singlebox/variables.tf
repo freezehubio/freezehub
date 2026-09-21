@@ -5,7 +5,7 @@ variable "environment" {
 }
 
 variable "region" {
-  description = "The region everything runs in. No default: D-32 decided us-east-1, and a region inherited by accident is a migration of every identity to undo (FZ-135)."
+  description = "The region everything runs in. No default: D-32 decided us-east-2, and a region inherited by accident is a migration of every identity to undo (FZ-135)."
   type        = string
 }
 

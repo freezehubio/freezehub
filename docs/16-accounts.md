@@ -70,10 +70,16 @@ AWS's published list rather than assumed: EC2, RDS, Cognito, CloudFront, Route 5
 Systems Manager, ECR, S3, SES, ELB, ECS, CloudWatch, CloudTrail, Secrets Manager, KMS, STS,
 VPC, EBS, IAM. `D-35`'s one-box posture is buildable here as designed.
 
-**`us-east-1` is allowed**, even though your project is assigned a different home Region. The
-`RegionFloor` SCP permits `unspecified` (global services), `us-east-1`, your selected Region,
-and `us-west-2`. So **`D-32` survives unchanged**, and CloudFront's certificate — which AWS
-requires in `us-east-1` regardless — is not blocked.
+**The region is `us-east-2`, and `us-east-1` is good for one thing only.** `RegionFloor`
+permits `us-east-1` and `us-west-2` alongside your project's Region — but a *second* policy,
+`UsEast1Partitional`, then denies everything in `us-east-1` except a short list of global
+services. Cognito, RDS, ECR, SSM, load balancers and `s3:CreateBucket` are all denied there;
+`acm`, `cloudfront`, `route53`, `iam`, `sts`, `kms` and `logs` are allowed.
+
+So **CloudFront's certificate works in `us-east-1`, which is the one thing that must be
+there**, and everything else runs in `us-east-2`. `D-32` was amended for this (`FZ-171`)
+after an earlier revision of this section claimed the opposite from reading `RegionFloor`
+alone. Ohio is still the United States, so the residency answer is unchanged.
 
 **Spend limits exist** on the paid plan, per project: a real monthly ceiling enforced by SCP,
 which ordinary AWS does not offer. For a pre-revenue solo founder that is worth more than it
