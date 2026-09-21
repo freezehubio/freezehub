@@ -3227,3 +3227,29 @@ had since been rewritten. Both times the diff looked plausible. A backlog entry 
 line and body disagree is the signature.
 
 Resolves `OI-35`: `FZ-123` is the beta apply, and the restored body says so.
+
+### FZ-163 — Each Module Gets Its Own tfvars Example
+**Status:** DONE
+
+`FZ-159` split the estate into three root modules and left `terraform.tfvars.example` at the
+old root, belonging to none of them. `infra/README.md` then told you to copy it *upwards*
+into `shared/` — which works, and hands that module a file full of `db_instance_class`,
+`backend_cpu` and `backend_desired_count`, none of which it declares. Terraform warns on
+on an undeclared value rather than failing, so the first apply of the project would have been
+preceded by a wall of warnings that are not wrong about anything.
+
+It is a small thing that sits in an expensive place: it is the **first file anybody touches**
+when applying, and warnings on a first apply are exactly when a person cannot tell noise from
+a real problem.
+
+Now one per module, each carrying only what that module declares:
+
+- `shared/` — region, domain, hosted zone, and the repository the OIDC trust policy is scoped
+  to. Applied first, because both compute postures read its outputs.
+- `ecs/` — the same three, plus the four values pasted from `shared`'s outputs, with the
+  exact `terraform -chdir=../shared output` commands in a comment above them.
+- `singlebox/` — unchanged from `FZ-152`.
+
+`ecs/`'s header says plainly that the beta runs on `singlebox/` and that applying both means
+paying for both — the same trap `FZ-159` fixed in the Terraform, restated where somebody
+about to run `apply` will actually read it.
