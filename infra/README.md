@@ -93,7 +93,7 @@ cd bootstrap && terraform init && terraform apply -var region=<the same region>
 
 # 1. The shared estate. Always first; both postures need it.
 cd ../shared
-cp ../terraform.tfvars.example terraform.tfvars   # region, domain_name, hosted_zone_id
+cp terraform.tfvars.example terraform.tfvars   # region, domain_name, hosted_zone_id
 terraform init && terraform plan && terraform apply
 
 # 2. The compute estate. For the beta, this is the box.

@@ -1,0 +1,35 @@
+# Copy to terraform.tfvars and fill in. Everything else has a working default.
+#
+# This is the ECS posture (FZ-157's graduation target). The beta runs on ../singlebox
+# instead (D-35) — applying both means paying for both, which is deliberate and temporary
+# only during a migration.
+
+# Must match ../shared. A Cognito pool is region-bound, so the compute estate has to sit
+# where the identities already are.
+region = "us-east-1"
+
+# The API is served from api.<domain_name>, which is what the load balancer's certificate
+# is issued for.
+domain_name    = "freezehub.example.com"
+hosted_zone_id = "Z0123456789ABCDEFGHIJ"
+
+# ——— from ../shared ——————————————————————————————————————————————————————————————————
+#
+#   terraform -chdir=../shared output -raw ecr_repository_url
+#   terraform -chdir=../shared output -raw cognito_user_pool_id
+#   terraform -chdir=../shared output -raw cognito_user_pool_arn
+#   terraform -chdir=../shared output -raw github_deploy_role_name
+
+ecr_repository_url      = "123456789012.dkr.ecr.us-east-1.amazonaws.com/freezehub-beta"
+cognito_user_pool_id    = "us-east-1_XXXXXXXXX"
+cognito_user_pool_arn   = "arn:aws:cognito-idp:us-east-1:123456789012:userpool/us-east-1_XXXXXXXXX"
+github_deploy_role_name = "freezehub-beta-github-deploy"
+
+# Set by CI (FZ-064); never "latest", so a rollback is a tag change.
+# backend_image_tag = "v1.0.0"
+
+# 512 CPU units and 1024 MiB, measured in D-28 -- kept not because the JVM needs a gigabyte
+# but because Fargate will not sell half a vCPU with less.
+# backend_cpu    = 512
+# backend_memory = 1024
+# backend_desired_count = 2
