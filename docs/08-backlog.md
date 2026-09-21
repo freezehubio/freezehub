@@ -3458,3 +3458,47 @@ Acceptance:
 - The migration back is a numbered sequence with a named trigger, and ends by deleting the
   key.
 - Nothing in `infra/` changes; there is no account id in it.
+
+### FZ-169 — The Guide's First Three Steps Did Not Work
+**Status:** DONE · **Corrects** `FZ-168`
+
+`16-accounts.md` §3 could not be followed. Two defects, both of which stop the reader before
+anything exists, and both found by walking the sequence against AWS's documented behaviour
+rather than by reading it back.
+
+**The order was wrong.** §3 created the role first and the user second. IAM *"transforms the
+ARN to the user's unique principal ID when you save the policy"*, so the principal named in a
+trust policy has to exist when the policy is saved — creating the role first returns
+`MalformedPolicyDocument: Invalid principal in policy`. Reordered to user → role → the user's
+inline policy, which needs a second pass over the user because the role did not exist when it
+was created. Two passes is the price; the alternative is a wildcard `Resource`, which hands
+the access key a broader grant than it needs.
+
+**The MFA advice contradicted the CLI profile it was written for.** §2 said "a hardware key
+if you have one", and §3's profile makes the CLI *"prompt the user to enter the one-time
+password (OTP) that the MFA device provides"* — which a FIDO2 key or passkey cannot produce.
+Anyone following both ends up with a working console sign-in and a CLI that cannot assume the
+role.
+
+Split by where the device is used, which is the distinction that actually matters:
+
+- **root** — passkey or security key. It only ever signs in at the console.
+- **the IAM user** — a virtual MFA device, or a hardware *TOTP* token. `mfa_serial` needs an
+  OTP.
+
+`mfa_serial` also took `<your-user>` where it needs the **device** name. The console defaults
+one to the other and they do not have to match, so the guide now says to read the ARN off the
+Security credentials tab instead of assuming it.
+
+**Two smaller corrections found in passing.** The role's maximum session duration defaults to
+1 hour and has to be set to 8 before `duration_seconds = 28800` is accepted — stated where
+the role is created, not left to fail later. And "Billing → IAM access to billing" is called
+**Activate IAM Access**; AWS is explicit that it grants nothing on its own
+(`AdministratorAccess` supplies the other half), which the old wording implied it did.
+
+Acceptance:
+
+- The sequence in §3 can be followed top to bottom without an error.
+- Every claim quotes the AWS page it came from — the same discipline `FZ-168` adopted, applied
+  to the steps rather than to the decision.
+- No decision changes. `D-36` stands; this is the guide being wrong about how to carry it out.
