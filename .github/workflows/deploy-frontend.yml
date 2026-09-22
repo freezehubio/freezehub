@@ -39,6 +39,28 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Fail fast (FZ-183). Asking before the build costs a second and saves the whole
+      # build when the answer was never going to be yes. FZ-182 argued the opposite and
+      # was wrong: it claimed checking first "wastes the ten minutes anyway", when
+      # checking first is exactly what saves them.
+      #
+      # This is an optimisation, not the gate. The gate is the second check below, and it
+      # cannot be replaced by this one — see the comment there.
+      #
+      # `on-error: allow` deliberately, and only here. If FreezeHub blips for a second at
+      # minute zero, losing a build to something that is not a freeze is a bad trade when
+      # an authoritative check runs later anyway. A missing key or a wrong URL still fails
+      # the step: that switch has never covered setup problems, precisely so enforcement
+      # cannot be disabled by breaking the integration.
+      - name: Ask FreezeHub early, to avoid building what we cannot ship
+        uses: ./connectors
+        with:
+          url: ${{ vars.FREEZEHUB_URL }}
+          api-key: ${{ secrets.FREEZEHUB_API_KEY }}
+          application: freezehub-frontend
+          environment: ${{ inputs.environment }}
+          on-error: allow
+
       - uses: actions/setup-node@v7
         with:
           node-version: '20'
@@ -66,16 +88,21 @@ jobs:
           npm ci
           npm run build
 
-      # FreezeHub asks FreezeHub (FZ-182). The connector this runs is the one customers
-      # run — `./connectors`, not a copy — so if it is wrong for us it is wrong for them.
+      # THE GATE (FZ-182, corrected by FZ-183). The connector this runs is the one
+      # customers run — `./connectors`, not a copy — so if it is wrong for us it is wrong
+      # for them.
       #
-      # Deliberately AFTER the build and immediately BEFORE the publish. A freeze stops
-      # deployments, not work: building and testing during one is fine, and finding out at
-      # the start of a ten-minute pipeline that you cannot ship wastes the ten minutes
-      # anyway. This is the last step that costs nothing to abandon.
+      # Immediately before the publish, and the early check above does not make this one
+      # redundant: A FREEZE CAN BEGIN DURING THE BUILD. Announced at minute three of a
+      # forty-minute pipeline, it would be missed entirely by a check at minute zero, and
+      # the deploy would go out into a live freeze — the exact failure this product exists
+      # to prevent, committed by the product itself. The early check is cheap; this one is
+      # correct. Narrowing the window between the answer and the deploy to seconds is the
+      # whole reason this step sits here.
       #
-      # It fails closed. If FreezeHub is unreachable this job stops, which is the
-      # behaviour we ask customers to accept and should therefore live with ourselves.
+      # It fails closed: no `on-error` override, unlike the early check. If FreezeHub is
+      # unreachable this job stops, which is the behaviour we ask customers to accept and
+      # should therefore live with ourselves.
       - name: Ask FreezeHub whether this may deploy
         uses: ./connectors
         with:

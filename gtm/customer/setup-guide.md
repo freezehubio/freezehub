@@ -146,9 +146,36 @@ FREEZEHUB_APPLICATION  a name from step 1
 FREEZEHUB_ENVIRONMENT  a name from step 1
 ```
 
-Put it **immediately before the step that deploys**, not at the start of the pipeline. Build
-and test whatever you like during a freeze; the freeze is about what reaches the
-environment.
+### Where to put it
+
+**Immediately before the step that deploys.** That is not a detail, and it is worth a
+paragraph, because the obvious alternative is wrong in a way that only shows up on a bad
+day.
+
+A freeze can be announced **while your pipeline is running**. If the check sits at the top
+of a forty-minute build, a freeze declared at minute three is invisible to it, and your
+deployment goes out at minute forty into a freeze that was in force for most of it.
+Checking last narrows the gap between the answer and the deployment to seconds. That is
+the whole reason for the placement.
+
+**If your build is slow, check twice:**
+
+```text
+checkout → ASK (fail fast) → build → test → ASK (the gate) → deploy
+```
+
+The first call saves you a build you were never going to be allowed to ship. The second is
+the one that is correct. Set `FREEZEHUB_ON_ERROR=allow` on the early one only — if
+FreezeHub is briefly unreachable at minute zero you would rather lose the check than the
+build, and the real gate still runs later. Leave the gate at its default, which blocks.
+
+**Checking twice costs you nothing.** Policy evaluations are unlimited on every plan,
+including Free, and that is a standing commitment rather than present generosity. We
+deliberately do not meter the check: a customer trimming their bill would call us less
+often, which is precisely how a deployment slips through a freeze.
+
+Build and test whatever you like during a freeze — it is about what reaches the
+environment, not about stopping work. Being ready to ship the moment it lifts is the point.
 
 `connectors/README.md` in the repository has working configuration for GitHub Actions,
 GitLab CI, Jenkins and Argo CD, and instructions for anything else.

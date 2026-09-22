@@ -105,4 +105,8 @@ The script itself has nothing GitLab-specific in it either, if you would rather 
   run: ./connectors/freeze-check.sh
 ```
 
-Put it in the job that deploys, before the deploy step — or in a separate job the deploy job `needs`. Do not mark it `continue-on-error`; that turns every freeze into a warning.
+Put it in the job that deploys, **immediately before the deploy step** — not in a separate job the deploy job `needs`, and not at the top of the pipeline. A freeze can be announced while the build is running, and a check that ran twenty minutes ago has stopped being an answer.
+
+For a long build, call it twice: at the start with `FREEZEHUB_ON_ERROR=allow` to fail fast, and again before the deploy step at the default `block`, which is the gate. Evaluations are unlimited on every plan.
+
+Do not mark it `continue-on-error`; that turns every freeze into a warning.
