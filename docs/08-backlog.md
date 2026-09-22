@@ -2709,6 +2709,54 @@ Tracked, because that is what makes it exist: project skills are discovered per 
 directory, and until this is on `master` it is visible only from the shared checkout — the
 one place the skill itself says not to work in.
 
+### FZ-198 — A Release in One Command
+**Status:** DONE
+
+`scripts/release.sh`. No application code, no change to how a deploy works.
+
+Releasing was three dispatches through the Actions UI — Build image, Deploy single-box,
+Deploy frontend — with two values fetched by hand in the middle: the tag the first run
+prints, and the instance id from `terraform -chdir=infra/singlebox output -raw instance_id`.
+Correct, documented in `14-operations.md`, and slow in the way that invites shortcuts.
+
+**It dispatches those workflows and waits for each. It does not deploy**, and refusing to
+is the whole design. Everything that makes a release safe is inside them:
+
+- **FreezeHub asks FreezeHub** (`FZ-182`): `Deploy single-box` runs `./connectors` against
+  our own Policy API before anything else, so a freeze in force stops our release exactly
+  as it stops a customer's. A script that shelled out to SSM would walk around the one
+  control this product exists to sell.
+- **No credential on the laptop.** The workflows assume a role by OIDC; deploying locally
+  would need an access key that then exists.
+- **Attribution.** SSM Run Command is an IAM-authorised call in CloudTrail with an actor.
+- **`concurrency: deploy-singlebox`** stops two releases racing. Two laptops cannot.
+- The moving-tag refusal, and waiting for the SSM *outcome* rather than for the API
+  accepting the request, are already written and already tested there.
+
+So the slow part was never the safety. It was the lookups.
+
+**Two guards of its own, before anything is dispatched.** A dirty tree asks for
+confirmation — the build takes the commit from the remote, not the working copy, and that
+difference is invisible at the moment it matters. A commit not on `origin` is refused:
+Actions cannot check out what it cannot fetch, and `git branch -r --contains` is the
+question that actually answers it.
+
+**AWS is optional and asserted.** It is reached only to resolve the instance id, and only
+when one was not supplied — `--instance-id` or `FREEZEHUB_INSTANCE_ID` and the script never
+touches AWS. When it does, it checks the account against `infra/singlebox/terraform.tfvars`
+first, for the reason `FZ-175` exists: an apply went into the operator's personal account
+and nothing stopped it. A guard that is a sentence in a document is not a guard.
+
+Rollback is the same script with `--image-tag`, which skips the build — what the runbook
+already says to do by hand.
+
+Verified by running: `sh -n` clean, and every path exercised with `--dry-run`, which prints
+the dispatches and sends nothing. The not-on-origin guard was watched firing on a real
+unpushed commit, the frontend-only path confirmed not to reach for AWS at all, and the
+full path checked to emit the three dispatches in order with the right inputs. **Not
+verified: a real release.** Dispatching one publishes to the live beta, which is the
+operator's call and not a test.
+
 ## Going to Market
 
 Not a milestone: one story, and it is separate from `Milestone 15` because it is not security
