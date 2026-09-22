@@ -52,6 +52,14 @@ freezehub:
   # Supplied as FREEZEHUB_COGNITO_USER_POOL_ID, FREEZEHUB_COGNITO_REGION and
   # FREEZEHUB_COGNITO_CLIENT_ID, alongside the resource server issuer-uri. Under `local`
   # neither is read, because LocalIdentityProvider is the bean there.
+  # Where this FreezeHub is reachable by a person, for the "View in FreezeHub" button in a
+  # Slack announcement (FZ-186). Deliberately empty by default: the backend has never had
+  # any reason to know its own front end address, and a wrong one is worse than none --
+  # the button is omitted when this is unset rather than rendered pointing nowhere.
+  #
+  # Supplied as FREEZEHUB_APP_URL. deploy/compose.yaml derives it from APP_DOMAIN, which
+  # the deploy workflow already puts on the box.
+  app-url: ${FREEZEHUB_APP_URL:}
   cors:
     # Empty by default: a deployed environment must name its frontend origin explicitly
     # rather than inherit a permissive default. The local profile below fills in Vite.

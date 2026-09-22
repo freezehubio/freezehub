@@ -4530,6 +4530,66 @@ Acceptance:
 - The landing page offers the trial as the secondary action, demo primary.
 - No document still says self-serve signup does not exist.
 
+---
+
+### FZ-186 — Announcements Worth Reading
+**Status:** DONE · **Extends** `FZ-041` · **Found by** using the product
+
+Slack announcements were a single `text` field: a headline, a reason and a window, run
+together with newlines. The operator wired the integration up, looked at one, and said
+it was too plain. All five events are now laid out with Block Kit.
+
+**The biggest change is not visual.** The message never said *which applications and
+environments a freeze covered*, so every reader had to go and look up whether it applied
+to them — which is the question on the landing page: *"Is the freeze on, and does it
+apply to me?"* The old announcement answered the first half. Scope is now four of the
+six fields.
+
+**Colour tracks consequence, not level.** A live hard freeze is red, a warning amber, a
+finished or cancelled one grey or green. The bar is read before any word is, so a
+cancellation must not arrive looking like an emergency.
+
+**`NotificationMessage` did not learn about Slack.** It says outright that it exists "so
+every channel says the same thing"; Block Kit lives in a new `SlackMessage`, and the
+wording — including the UTC formatter that invariants 9 and 10 make a domain rule —
+stays where it was. The new class is pure, which is what lets the layout be asserted
+without posting anything. That matters for a channel nobody looks at until it is already
+in front of a customer's engineers.
+
+**Three things the rendering forced into the open.**
+
+- **An empty scope dimension is a wildcard**, so it renders "All applications", never
+  blank. Blank would invert the rule and turn *every application deploying to
+  production* into a message that looks like it covers nothing.
+- **A finished freeze stopped claiming to block.** The first cut showed
+  "Level: Hard freeze — deployments blocked" on a CANCELLED announcement, contradicting
+  the same message's "this no longer applies". Found by looking at the rendered output,
+  not by reading the code.
+- **The restriction id comes from the notification, not the entity.** Taking it from
+  `restriction.getId()` meant an unpersisted restriction produced no button, which made
+  the button's presence untestable — the first version of the test asserted only its
+  absence and passed for the wrong reason.
+
+**The button needed the backend to learn its own address.** It had never had one.
+`freezehub.app-url` is empty by default and the button is omitted when unset, rather than
+rendered pointing nowhere — a dead link in an announcement is worse than no link, because
+it is clicked during an incident. `deploy/compose.yaml` derives it from `APP_DOMAIN`,
+already on the box.
+
+**Escaping.** Names and reasons are customer input rendered as mrkdwn; `&`, `<` and `>`
+are escaped, and headers truncated at Slack's 150-character limit.
+
+**What this does not give the message is an identity.** It still arrives from an app with
+no picture, next to every other bot in the channel. That is `FZ-192`, filed independently
+from the same session.
+
+Acceptance:
+
+- All five events carry a header, fields, guidance and a colour — not one formatted event
+  and four plain.
+- `text` is still set on every message, or push notifications arrive blank.
+- An empty scope dimension reads as "All", never as blank.
+- `NotificationMessage` contains no Slack-specific formatting.
 ## Milestone 20 — What Using It Surfaced
 
 Observations from the operator using the deployed product, recorded 22 September 2026. They

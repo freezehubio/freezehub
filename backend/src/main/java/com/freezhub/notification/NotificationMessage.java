@@ -40,6 +40,57 @@ public final class NotificationMessage {
         };
     }
 
+
+    /**
+     * One instant, rendered the way every announcement renders one (FZ-186).
+     *
+     * <p>Exposed so a channel that lays the facts out itself — Slack's Block Kit puts the
+     * start and the end in separate fields — does not grow a second formatter that could
+     * drift from this one. Invariants 9 and 10 make UTC a domain rule, not a preference.
+     */
+    public static String formatUtc(java.time.Instant instant) {
+        return UTC.format(instant) + " UTC";
+    }
+
+    /**
+     * What the level means for somebody about to deploy, rather than its enum name.
+     *
+     * <p>Event-aware, because the consequence is in the present tense and a finished
+     * freeze has none. "Hard freeze — deployments blocked" on a CANCELLED announcement
+     * contradicts the same message's own "this no longer applies", and the reader has to
+     * work out which half to believe.
+     */
+    public static String level(NotificationEvent event, ChangeRestriction restriction) {
+        boolean hard = restriction.getLevel() == RestrictionLevel.HARD_FREEZE;
+        boolean over = event == NotificationEvent.CANCELLED || event == NotificationEvent.COMPLETED;
+
+        if (over) {
+            return hard ? "Hard freeze" : "Advisory";
+        }
+        return hard ? "Hard freeze — deployments blocked" : "Advisory — deployments allowed";
+    }
+
+    /**
+     * The line that tells the reader what to do about it.
+     *
+     * <p>Distinct from the headline, which says what happened. An announcement nobody can
+     * act on is a notification in the pejorative sense.
+     */
+    public static String guidance(NotificationEvent event, ChangeRestriction restriction) {
+        boolean blocking = restriction.getLevel() == RestrictionLevel.HARD_FREEZE;
+        return switch (event) {
+            case SCHEDULED -> blocking
+                    ? "Nothing is blocked yet. Deployments will be refused once it begins."
+                    : "Nothing changes for your pipelines; this one advises rather than blocks.";
+            case STARTING_SOON -> "Merge or deploy anything you need to before it begins.";
+            case ACTIVATED -> blocking
+                    ? "Pipelines asking the policy API will now receive BLOCK."
+                    : "Deployments are still allowed. The reason is printed in the build log.";
+            case COMPLETED -> "Deployments have resumed.";
+            case CANCELLED -> "This restriction no longer applies.";
+        };
+    }
+
     /** The full plain-text announcement. */
     public static String body(NotificationEvent event, ChangeRestriction restriction) {
         StringBuilder text = new StringBuilder(headline(event, restriction));

@@ -12,6 +12,7 @@ import com.freezhub.integration.Integration;
 import com.freezhub.integration.IntegrationType;
 import com.freezhub.restriction.ChangeRestriction;
 import com.freezhub.restriction.RestrictionLevel;
+import com.freezhub.restriction.RestrictionScopeNames;
 import java.time.Instant;
 import java.util.Set;
 import org.hamcrest.Matchers;
@@ -43,7 +44,16 @@ class SlackNotificationSenderTest {
         slack = MockRestServiceServer.bindTo(builder).build();
         // The sender takes the built, guarded client now (FZ-126); MockRestServiceServer
         // still binds to the builder it came from.
-        sender = new SlackNotificationSender(builder.build());
+        /*
+         * Null repositories are safe here and only here: every restriction in this class
+         * has an empty scope, and RestrictionScopeNames short-circuits a wildcard
+         * dimension without querying. Give one of these restrictions a scope and this
+         * will fail loudly rather than quietly, which is the right way round.
+         *
+         * The layout itself is asserted in SlackMessageTest, which needs none of this.
+         */
+        RestrictionScopeNames scopeNames = new RestrictionScopeNames(null, null, null);
+        sender = new SlackNotificationSender(builder.build(), scopeNames, "https://app.freezehub.test");
     }
 
     private Integration destination(String config) {
@@ -66,9 +76,14 @@ class SlackNotificationSenderTest {
     void postsTheAnnouncementToTheConfiguredWebhook() {
         slack.expect(requestTo(WEBHOOK))
                 .andExpect(method(HttpMethod.POST))
+                // `text` stays, as the fallback a push notification shows (FZ-186).
                 .andExpect(content().string(Matchers.containsString("\"text\"")))
                 .andExpect(content().string(Matchers.containsString("Revenue-critical period")))
                 .andExpect(content().string(Matchers.containsString("UTC")))
+                // ...and it is laid out rather than plain.
+                .andExpect(content().string(Matchers.containsString("\"blocks\"")))
+                .andExpect(content().string(Matchers.containsString("\"color\"")))
+                .andExpect(content().string(Matchers.containsString("View in FreezeHub")))
                 .andRespond(withSuccess());
 
         sender.send(notification(), restriction(), destination("{\"webhookUrl\":\"" + WEBHOOK + "\"}"));
