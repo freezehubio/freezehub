@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { useAuth } from '../auth/authContext'
+import { Wordmark } from '../../components/Wordmark'
 import styles from './LandingPage.module.css'
 
 /**
@@ -28,7 +29,7 @@ export function LandingPage() {
   return (
     <div className={styles.page}>
       <header className={styles.nav}>
-        <span className={styles.brand}>FreezeHub</span>
+        <Wordmark rules="nav" />
         <nav className={styles.navLinks}>
           <a href="#product">Product</a>
           <a href="#pipeline">Integrations</a>
