@@ -20,4 +20,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByOrganizationIdAndEmail(Long organizationId, String email);
 
+    /** Every user of one organization, to remove with it when it is purged (FZ-082). */
+    List<User> findAllByOrganizationId(Long organizationId);
+
 }

@@ -55,6 +55,13 @@ public class SecurityConfig {
                         // tenant boundary, so there is no organization to scope a read to.
                         // Rate limited by FZ-087, which is why that story came first.
                         .requestMatchers(HttpMethod.POST, "/api/demo-requests").permitAll()
+                        // "Start free trial" (FZ-082). Unauthenticated for the same reason
+                        // and with the same shape: POST only, no read anywhere, rate
+                        // limited by FZ-087 — which already lists this path.
+                        //
+                        // It answers 202 identically whether or not anything was created,
+                        // so permitting it reveals nothing that refusing it would hide.
+                        .requestMatchers(HttpMethod.POST, "/api/signup").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(converter)));
 
