@@ -4664,6 +4664,28 @@ Acceptance:
 - Existing integrations keep working — the change is to how config is composed, not to what is
   stored.
 
+### FZ-195 — The Fake Forgot, So Signup Allowed It Twice
+**Status:** DONE · **Resolves** `OI-49` · **Found in:** `FZ-185` testing
+
+Signing up with an address a seeded organization already held created a *second*
+organization. `LocalIdentityProvider` remembered only the current process, and it had
+restarted since the seed ran.
+
+**The design it was faking is right and stays.** Global email uniqueness lives in Cognito,
+because `users.email` is unique only within an organization while the pool is shared. So
+the duplicate case is `AdminCreateUser` refusing — which is what keeps `POST /api/signup`
+from being a customer-enumeration oracle (`FZ-082`). The fake just could not reproduce it
+across a restart.
+
+It now checks two places: **the database**, because a row written by a seed script or an
+earlier process is what a persistent pool would still know about, and **its own map**,
+because during signup the identity is created before the user row exists and two rapid
+signups would otherwise both be allowed.
+
+**This is test fidelity, not security** — the bean only exists under the `local` profile.
+It is the same lesson as `FZ-193`: the substitute that diverges from reality hides the one
+path that must not be wrong.
+
 ### FZ-190 — Administrator and Developer
 **Status:** TODO · **Decision required:** see below
 
