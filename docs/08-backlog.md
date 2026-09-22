@@ -1100,7 +1100,7 @@ Setting `server.forward-headers-strategy: framework` fixes that, and introduces 
 The interceptor uses `getRemoteAddr()` and never reads the header itself. That looks like an oversight and is the whole defence.
 
 ### FZ-082 — Self-Serve Signup
-**Status:** TODO · **Blocked by:** `FZ-046` (`OI-2`)
+**Status:** DONE · **Was blocked by:** `FZ-046` (`OI-2`), which resolved it
 
 `POST /api/signup` — the first unauthenticated write endpoint in the product. Creates the organization, its first Administrator, its Cognito identity and its trial subscription in one transaction.
 
@@ -1114,6 +1114,40 @@ Acceptance:
 - Organizations still unverified after 7 days are purged, including the Cognito identity.
 - Free-mail addresses are accepted (`11-commercial.md` §4).
 - A failure at any step leaves nothing behind — no orphan organization, no orphan Cognito user.
+
+**What the blocker turned out to be.** `OI-2` had been closed by `FZ-046` and this line was
+never updated, so the story sat labelled blocked long after it was not. The other two
+preconditions were already met as well — `FZ-087` named `/api/signup` in its default
+rate-limit paths before the endpoint existed.
+
+**Cognito is the global uniqueness check.** `users.email` is unique only within an
+organization; the pool is shared across all of them. So the duplicate case is
+`AdminCreateUser` refusing, not a second index that could disagree with it.
+`LocalIdentityProvider` now refuses too — a fake that happily issued a second subject for
+the same address would have made the one path that must not be wrong the one path no test
+could see.
+
+**The compensating delete, and two places the transaction was nearly lost.** Cognito is not
+in the transaction, so the order is: create the identity, write the rows, delete the
+identity again if the rows fail. Both `SignupService` and `UnverifiedOrganizationPurge`
+first wrote that boundary as `@Transactional` on a method called from the same class, which
+a Spring proxy never sees — the annotation would have been silently ignored and each save
+committed alone, which is precisely the half-created organization the compensation exists
+to prevent. Both use a `TransactionTemplate` instead.
+
+**The purge deletes three tables out of eleven, and the foreign keys guard the rest.** An
+organization nobody has signed in to can only have `users`, `subscription` and
+`audit_event` rows, because everything else needs an authenticated request and
+authenticating is what ends `PENDING_VERIFICATION`. If that is ever wrong, the foreign key
+refuses the delete and the organization survives. Found by a test rather than by reasoning:
+the first version deleted identities before the rows and then swallowed an FK violation,
+leaving users who existed and could never sign in.
+
+**No user interface reaches the endpoint.** The form belongs on the public site — `FZ-111`,
+still blocked — so `curl` is the only caller today. `gtm/customer/setup-guide.md` still
+tells prospects there is no self-serve signup, and that stays **true for them** until a
+form exists. `FZ-111` has to change it; this story deliberately did not.
+
 
 ### FZ-083 — Demo Requests
 **Status:** DONE
@@ -1614,7 +1648,7 @@ One figure needs backend work: **refused as unregistered** is a count of `blocke
 `1i` and `1k`. `1k` is the dashboard at 390px, so it is responsive work on `FZ-106` rather than a separate screen.
 
 ### FZ-111 — Landing Page
-**Status:** TODO · **Blocked:** no public route exists
+**Status:** TODO · **Blocked:** no public route exists · **Owes** the signup form (`FZ-082`)
 
 `1j`. Milestone 8 deferred the public marketing site, so there is nowhere to put this yet. It also raises the question that story left open: whether the site is part of this application or separate.
 

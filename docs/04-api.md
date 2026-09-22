@@ -35,7 +35,19 @@ It is also the one path that stays writable while an organization is suspended (
 
 ### Unauthenticated endpoints
 
-`/actuator/health` and its probes, and **`POST /api/demo-requests`** (`FZ-083`) — "book a demo", which by its nature is used by someone with no account.
+`/actuator/health` and its probes, **`POST /api/demo-requests`** (`FZ-083`) — "book a demo" — and **`POST /api/signup`** (`FZ-082`) — "start free trial". Both are used by someone with no account, which is the point of them.
+
+#### `POST /api/signup`
+
+Takes a company name and an email address, and creates an organization, its first Administrator, that person's Cognito identity and a fourteen-day trial. Free-mail addresses are accepted (`11-commercial.md` §4).
+
+**The response never varies: `202 Accepted`, same body, whether or not anything was created.** Not `201`, which would have to carry a `Location` for a resource the caller cannot fetch and whose existence is the secret. An address already in use produces exactly what a new one does, as far as the caller can tell — anything else makes this a customer-enumeration oracle, since trying a company's domain and reading the difference would reveal whether they use FreezeHub. Same rule as `404`-not-`403` below: existence is never revealed to someone not entitled to know it.
+
+The organization is `PENDING_VERIFICATION` until somebody signs in, which happens on the first `GET /api/me`. **An organization still unverified after seven days is deleted**, with its user, its subscription, its audit trail and its Cognito identity. Without that, every abandoned and every abusive signup is permanent, and the identity holds the address against anyone signing up with it later.
+
+There is no endpoint to read, resend or cancel a signup, for the same reason there is none for a demo request.
+
+**No user interface reaches this yet.** The form belongs on the public site, which is `FZ-111` and still blocked. Until it ships, `curl` is the only caller.
 
 It is rate limited per caller (`FZ-087`), which is why that story shipped first, and it accepts a bounded body: every field has a maximum length, because what an endpoint with no credential will accept is part of its security.
 

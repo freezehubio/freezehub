@@ -47,3 +47,5 @@ databaseChangeLog:
       file: db/changelog/023-users-external-subject.yaml
   - include:
       file: db/changelog/024-subscription-free-plan.yaml
+  - include:
+      file: db/changelog/025-organization-status.yaml

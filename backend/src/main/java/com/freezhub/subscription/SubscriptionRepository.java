@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -29,4 +30,9 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
               and s.trialEndsAt <= :now
             """)
     List<Subscription> findExpiredTrials(@Param("now") Instant now);
+
+    /** Removes the trial of an unverified organization being purged (FZ-082). */
+    @Modifying
+    void deleteByOrganizationId(Long organizationId);
+
 }

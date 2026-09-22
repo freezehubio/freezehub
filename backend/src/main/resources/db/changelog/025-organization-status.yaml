@@ -1,0 +1,50 @@
+databaseChangeLog:
+  # FZ-082: self-serve signup needs an organization that exists but has not been proven.
+  #
+  # PENDING_VERIFICATION is the state between "somebody typed an address into a public
+  # form" and "somebody signed in to it". It matters because the endpoint is
+  # unauthenticated: without it, anyone could fill the table with organizations nobody
+  # will ever use, and nothing would distinguish those from real customers.
+  #
+  # The default is ACTIVE, deliberately and permanently. Existing rows were created by an
+  # operator running scripts/provision-organization.sh after a demo call, so they are
+  # verified by definition. Keeping the default also means that script keeps working
+  # unchanged -- it writes organizations in SQL, and a column it does not know about would
+  # otherwise make the sales-assisted path fail the moment this migration lands.
+  - changeSet:
+      id: 025-organization-status
+      author: freezehub
+      changes:
+        - addColumn:
+            tableName: organization
+            columns:
+              - column:
+                  name: status
+                  type: varchar(32)
+                  defaultValue: ACTIVE
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >
+              ALTER TABLE organization ADD CONSTRAINT chk_organization_status
+              CHECK (status IN ('PENDING_VERIFICATION','ACTIVE'))
+        # The purge sweeps for one status and an age (FZ-082). Without this it is a
+        # sequential scan of every organization in the product, run hourly, forever.
+        - createIndex:
+            tableName: organization
+            indexName: idx_organization_status_created_at
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: created_at
+      rollback:
+        - dropIndex:
+            tableName: organization
+            indexName: idx_organization_status_created_at
+        - sql:
+            sql: >
+              ALTER TABLE organization DROP CONSTRAINT chk_organization_status
+        - dropColumn:
+            tableName: organization
+            columnName: status

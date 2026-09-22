@@ -9,8 +9,10 @@ import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminCreateUserRequest;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminCreateUserResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminDeleteUserRequest;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AttributeType;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.CognitoIdentityProviderException;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UsernameExistsException;
 
 /**
@@ -64,7 +66,7 @@ public class CognitoIdentityProvider implements IdentityProvider {
         } catch (UsernameExistsException e) {
             // Reachable despite InviteService's own check: that one is scoped to an
             // organization, and the pool is shared across all of them.
-            throw new IdentityProviderException(
+            throw new IdentityAlreadyExistsException(
                     "An identity already exists for this email address", e);
         } catch (CognitoIdentityProviderException e) {
             // The message carries the pool and the operation but never the address.
@@ -85,6 +87,32 @@ public class CognitoIdentityProvider implements IdentityProvider {
                         .findFirst())
                 .orElseThrow(() -> new IdentityProviderException(
                         "Cognito created the user but returned no sub", null));
+    }
+
+    @Override
+    public void deleteUser(String externalSubject) {
+        try {
+            cognito.adminDeleteUser(AdminDeleteUserRequest.builder()
+                    .userPoolId(userPoolId)
+                    // The pool has username_attributes = ["email"], so the username is the
+                    // address -- but the caller holds the sub, not the address. AdminDeleteUser
+                    // accepts either, and the sub is the identifier that cannot go stale.
+                    .username(externalSubject)
+                    .build());
+        } catch (UserNotFoundException e) {
+            // Already gone. Both callers are compensating for something that failed, and a
+            // cleanup that throws because there was nothing to clean up turns one problem
+            // into two.
+            log.debug("Identity {} was already absent", externalSubject);
+        } catch (CognitoIdentityProviderException e) {
+            // Deliberately not rethrown. The caller is already handling a failure, or
+            // deleting an organization; losing the compensating delete must not lose that
+            // too. It is logged loudly because the residue is real: an identity that can
+            // authenticate and resolves to no user row, which the converter rejects with a
+            // 401 -- inert, but it holds the address against a future signup.
+            log.error("Could not delete identity {} from pool {}; it may be orphaned",
+                    externalSubject, userPoolId, e);
+        }
     }
 
 }

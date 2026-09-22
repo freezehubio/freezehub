@@ -1,7 +1,9 @@
 package com.freezhub.organization;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -54,6 +56,10 @@ public class Organization {
     @Column(name = "deployment_check_retention_days", nullable = false)
     private int deploymentCheckRetentionDays = DEFAULT_DEPLOYMENT_CHECK_RETENTION_DAYS;
 
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private OrganizationStatus status = OrganizationStatus.ACTIVE;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -65,6 +71,21 @@ public class Organization {
 
     public Organization(String name) {
         this.name = name;
+    }
+
+    /**
+     * An organization created by the public signup form, which nobody has signed in to yet
+     * (FZ-082).
+     *
+     * <p>A named constructor rather than a setter, so the unverified state can only be
+     * reached deliberately. Everything else that creates an organization -- the
+     * provisioning script, the seed script, tests -- is already vouched for by whoever ran
+     * it, and gets {@code ACTIVE} from the field default.
+     */
+    public static Organization pendingVerification(String name) {
+        Organization organization = new Organization(name);
+        organization.status = OrganizationStatus.PENDING_VERIFICATION;
+        return organization;
     }
 
     @PrePersist
@@ -121,6 +142,10 @@ public class Organization {
                     + MAX_STARTING_SOON_LEAD_TIME_MINUTES + " minutes");
         }
         this.startingSoonLeadTimeMinutes = minutes;
+    }
+
+    public OrganizationStatus getStatus() {
+        return status;
     }
 
     public Instant getCreatedAt() {
