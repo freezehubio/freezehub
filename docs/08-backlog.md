@@ -4639,7 +4639,7 @@ Acceptance:
   action must not produce two kinds of record.
 
 ### FZ-189 — A URL, Not a JSON Document
-**Status:** TODO · **Touches** `OI-23`
+**Status:** DONE · **Touches** `OI-23`, and does not close it
 
 `IntegrationsSection` asks the operator to hand-type raw JSON, and its placeholders are the
 only guidance: `{"webhookUrl": "https://hooks.slack.com/..."}`, `{"recipients": [...]}`,
@@ -4663,6 +4663,38 @@ Acceptance:
 - An invalid URL is refused at the field, naming what is wrong with it.
 - Existing integrations keep working — the change is to how config is composed, not to what is
   stored.
+
+**Built with one deliberate departure from this entry.** It said to put `OI-23`'s host
+validation in the new field. `OI-23` says the opposite, and it is the more considered of
+the two: *"Decided in `FZ-125`: the fix is egress, not validation"*, because a webhook URL
+is attacker-chosen by design and *"validating at save and resolving at send is a gap a DNS
+name can be moved through"*. Its application half is **already closed by `FZ-126`** —
+connect-time address checks, no redirects followed.
+
+So the field checks **shape, and nothing that resolves a name**: is it a URL, is it https,
+does it have a host, does it carry a userinfo authority. No `InetAddress` lookup, no
+allowlist, and three comments saying so, because the next person to read this code will be
+looking for a security boundary and must not think they have found one. The boundary stays
+in `OutboundAddressPolicy`.
+
+The userinfo case is worth refusing at the field anyway, and not for security: `OI-23`
+names `https://something.example.com@<internal-address>/` as the trick that defeats a
+prefix check, and an operator who pastes one should be told immediately rather than
+watching deliveries fail with a message they cannot act on.
+
+**What changed, mechanically.** `CHANNELS` replaces `CONFIG_HELP` and carries each
+channel's field label, placeholder, hint and config key; `composeConfig` turns what was
+typed into the JSON the backend already expects. Stored shape unchanged. Slack and webhook
+get a single-line URL input — a three-row textarea for one URL invites a second line the
+backend will refuse — and email keeps a textarea because a recipient list is genuinely
+multi-line. Changing channel clears the field, so a webhook URL cannot be left behind in a
+recipients box.
+
+**A test caught the contract change, as it should have.** `SettingsPage.test.tsx` drove
+the old textarea. One case needed more than a mechanical edit: *"explains a config the
+backend rejects"* used an `http://` URL, which the field now refuses before any request is
+made, so it was asserting a path it could no longer reach. It now uses a value the form
+accepts and the server refuses, which is the case that actually matters.
 
 ### FZ-190 — Administrator and Developer
 **Status:** TODO · **Decision required:** see below

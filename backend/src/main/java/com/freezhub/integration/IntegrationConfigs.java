@@ -80,19 +80,54 @@ public final class IntegrationConfigs {
         }
     }
 
+    /**
+     * Checks the <em>shape</em> of a URL, and deliberately nothing else (FZ-189).
+     *
+     * <p><b>This is not the egress boundary and must never be mistaken for it.</b>
+     * {@code OI-23} settled that question in {@code FZ-125}: "the fix is egress, not
+     * validation", because a webhook URL is attacker-chosen by design and "validating at
+     * save and resolving at send is a gap a DNS name can be moved through". The boundary
+     * lives in {@code OutboundAddressPolicy}, at connect time, where {@code FZ-126} put it
+     * — every resolved address checked, no redirects followed.
+     *
+     * <p>So no name is resolved here. What is checked is what a person can get wrong while
+     * typing, reported while they are still looking at the field rather than as a delivery
+     * failure three minutes later in the notification history.
+     */
     private static void requireHttpsUrl(JsonNode config, String field, String description) {
-        String value = config.path(field).asText("");
+        String value = config.path(field).asText("").trim();
         if (value.isBlank()) {
             throw badRequest("Configuration requires \"" + field + "\": " + description);
         }
-        // https only: these carry credentials and freeze announcements.
-        if (!value.startsWith("https://")) {
-            throw badRequest("\"" + field + "\" must be an https URL");
-        }
+
+        URI uri;
         try {
-            URI.create(value);
+            uri = URI.create(value);
         } catch (IllegalArgumentException notAUrl) {
             throw badRequest("\"" + field + "\" is not a valid URL");
+        }
+
+        // https only: these carry credentials and freeze announcements.
+        if (!"https".equalsIgnoreCase(uri.getScheme())) {
+            throw badRequest("\"" + field + "\" must be an https URL");
+        }
+        if (uri.getHost() == null || uri.getHost().isBlank()) {
+            throw badRequest("\"" + field + "\" has no host");
+        }
+
+        /*
+         * Refused here as well as at connect time, because the two refusals are for
+         * different reasons and only one of them is security.
+         *
+         * `https://hooks.slack.com@10.0.0.5/` is a valid URL whose host is 10.0.0.5, and
+         * OI-23 lists it as the trick that makes a `startsWith("https://")` check useless.
+         * OutboundAddressPolicy already refuses it on the way out. Refusing it at the field
+         * costs nothing and means an operator who pasted something odd finds out now,
+         * rather than watching deliveries fail with a message they cannot act on.
+         */
+        if (uri.getUserInfo() != null) {
+            throw badRequest("\"" + field + "\" must not contain a username before the host; "
+                    + "everything before the @ is ignored by the server it reaches");
         }
     }
 

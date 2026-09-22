@@ -446,6 +446,14 @@ It requires an `ADMINISTRATOR`, so this is escalation rather than anonymous comp
 address is checked on the way out, and a userinfo authority is refused. Verified by removing
 the fix: with redirects followed, the delivery reaches the second address and raises nothing.
 
+**`FZ-189` added a shape check at the field, and it changes nothing here.** The
+integrations form now parses the URL, requires https, requires a host and refuses a
+userinfo authority before the request is made. That is for the operator's benefit — a
+pasted mistake is reported while they are looking at the field rather than as a failed
+delivery — and it resolves no names, so it is not the boundary and does not narrow this
+issue. Recorded because a validator sitting next to a security issue is exactly the thing
+a later reader mistakes for the fix.
+
 **This entry stays open for the network half**, which `FZ-126` always said was the more
 durable one and left to `FZ-123`: a security group or an egress proxy, so that the boundary
 does not depend on the application resolving a name correctly. The residual gap in the
