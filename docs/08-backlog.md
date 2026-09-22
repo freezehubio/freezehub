@@ -1648,9 +1648,53 @@ One figure needs backend work: **refused as unregistered** is a count of `blocke
 `1i` and `1k`. `1k` is the dashboard at 390px, so it is responsive work on `FZ-106` rather than a separate screen.
 
 ### FZ-111 — Landing Page
-**Status:** TODO · **Blocked:** no public route exists · **Owes** the signup form (`FZ-082`)
+**Status:** DONE for the page · **Still owes** the signup form (`FZ-082`) — see below
 
-`1j`. Milestone 8 deferred the public marketing site, so there is nowhere to put this yet. It also raises the question that story left open: whether the site is part of this application or separate.
+`1j`, at `/`, public.
+
+**Resolved: part of this application, not a separate site.** The question `FZ-111` left open,
+answered the cheap way. CloudFront already serves this bundle at `domain_name` and `Deploy
+frontend` already publishes it, so a public route costs no bucket, no distribution, no
+certificate and no DNS — and a separate estate would mean renaming the hostname Cognito
+callbacks already point at. The trade accepted is that marketing copy ships in the app bundle
+and the page is client-rendered; both are weak at zero customers, and moving later is a
+hostname change rather than a rewrite.
+
+**The blocker was stale.** *"No public route exists"* stopped being true when the box went
+live. The route was one router entry away.
+
+**The authenticated tree became a pathless layout route**, so every product path stays exactly
+where it was — `/dashboard` is still `/dashboard`, and no in-app link, redirect or Cognito
+callback moves. Only the index redirect was removed, because `/` now has a page of its own.
+
+**Two things `1j` draws are not built, and the deck is wrong rather than the page.**
+
+- **"Start free trial"** — there is no signup screen. `FZ-082` landed `POST /api/signup` while
+  this was in review, and an endpoint does not make the claim true: a visitor still has
+  nothing to fill in. The button is **"Book a demo"**, the motion that exists, and the trigger
+  for changing it is a signup *page*, not the API.
+- **`uses: freezehub/freeze-check@v1`** — not a real reference. The sample is the shipped
+  `docker run ghcr.io/freezehubio/freeze-check:v1` from `connectors/README.md`. A landing
+  page's code sample is the first thing a visitor copies and the first thing that fails for
+  them.
+
+**Not built: the deck's 1440×900 product screenshot slot.** Filling it needs a real dashboard
+showing a real active freeze, and the deployed organization is empty. A placeholder rectangle
+on a landing page is worse than the section not existing.
+
+**The signup form is deliberately not in this branch.** The status line above gained *"owes
+the signup form"* from `FZ-082` while this was being built, and that debt is real — the API
+has no caller. It is not folded in here because a marketing page and an account-creation form
+are different pages with different acceptance, and one branch containing both is the
+unreviewable diff §9 exists to prevent. **It wants its own story**, and until it has one the
+product has a signup endpoint nobody can reach.
+
+Acceptance:
+
+- `/` renders without a token; `/dashboard` and every other product path still require one.
+- Nav, pricing and closing link only to sections that exist on the page.
+- No claim that is not true today — asserted by test rather than by reading.
+- Look comes from `broadsheet.css` and the tokens; the module is layout only.
 
 ### FZ-112 — What a Restriction Has Done
 **Status:** DONE
