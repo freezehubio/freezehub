@@ -22,6 +22,47 @@ Severity is about consequence if it reaches beta, not effort:
 
 ## Open
 
+### OI-50 — Catalog sync would invert the trust direction
+**Severity:** Decision · **Owner:** needs a story · **Raised:** 2026-09-22, `FZ-187`
+
+Requested: connect to GitHub, GitLab and Bitbucket to retrieve teams, applications and
+environments into the catalog, plus **custom dimensions** as a paid feature.
+
+**It contradicts a claim already published to customers.** `gtm/customer/security-brief.md`
+says, in the section a security reviewer reads first:
+
+> Not held: your source code, your build artifacts, any credential into your systems, and any
+> access to your repositories, cloud accounts or pipelines.
+
+Reading a customer's teams and repositories requires exactly that credential. `10-demo.md`
+makes the same promise, and it is the answer to the first question a security review asks.
+
+**It is the reason `FZ-096` is deferred**, recorded there as inverting the trust direction:
+FreezeHub would hold an installation token that can write to the customer's repository
+metadata, ingest their webhooks, and appear in their audit log. `08-backlog.md`'s Deferred
+list names native GitHub/GitLab/Jenkins/Argo CD integrations for the same reason.
+
+**The pull is real and should not be dismissed.** Registering a catalog by hand is the
+dullest part of onboarding and the one most likely to be left half-done — and `D-14` refuses
+unregistered applications, so a half-done catalog is a broken pipeline. `FZ-096` also notes
+that a GitHub App is *"the strongest thing the product could offer"*, because a required check
+is what turns a hard freeze from voluntary into enforced. Whatever is decided, it is worth
+deciding for that reason rather than for catalog convenience.
+
+**The cheaper middle exists.** A file import — CSV or JSON of teams, applications and
+environments — removes most of the typing, needs no token, and leaves every published claim
+true. It is a worse demo and a smaller promise.
+
+**Custom dimensions are a second decision, not part of the first.** Scope today is exactly
+three axes — teams, applications, environments (`01-domain.md`) — and evaluation is
+deterministic over them (`D-21`). A fourth, customer-defined axis changes the domain model,
+the policy evaluation, the API contract and the scope UI. The landing page shipped with
+*"3 scope dimensions: teams, apps, environments"* on it. Pricing it as premium is a third
+decision again, and none of the three is blocked on the other two.
+
+**What would have to change if this is built:** the security brief, `10-demo.md`, `FZ-096`'s
+deferral, and the answer given to every security review conducted before the change.
+
 ### OI-36 — Nothing can be forgotten
 **Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
 

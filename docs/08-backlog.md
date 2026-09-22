@@ -4529,3 +4529,130 @@ Acceptance:
 - A duplicate address is indistinguishable from a new one, in the UI as well as the API.
 - The landing page offers the trial as the secondary action, demo primary.
 - No document still says self-serve signup does not exist.
+
+## Milestone 20 — What Using It Surfaced
+
+Observations from the operator using the deployed product, recorded 22 September 2026. They
+are not one theme; what they share is that each was found by using the thing rather than by
+reading it.
+
+### FZ-187 — Seven Observations From Using It
+**Status:** DONE · **Files** `FZ-188`–`FZ-192`, `OI-50`
+
+Recording only, no behaviour.
+
+Seven observations, checked against the code before being written down. Four became stories,
+one an open issue, one needed nothing, and one was found to be a better argument than the
+observation made for it:
+
+| | Verdict |
+|---|---|
+| Cancel from the restrictions list | `FZ-188` |
+| Integrations should take a URL, not JSON | `FZ-189` — broader than webhooks |
+| Administrator and developer roles | `FZ-190` — the product doc already agrees |
+| A scheduling view on the dashboard | `FZ-191` — underspecified, decision named |
+| A mark for the Slack app | `FZ-192` |
+| Catalog sync from GitHub/GitLab | `OI-50` — contradicts a published claim |
+| Starter / Pro / Enterprise plans | **Nothing to do.** Five tiers ship, priced and gated, and the landing page has carried the table since `FZ-111` |
+
+**"Sourcetree" was read as Bitbucket.** Sourcetree is a desktop git client and hosts nothing.
+Recorded because the substitution is a guess, and a guess that goes unmarked becomes a
+requirement nobody agreed to.
+
+### FZ-188 — Cancel From the List
+**Status:** TODO
+
+`cancelRestriction` exists and is wired on the detail page. The list has no cancel action, so
+lifting a freeze costs a navigation to find the button.
+
+**Cancelling is the action with the most time pressure in the product.** Every other thing a
+list offers can wait; a freeze that should have been lifted is blocking deployments across the
+organization for as long as it takes to find the screen. It belongs where the freezes are.
+
+Acceptance:
+
+- Cancel is reachable from the list for a restriction whose status allows it, and absent where
+  it does not.
+- It confirms before acting — cancellation is not reversible and the row is one click from
+  every other row.
+- The audit entry is indistinguishable from cancelling on the detail page. Two routes to one
+  action must not produce two kinds of record.
+
+### FZ-189 — A URL, Not a JSON Document
+**Status:** TODO · **Touches** `OI-23`
+
+`IntegrationsSection` asks the operator to hand-type raw JSON, and its placeholders are the
+only guidance: `{"webhookUrl": "https://hooks.slack.com/..."}`, `{"recipients": [...]}`,
+`{"url": "https://acme.test/hooks/freezehub"}`. A misplaced brace fails at the backend with a
+parse error rather than at the field with a hint.
+
+**Broader than the observation.** It was reported about webhooks; all three channels have it.
+
+The stored shape does not need to change — `integration.config` stays opaque JSON that the
+owning channel interprets (`03-data-model.md`). What changes is that the form collects a URL
+or a list of addresses and composes the JSON, instead of asking a human to compose it.
+
+**Validate the URL while there is a validator to put it in.** `OI-23` records that outbound
+webhooks reach any host the network can reach — link-local, metadata endpoints, anything
+inside the deployment. A field that parses a URL is the natural place for that check, and
+building the field without it means opening the same file twice.
+
+Acceptance:
+
+- Each channel type presents its own fields; no user types a brace.
+- An invalid URL is refused at the field, naming what is wrong with it.
+- Existing integrations keep working — the change is to how config is composed, not to what is
+  stored.
+
+### FZ-190 — Administrator and Developer
+**Status:** TODO · **Decision required:** see below
+
+`users.role` is `ADMINISTRATOR` or `MEMBER`, and a `MEMBER` may create, edit and cancel
+restrictions. The request is that only an administrator manages freezes and everyone else
+reads.
+
+**The product document already agrees.** `00-product.md` names three actors — Organization
+Administrator, Release/Engineering Manager, Engineer — and the schema has two roles. The
+Engineer is described as someone who *"checks active/upcoming restrictions and determines
+whether their application/environment is affected"*: read-only, in the document, since before
+the role model existed.
+
+**And the security document invited this.** `06-security.md` says catalog and restriction
+management *"remain open to any authenticated org member **unless a future requirement says
+otherwise**"*. This is that requirement, which makes it a gap being closed rather than the
+advanced RBAC `00-product.md` excludes.
+
+**The decision is the middle actor.** Three actors, and the request names two roles. Either
+the Manager is an administrator — in which case "administrator" stops meaning "manages the
+organization" and starts meaning "manages freezes too" — or a third role appears, which is
+where this starts to become RBAC. Not guessed here.
+
+Requires updating `06-security.md`, `00-product.md` and a migration for existing rows.
+
+### FZ-191 — The Dashboard's Other View
+**Status:** TODO · **Decision required before building**
+
+A control that swaps **Active now** and **Then what** for a view of the schedule itself,
+described as a carousel with a *Next* affordance.
+
+**Underspecified in one way that decides the work.** "The scheduling itself" is at least three
+different components: a calendar month with freezes drawn on days, a horizontal timeline of
+overlapping windows, or a sorted list of upcoming windows with their scope. The first is the
+most work and the most familiar; the second shows overlap, which is the thing the list cannot
+show; the third is nearly free and adds least.
+
+Worth answering with the question the view exists for: *what can I not see today?* The
+dashboard already answers "what is on now" and "what is next". A calendar answers "when is it
+safe to plan a release", which neither of the others does.
+
+### FZ-192 — A Mark for the Slack App
+**Status:** TODO
+
+The Slack application has no profile picture. Slack wants **512×512 PNG**, and the icon is
+what an announcement is recognised by in a channel where everything else is also a bot.
+
+**What can be authored here is an SVG**, from which the PNG is an export — that step is a
+human one. Worth stating rather than discovering at upload.
+
+Constraint worth honouring: it renders at 20 px beside a message. Detail that survives a
+favicon is the brief; anything finer is invisible where it is actually seen.
