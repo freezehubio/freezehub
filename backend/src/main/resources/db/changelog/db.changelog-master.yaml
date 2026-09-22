@@ -49,3 +49,5 @@ databaseChangeLog:
       file: db/changelog/024-subscription-free-plan.yaml
   - include:
       file: db/changelog/025-organization-status.yaml
+  - include:
+      file: db/changelog/026-notification-last-error-bounded.yaml

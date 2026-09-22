@@ -4716,3 +4716,39 @@ human one. Worth stating rather than discovering at upload.
 
 Constraint worth honouring: it renders at 20 px beside a message. Detail that survives a
 favicon is the brief; anything finer is invisible where it is actually seen.
+
+### FZ-194 — A Bound, and a Rule About What Goes In It
+**Status:** DONE · **Resolves** `OI-40`
+
+`notification.last_error` was unbounded `text`. It is `varchar(500)` now, truncated in the
+entity, and `03-data-model.md` states what may go in it.
+
+**The senders were already careful, which is why this was easy to miss.** Each composes its
+own message, and the webhook one reads the response with `toBodilessEntity()` and reports the
+exception's *class name* rather than its message — deliberately, because Spring puts the
+request URI in that. Nothing passes a customer's response body through.
+
+**What made the column unbounded is one line in the dispatcher.**
+`NotificationDelivery` catches every `RuntimeException` and stores `getMessage()` verbatim, so
+any library's message — a driver's, a parser's, one carrying a fragment of whatever it was
+handed — arrives at whatever length it happens to be. The catch is not narrowed here: it is
+what stops one bad destination killing the dispatch pass for every other notification.
+
+**Bounded in the entity, not at the call sites.** Three writers set this field today and a
+fourth would be easy to add. One door means a later writer cannot forget.
+
+**A null message now becomes an empty string.** `getMessage()` is null for a
+`NullPointerException` and several others, and a `FAILED` row whose only account of itself is
+null cannot be told from one that never recorded a reason.
+
+500 matches `demo_request.notify_error`, which bounds the same kind of value (`FZ-083`). One
+convention rather than two.
+
+Acceptance:
+
+- Every write is truncated, asserted per writer rather than once.
+- A short message is kept whole — the bound costs the ordinary case nothing.
+- Clearing on eventual success still works, so a stale error is never shown as current.
+- The migration truncates before it narrows the type; an existing long row would otherwise
+  fail the alter, and this table is the record of announcements that never arrived.
+

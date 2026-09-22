@@ -124,7 +124,9 @@ path that creates identities and leaves no trace is the first finding an access 
 produces, and there is no way to answer "who created this organization, and when" without it.
 
 ### OI-40 — `notification.last_error` is unbounded
-**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
+**Severity:** Gap · **RESOLVED by** `FZ-194` · **Found in:** `FZ-161`
+
+**Closed.** `varchar(500)`, truncated in the entity so every writer goes through one door, with the rule stated in `03-data-model.md`. The senders turned out to be careful already — none passes a response body through — and the unbounded path was `NotificationDelivery` catching every `RuntimeException` and storing `getMessage()` verbatim. That catch is deliberately not narrowed: it is what stops one bad destination killing the dispatch pass for everything else.
 
 An unbounded `TEXT` column holding a failed delivery's error, with no retention rule and no
 classification.

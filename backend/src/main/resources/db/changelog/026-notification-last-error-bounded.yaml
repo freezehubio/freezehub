@@ -1,0 +1,41 @@
+databaseChangeLog:
+  # OI-40: `notification.last_error` was unbounded `text` with no rule about what may go
+  # in it.
+  #
+  # The three senders each compose their own message and none of them passes a third
+  # party's response body through -- the webhook sender in particular reads the response
+  # with `toBodilessEntity()` and deliberately reports the exception's class name rather
+  # than its message, because Spring puts the request URI in that. What makes the column
+  # unbounded anyway is the dispatcher: `NotificationDelivery` catches every
+  # `RuntimeException` and stores `getMessage()` verbatim, so any library's message -- a
+  # driver's, a parser's, one carrying a fragment of whatever it was handed -- lands here
+  # at whatever length it happens to be.
+  #
+  # 500 characters, matching `demo_request.notify_error`, which solved the same problem the
+  # same way in `FZ-083`. One convention for "an error we keep to explain a failed
+  # delivery" rather than two.
+  #
+  # The update runs first and must: an existing row longer than the new type would make the
+  # alter fail, and this table is the record of announcements that never arrived. Truncating
+  # is right rather than merely expedient -- the first 500 characters of an error are the
+  # part anybody reads.
+  - changeSet:
+      id: 026-notification-last-error-truncate
+      author: freezehub
+      changes:
+        - update:
+            tableName: notification
+            columns:
+              - column:
+                  name: last_error
+                  valueComputed: left(last_error, 500)
+            where: length(last_error) > 500
+
+  - changeSet:
+      id: 026-notification-last-error-bounded
+      author: freezehub
+      changes:
+        - modifyDataType:
+            tableName: notification
+            columnName: last_error
+            newDataType: varchar(500)
