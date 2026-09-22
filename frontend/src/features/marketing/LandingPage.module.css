@@ -26,13 +26,6 @@
   border-bottom: 1px solid var(--color-divider);
 }
 
-.brand {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 1.125rem;
-  letter-spacing: -0.01em;
-}
-
 .navLinks {
   display: flex;
   gap: var(--space-4);

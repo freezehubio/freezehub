@@ -28,6 +28,9 @@ import java.time.Instant;
 @Table(name = "notification")
 public class Notification {
 
+    /** Matches {@code demo_request.notify_error}, which bounds the same kind of value (`OI-40`). */
+    private static final int MAX_LAST_ERROR = 500;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -52,7 +55,7 @@ public class Notification {
     @Column(nullable = false)
     private int attempts;
 
-    @Column(name = "last_error")
+    @Column(name = "last_error", length = MAX_LAST_ERROR)
     private String lastError;
 
     @Column(name = "created_at", nullable = false)
@@ -108,7 +111,7 @@ public class Notification {
      */
     public void markAttemptFailed(String error, Instant now) {
         this.attempts += 1;
-        this.lastError = error;
+        this.lastError = bounded(error);
 
         if (RetryPolicy.isExhausted(this.attempts)) {
             this.status = NotificationStatus.FAILED;
@@ -123,7 +126,7 @@ public class Notification {
      */
     public void abandon(String reason) {
         this.status = NotificationStatus.FAILED;
-        this.lastError = reason;
+        this.lastError = bounded(reason);
     }
 
     /**
@@ -142,8 +145,35 @@ public class Notification {
 
     /** Puts a notification back in the queue after a transient, non-delivery condition. */
     public void deferUntil(String reason, Instant when) {
-        this.lastError = reason;
+        this.lastError = bounded(reason);
         this.nextAttemptAt = when;
+    }
+
+    /**
+     * The one place `last_error` is written, and the reason it is bounded (`OI-40`).
+     *
+     * <p>Every sender composes its own message and none passes a third party.s response
+     * body through — the webhook sender reads the response bodiless and reports the
+     * exception.s class name rather than its message, because Spring puts the request URI
+     * in that. What makes the column unbounded anyway is one line in the dispatcher:
+     * {@code NotificationDelivery} catches every {@code RuntimeException} and stores
+     * {@code getMessage()} verbatim, so any library.s message arrives at whatever length
+     * it happens to be. Bounding it here rather than there is what makes it unbypassable:
+     * a fourth writer added later cannot forget.
+     *
+     * <p>500 characters, matching {@code demo_request.notify_error}. One convention for
+     * "an error we keep to explain a failed delivery" rather than two.
+     *
+     * <p>A null message becomes the empty string rather than null. {@code getMessage()}
+     * returns null for a {@code NullPointerException} and several others, and a FAILED row
+     * whose only account of itself is null cannot be told from one that never recorded a
+     * reason.
+     */
+    private static String bounded(String error) {
+        if (error == null) {
+            return "";
+        }
+        return error.length() <= MAX_LAST_ERROR ? error : error.substring(0, MAX_LAST_ERROR);
     }
 
     @PrePersist

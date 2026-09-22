@@ -77,9 +77,10 @@ describe('SettingsPage', () => {
     const spy = stubApi([])
     renderRoute(<SettingsPage />, { path: '/settings?section=integrations', route: '/settings' })
 
+    // A URL, not a JSON document (`FZ-189`) — the form composes the config now.
     await user.type(
-      await screen.findByLabelText('Configuration'),
-      '{{"webhookUrl": "https://hooks.slack.com/services/x"}',
+      await screen.findByLabelText(/incoming webhook url/i),
+      'https://hooks.slack.com/services/x',
     )
     await user.click(screen.getByRole('button', { name: /add destination/i }))
 
@@ -93,21 +94,29 @@ describe('SettingsPage', () => {
   test('explains a config the backend rejects', async () => {
     // The backend owns what each channel's config must contain; its message is the useful
     // one, so it is surfaced rather than replaced with something generic.
+    //
+    // The input has to be one the *field* accepts, or this never reaches the backend at
+    // all (`FZ-189`). That is the point of the field check and also its limit: it catches
+    // shape, and the backend still owns everything else — so this asserts the path that
+    // matters, a value the form cannot fault and the server can.
     const user = userEvent.setup()
     stubApi(
       [],
       () =>
-        new Response(JSON.stringify({ message: '"webhookUrl" must be an https URL' }), {
+        new Response(JSON.stringify({ message: 'That webhook has already been added' }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
         }),
     )
     renderRoute(<SettingsPage />, { path: '/settings?section=integrations', route: '/settings' })
 
-    await user.type(await screen.findByLabelText('Configuration'), '{{"webhookUrl": "http://x"}')
+    await user.type(
+      await screen.findByLabelText(/incoming webhook url/i),
+      'https://hooks.slack.com/services/already-there',
+    )
     await user.click(screen.getByRole('button', { name: /add destination/i }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/must be an https URL/i)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/already been added/i)
   })
 
   test('disables a destination without deleting it', async () => {

@@ -1,0 +1,53 @@
+/*
+ * Option `2c` (`FZ-196`). The rule weights are the deck's own and are not a linear
+ * scale — 5px at 44, 3px at 17, 2px at 13 — because a hairline that reads at masthead
+ * size disappears in a nav bar. Copied as drawn rather than computed from a ratio.
+ */
+
+.wordmark {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  letter-spacing: -0.01em;
+}
+
+/* The point carries the accent on its own, so the name stays text ink. 700 on paper;
+   500 on ink, where the darker step would close up. */
+.point {
+  color: var(--color-accent-2-700);
+}
+
+.negative .point {
+  color: var(--color-accent-2-500);
+}
+
+.masthead {
+  display: inline-block;
+  font-size: 44px;
+  line-height: 1.05;
+  padding: 10px 0;
+  border-top: 5px solid var(--color-text);
+  border-bottom: 1px solid var(--color-text);
+}
+
+.nav {
+  display: inline-block;
+  font-size: 17px;
+  padding: 3px 0;
+  border-top: 3px solid var(--color-text);
+  border-bottom: 1px solid var(--color-text);
+}
+
+.compact {
+  display: inline-block;
+  font-size: 13px;
+  padding: 2px 0;
+  border-top: 2px solid var(--color-text);
+  border-bottom: 1px solid var(--color-text);
+}
+
+.negative.masthead,
+.negative.nav,
+.negative.compact {
+  border-color: var(--color-bg);
+  color: var(--color-bg);
+}

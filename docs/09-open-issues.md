@@ -124,7 +124,9 @@ path that creates identities and leaves no trace is the first finding an access 
 produces, and there is no way to answer "who created this organization, and when" without it.
 
 ### OI-40 — `notification.last_error` is unbounded
-**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
+**Severity:** Gap · **RESOLVED by** `FZ-194` · **Found in:** `FZ-161`
+
+**Closed.** `varchar(500)`, truncated in the entity so every writer goes through one door, with the rule stated in `03-data-model.md`. The senders turned out to be careful already — none passes a response body through — and the unbounded path was `NotificationDelivery` catching every `RuntimeException` and storing `getMessage()` verbatim. That catch is deliberately not narrowed: it is what stops one bad destination killing the dispatch pass for everything else.
 
 An unbounded `TEXT` column holding a failed delivery's error, with no retention rule and no
 classification.
@@ -275,7 +277,7 @@ enable the timer as part of the deploy, then run a restore and prove the dump is
 A backup nobody has restored is a file of unknown contents.
 
 ### OI-47 — The frontend suite fails locally and passes in CI
-**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-179`
+**Severity:** Gap · **RESOLVED by** `FZ-193` · **Found in:** `FZ-179`
 
 `npm run test` fails three to six tests on a developer machine, and the same commit passes
 `frontend` in CI every time. Verified on `master` with no changes applied — six failures
@@ -284,6 +286,19 @@ there, three on a branch, and a different set between consecutive runs.
 **Every failing file passes in isolation.** `CreateRestrictionPage`, `DeployCheck` and
 `DeploymentChecksPage` each pass alone and fail under full-suite parallelism, which points
 at shared state or timing rather than at any assertion being wrong.
+
+**Closed by `FZ-193`: the suite was starving itself.** Vitest defaults to one worker per
+core, and `npm run test` on this 16-core machine took the load average from 16 to 77 while
+a backend build and two other agent sessions were already running. A worker with a
+fraction of a core turns a one-second test into a five-second one, and five seconds was
+the default timeout. CI passed because a runner has the machine to itself — which is
+precisely why CI could never reproduce it, and why "CI is green" was never the defence it
+looked like.
+
+Fixed with a 15-second timeout, a 50% worker cap, and removing `userEvent`'s
+inter-keystroke delay in the three files named above. Verified by three consecutive full
+runs at load averages of 89, 141 and 256, all passing, against a baseline that failed at
+77.
 
 **The cost is not the failures, it is what they teach.** A suite that cries wolf locally is
 a suite developers stop reading, and the next real regression arrives in a run that already
@@ -457,6 +472,14 @@ It requires an `ADMINISTRATOR`, so this is escalation rather than anonymous comp
 **The application half is closed by `FZ-126`** — redirects are not followed, every resolved
 address is checked on the way out, and a userinfo authority is refused. Verified by removing
 the fix: with redirects followed, the delivery reaches the second address and raises nothing.
+
+**`FZ-189` added a shape check at the field, and it changes nothing here.** The
+integrations form now parses the URL, requires https, requires a host and refuses a
+userinfo authority before the request is made. That is for the operator's benefit — a
+pasted mistake is reported while they are looking at the field rather than as a failed
+delivery — and it resolves no names, so it is not the boundary and does not narrow this
+issue. Recorded because a validator sitting next to a security issue is exactly the thing
+a later reader mistakes for the fix.
 
 **This entry stays open for the network half**, which `FZ-126` always said was the more
 durable one and left to `FZ-123`: a security group or an egress proxy, so that the boundary
