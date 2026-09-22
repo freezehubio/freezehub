@@ -306,7 +306,7 @@ had three red lines in it. CI being green is not a defence — it means the mach
 notices is the one nobody watches.
 
 ### OI-49 — One address can own two organizations, if one of them skipped Cognito
-**Severity:** Gap (narrow) · **Owner:** needs a story · **Found in:** `FZ-185` testing
+**Severity:** Gap (narrow) · **RESOLVED by** `FZ-195` for the local profile · **Found in:** `FZ-185` testing
 
 Signup's only duplicate check is the identity provider refusing the address: `users.email`
 is unique *per organization* (`uq_users_organization_email`), while the Cognito pool is
@@ -329,6 +329,18 @@ persists, so the seeded case cannot arise. The provisioning case can: the script
 `--user-pool-id` optional and, without it, writes a local-only subject. It already warns
 loudly that the Administrator *cannot sign in*, which bounds the harm — the duplicate
 organization belongs to somebody who could never reach it anyway.
+
+**`FZ-195` closed the half that was reachable.** `LocalIdentityProvider` now consults the
+database as well as its own memory, so an address held by a row any earlier process wrote
+is refused exactly as a persistent Cognito pool would refuse it. The observed case — a
+seeded organization's address accepted by signup after a restart — no longer happens.
+
+**The deployed half was never open.** Cognito persists, so `provision-organization.sh`
+run *with* `--user-pool-id` and `seed-demo.sh` (local only) were the entire exposure. What
+remains is the script run *without* `--user-pool-id` against a real environment, which
+already warns loudly that the Administrator cannot sign in — so the duplicate belongs to
+somebody who could never reach it. Left as it is; the warning is the right size for the
+risk.
 
 **Why record it rather than fix it.** "One address, one organization" reads like an
 invariant and is not one; the next person to rely on it should find this first. The
