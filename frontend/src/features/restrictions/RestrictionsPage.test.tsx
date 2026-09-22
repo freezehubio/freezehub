@@ -161,4 +161,81 @@ describe('RestrictionsPage', () => {
     expect(within(rows[1]).getByText('Zulu')).toBeInTheDocument()
     expect(within(rows[2]).getByText('Alpha')).toBeInTheDocument()
   })
+  describe('cancelling from the list (FZ-188)', () => {
+    test('offers cancel only where the status allows it', async () => {
+      stubFetch([
+        restriction({ id: 1, name: 'Scheduled one', status: 'SCHEDULED' }),
+        restriction({ id: 2, name: 'Active one', status: 'ACTIVE' }),
+        restriction({ id: 3, name: 'Completed one', status: 'COMPLETED' }),
+        restriction({ id: 4, name: 'Cancelled one', status: 'CANCELLED' }),
+      ])
+      renderRoute(<RestrictionsPage />, { path: '/restrictions' })
+
+      await screen.findByRole('table')
+      expect(screen.getByRole('button', { name: 'Cancel Scheduled one' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Cancel Active one' })).toBeInTheDocument()
+      // Absent, not disabled. A greyed control still reads as "there is something here".
+      expect(screen.queryByRole('button', { name: 'Cancel Completed one' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Cancel Cancelled one' })).not.toBeInTheDocument()
+    })
+
+    test('asks before cancelling, and does nothing when declined', async () => {
+      const spy = stubFetch([restriction({ id: 7, name: 'Peak trading', status: 'ACTIVE' })])
+      vi.spyOn(window, 'confirm').mockReturnValue(false)
+      renderRoute(<RestrictionsPage />, { path: '/restrictions' })
+
+      await screen.findByRole('table')
+      const before = spy.mock.calls.length
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel Peak trading' }))
+
+      expect(window.confirm).toHaveBeenCalled()
+      expect(spy.mock.calls.length).toBe(before)
+    })
+
+    test('posts to the same endpoint the detail page uses', async () => {
+      // The audit record must not be able to tell the two routes apart, which is only true
+      // while both post here.
+      const spy = stubFetch([restriction({ id: 7, name: 'Peak trading', status: 'ACTIVE' })])
+      vi.spyOn(window, 'confirm').mockReturnValue(true)
+      renderRoute(<RestrictionsPage />, { path: '/restrictions' })
+
+      await screen.findByRole('table')
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel Peak trading' }))
+
+      await waitFor(() => {
+        const posted = spy.mock.calls.find(
+          ([, init]) => (init as RequestInit | undefined)?.method === 'POST',
+        )
+        expect(posted).toBeDefined()
+        expect(String(posted![0])).toContain('/api/restrictions/7/cancel')
+      })
+    })
+
+    test('reports a refusal rather than pretending it worked', async () => {
+      // 409 is the real case: it finished or was cancelled while this list was open.
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((_input: RequestInfo | URL, init?: RequestInit) =>
+          Promise.resolve(
+            init?.method === 'POST'
+              ? new Response(JSON.stringify({ detail: 'Already completed.' }), {
+                  status: 409,
+                  headers: { 'Content-Type': 'application/json' },
+                })
+              : new Response(
+                  JSON.stringify([restriction({ id: 7, name: 'Peak trading', status: 'ACTIVE' })]),
+                  { status: 200, headers: { 'Content-Type': 'application/json' } },
+                ),
+          ),
+        ),
+      )
+      vi.spyOn(window, 'confirm').mockReturnValue(true)
+      renderRoute(<RestrictionsPage />, { path: '/restrictions' })
+
+      await screen.findByRole('table')
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel Peak trading' }))
+
+      expect(await screen.findByRole('alert')).toBeInTheDocument()
+    })
+  })
 })

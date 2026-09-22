@@ -4620,7 +4620,7 @@ Recorded because the substitution is a guess, and a guess that goes unmarked bec
 requirement nobody agreed to.
 
 ### FZ-188 — Cancel From the List
-**Status:** TODO
+**Status:** DONE
 
 `cancelRestriction` exists and is wired on the detail page. The list has no cancel action, so
 lifting a freeze costs a navigation to find the button.
