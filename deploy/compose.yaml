@@ -40,6 +40,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DATABASE_PASSWORD:?from SSM at boot}
       FREEZEHUB_SECRETS_ENCRYPTION_KEY: ${ENCRYPTION_KEY:?from SSM at boot}
       FREEZEHUB_CORS_ALLOWED_ORIGINS: https://${APP_DOMAIN:?}
+      # The "View in FreezeHub" button in a Slack announcement (FZ-186). Same value as the
+      # CORS origin above and for the same reason -- it is where a person reaches the app.
+      FREEZEHUB_APP_URL: https://${APP_DOMAIN:?}
       # Cognito (FZ-046, OI-44). Without these the context does not start, which is the
       # intended fail-fast and not something to paper over with a default -- the backend
       # has none, deliberately.
