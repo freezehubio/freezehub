@@ -1,5 +1,5 @@
 import { screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { setupUser } from '../../test/user'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { DeployCheck } from './DeployCheck'
 import { renderRoute } from '../../test/renderRoute'
@@ -49,7 +49,7 @@ function stubApi(preview: DeploymentCheckPreview | { status: number }) {
 }
 
 async function ask(application = 'payments-api', environment = 'production') {
-  const user = userEvent.setup()
+  const user = setupUser()
   await user.type(screen.getByLabelText('Application'), application)
   await user.type(screen.getByLabelText('Environment'), environment)
   await user.click(screen.getByRole('button', { name: 'Evaluate' }))
@@ -71,7 +71,7 @@ describe('DeployCheck', () => {
   })
 
   test('will not evaluate with a field empty', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     stubApi(answer())
     renderRoute(<DeployCheck />)
 

@@ -275,7 +275,7 @@ enable the timer as part of the deploy, then run a restore and prove the dump is
 A backup nobody has restored is a file of unknown contents.
 
 ### OI-47 — The frontend suite fails locally and passes in CI
-**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-179`
+**Severity:** Gap · **RESOLVED by** `FZ-193` · **Found in:** `FZ-179`
 
 `npm run test` fails three to six tests on a developer machine, and the same commit passes
 `frontend` in CI every time. Verified on `master` with no changes applied — six failures
@@ -284,6 +284,19 @@ there, three on a branch, and a different set between consecutive runs.
 **Every failing file passes in isolation.** `CreateRestrictionPage`, `DeployCheck` and
 `DeploymentChecksPage` each pass alone and fail under full-suite parallelism, which points
 at shared state or timing rather than at any assertion being wrong.
+
+**Closed by `FZ-193`: the suite was starving itself.** Vitest defaults to one worker per
+core, and `npm run test` on this 16-core machine took the load average from 16 to 77 while
+a backend build and two other agent sessions were already running. A worker with a
+fraction of a core turns a one-second test into a five-second one, and five seconds was
+the default timeout. CI passed because a runner has the machine to itself — which is
+precisely why CI could never reproduce it, and why "CI is green" was never the defence it
+looked like.
+
+Fixed with a 15-second timeout, a 50% worker cap, and removing `userEvent`'s
+inter-keystroke delay in the three files named above. Verified by three consecutive full
+runs at load averages of 89, 141 and 256, all passing, against a baseline that failed at
+77.
 
 **The cost is not the failures, it is what they teach.** A suite that cries wolf locally is
 a suite developers stop reading, and the next real regression arrives in a run that already

@@ -4705,6 +4705,51 @@ Worth answering with the question the view exists for: *what can I not see today
 dashboard already answers "what is on now" and "what is next". A calendar answers "when is it
 safe to plan a release", which neither of the others does.
 
+### FZ-193 — The Suite Was Starving Itself
+**Status:** DONE · **Resolves** `OI-47`
+
+The frontend suite failed three to eight tests on a developer machine and passed every
+time in CI. Every failing file passed in isolation, and the failing set differed between
+consecutive runs.
+
+**It was not flaky tests. It was starvation, and the suite was causing it.** Vitest
+defaults to one worker per core. On this 16-core machine — already running a backend
+build and two other agent sessions — `npm run test` took the load average from 16 to 77.
+Each worker then gets a fraction of a core, a test needing one second of CPU takes five,
+and five seconds is the default timeout. CI passed because a CI runner has the machine to
+itself, which is exactly why CI could never reproduce it.
+
+Three changes, for three different reasons:
+
+- **`testTimeout: 15_000`.** A timeout catches a hang; it is not a performance budget.
+  Five seconds was measuring the machine, not the code.
+- **`maxWorkers: '50%'`.** Still parallel, and no longer the reason somebody else's build
+  times out. On a machine running several sessions this is what keeps any result
+  meaningful.
+- **`setupUser()`, a `userEvent.setup({ delay: null })` helper**, in the three files
+  `OI-47` named. Filling one restriction form types about seventy characters, and by
+  default `userEvent` yields to the event loop after each one — seventy scheduler
+  round-trips and seventy renders. Nothing in those tests asserts on typing *timing*, so
+  the delay bought nothing and cost the most exactly when the machine was busiest.
+
+**Measured, not asserted.** Before: 2 failures with the load average going 16 → 77.
+After: three consecutive full runs, 255 passing each time, at load averages of 89, 141
+and 256. The fix holds at three times the load that broke it.
+
+**The first attempt was not enough, which is worth recording.** Config alone — timeout
+plus worker cap — passed once at load 171 and then failed one test at 118. One green run
+does not disprove a flake; it took the `userEvent` change to make it survive repetition.
+
+Also fixed here, because it is the same subject: `SignUpPage.test.tsx` had a
+`no-unsafe-optional-chaining` warning from `FZ-185`, where `init?.headers` short-circuits
+and the assertion would pass whether the header was absent or the request was.
+
+Acceptance:
+
+- Three consecutive full-suite runs pass on a loaded developer machine.
+- The suite does not drive the machine to saturation on its own.
+- `npm run lint` is clean.
+
 ### FZ-192 — A Mark for the Slack App
 **Status:** TODO
 

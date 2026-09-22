@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { setupUser } from '../../test/user'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { CreateRestrictionPage } from './CreateRestrictionPage'
 import { renderRoute } from '../../test/renderRoute'
@@ -62,7 +63,7 @@ describe('CreateRestrictionPage', () => {
   test('converts the local datetime inputs to UTC before submitting', async () => {
     // The headline risk of this story. The suite runs at UTC-5, so an unconverted value
     // would post "2026-11-27T09:00" (or a 09:00Z instant) instead of 14:00Z.
-    const user = userEvent.setup()
+    const user = setupUser()
     const spy = stubApi(created)
     renderRoute(<CreateRestrictionPage />, { path: '/restrictions/new' })
 
@@ -79,7 +80,7 @@ describe('CreateRestrictionPage', () => {
     // unhandled rejection that the suite reported and then passed anyway (OI-10). The
     // server decides the id, so this is also what proves the response is read rather
     // than the form state reused.
-    const user = userEvent.setup()
+    const user = setupUser()
     stubApi(created)
     const { router } = renderRoute(<CreateRestrictionPage />, { path: '/restrictions/new' })
 
@@ -90,7 +91,7 @@ describe('CreateRestrictionPage', () => {
   })
 
   test('stays put when creation fails, so the filled-in form is not lost', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     stubApi(() => new Response(JSON.stringify({ message: 'Name already used' }), {
       status: 409,
       headers: { 'Content-Type': 'application/json' },
@@ -105,7 +106,7 @@ describe('CreateRestrictionPage', () => {
   })
 
   test('submits the whole restriction, with scope', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const spy = stubApi(created)
     renderRoute(<CreateRestrictionPage />, { path: '/restrictions/new' })
 
@@ -123,7 +124,7 @@ describe('CreateRestrictionPage', () => {
   })
 
   test('sends no type or status — both are the server’s to decide', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const spy = stubApi(created)
     renderRoute(<CreateRestrictionPage />, { path: '/restrictions/new' })
 
@@ -136,7 +137,7 @@ describe('CreateRestrictionPage', () => {
   })
 
   test('requires a reason', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const spy = stubApi(created)
     renderRoute(<CreateRestrictionPage />, { path: '/restrictions/new' })
 
@@ -151,7 +152,7 @@ describe('CreateRestrictionPage', () => {
   })
 
   test('rejects an end that is not after the start', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const spy = stubApi(created)
     renderRoute(<CreateRestrictionPage />, { path: '/restrictions/new' })
 
@@ -167,7 +168,7 @@ describe('CreateRestrictionPage', () => {
   })
 
   test('rejects a window entirely in the past', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const spy = stubApi(created)
     renderRoute(<CreateRestrictionPage />, { path: '/restrictions/new' })
 
@@ -183,7 +184,7 @@ describe('CreateRestrictionPage', () => {
   })
 
   test('requires at least one scope target', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const spy = stubApi(created)
     renderRoute(<CreateRestrictionPage />, { path: '/restrictions/new' })
 
@@ -200,7 +201,7 @@ describe('CreateRestrictionPage', () => {
 
   test('surfaces a backend rejection rather than swallowing it', async () => {
     // Client-side checks are a convenience; the backend is what actually decides.
-    const user = userEvent.setup()
+    const user = setupUser()
     stubApi(
       () =>
         new Response(JSON.stringify({ message: 'Restriction cannot be entirely in the past' }), {
@@ -233,7 +234,7 @@ describe('CreateRestrictionPage', () => {
   test('shows the common options as chips and the rest behind "n more…"', async () => {
     // The native multi-select hid what was selected once a catalog outgrew its box
     // (FZ-108). Five applications is already past the four kept inline.
-    const user = userEvent.setup()
+    const user = setupUser()
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL) => {
@@ -272,7 +273,7 @@ describe('CreateRestrictionPage', () => {
   test('a chip carries its selected state where a screen reader can reach it', async () => {
     // The × and + are decorative and aria-hidden, so pressed state is what conveys
     // selection — a chip whose only signal is a glyph is a chip only sighted users can read.
-    const user = userEvent.setup()
+    const user = setupUser()
     stubApi(created)
     renderRoute(<CreateRestrictionPage />)
 
@@ -289,7 +290,7 @@ describe('CreateRestrictionPage', () => {
 
   test('warns about an overlapping restriction without refusing it', async () => {
     // Overlaps are deliberately allowed (FZ-020), so this must never block submission.
-    const user = userEvent.setup()
+    const user = setupUser()
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -347,7 +348,7 @@ describe('CreateRestrictionPage', () => {
   })
 
   test('says plainly when nothing overlaps', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     stubApi(created)
     renderRoute(<CreateRestrictionPage />)
     await fillValidForm(user)
@@ -358,7 +359,7 @@ describe('CreateRestrictionPage', () => {
   })
 
   test('counts the applications the scope will actually match', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     stubApi(created)
     renderRoute(<CreateRestrictionPage />)
 
