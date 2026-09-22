@@ -12,13 +12,6 @@
   background: var(--fh-bg);
 }
 
-.brand {
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: 18px;
-  letter-spacing: 0.02em;
-}
-
 .nav {
   display: flex;
   gap: var(--space-4);

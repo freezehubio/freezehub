@@ -4,6 +4,7 @@ import { apiRequest, ApiError } from '../../api/client'
 import type { DevSignInResponse } from '../../types/api'
 import { useAuth } from './authContext'
 import { beginSignIn, completeSignIn, isCognitoConfigured } from './cognito'
+import { Wordmark } from '../../components/Wordmark'
 import styles from './SignInPage.module.css'
 
 /**
@@ -98,7 +99,7 @@ export function SignInPage() {
     return (
       <main className={styles.page}>
         <div className={styles.card}>
-          <h1 className={styles.title}>FreezeHub</h1>
+          <h1 className={styles.title}><Wordmark /></h1>
 
           {exchanging ? (
             <p className={styles.hint}>Completing sign-in…</p>
@@ -133,7 +134,7 @@ export function SignInPage() {
   return (
     <main className={styles.page}>
       <form className={styles.card} onSubmit={handleSubmit}>
-        <h1 className={styles.title}>FreezeHub</h1>
+        <h1 className={styles.title}><Wordmark /></h1>
         <p className={styles.hint}>
           Development sign-in. A deployed build redirects to Cognito instead.
         </p>

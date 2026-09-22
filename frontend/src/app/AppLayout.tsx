@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router'
 import { useAuth } from '../features/auth/authContext'
 import { TrialBanner } from '../features/billing/TrialBanner'
+import { Wordmark } from '../components/Wordmark'
 import styles from './AppLayout.module.css'
 
 export function AppLayout() {
@@ -12,7 +13,7 @@ export function AppLayout() {
           it without going looking for it (FZ-085). */}
       <TrialBanner />
       <header className={styles.header}>
-        <span className={styles.brand}>FreezeHub</span>
+        <Wordmark rules="nav" />
         <nav className={styles.nav}>
           <NavLink
             to="/dashboard"

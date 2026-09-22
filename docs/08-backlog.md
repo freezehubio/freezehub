@@ -2632,6 +2632,43 @@ Verified by the run that matters: `verify.yml` exercises `checkout`, `setup-java
 proof — six jobs green, including the full backend suite against Testcontainers, which is
 exactly the thing `OI-33` said had to be watched rather than read.
 
+### FZ-196 — The Wordmark and the Favicon
+**Status:** DONE
+
+The operator chose two options from the design deck (`FreezeHub Screens.dc.html`, turns 2
+and 3): **`2c`** for the logo and **`3a`** for the favicon. This implements exactly those.
+
+**`2c` — the wordmark.** "FreezeHub" set in the heading face with a **magenta full stop**,
+between a 5px rule above and a 1px rule below at masthead size, 3px/1px in a nav. The point
+is the mark: it is `--color-accent-2`, the ink the product already spends on *a restriction
+is in force*, so the logo says what the interface says. The deck's own label makes that the
+argument for it — *"una sola tinta de acento, y el color significa lo mismo que en el resto
+del producto"*.
+
+**`3a` — the favicon.** The literal crop of `2c`: the initial and the point, paper on ink,
+in a square. It replaces a purple gradient bolt that shared no ink with Broadsheet and
+predated it.
+
+**A component, because a logo that differs per screen is not a logo.** `Wordmark` separates
+the two halves deliberately: the point works at any size and is the brand; the rules are
+masthead furniture and exist only at the sizes the deck drew (44 / 17 / 13). So the header
+and the landing nav take `rules="nav"`, and the sign-in screen takes the point alone at the
+30px `1i` chose for it, rather than a variant the deck never drew. Four call sites, one
+definition, and two type-only `.brand` rules deleted as dead.
+
+**What the favicon cannot do, stated rather than discovered later.** Its colours are the
+tokens written out, because a favicon renders outside the document and cannot read the app's
+custom properties — retune the tokens and this file must be retuned with them. And the
+letterform is `<text>`, not an outline, so it depends on a serif being installed: a favicon
+does not fetch webfonts, and the stack falls back to Georgia. At 16px — the size `3a` was
+chosen to survive — that is close enough in colour and weight. Outlining the glyph would
+make it exact on every machine and needs the font binary plus a tool to extract the path,
+which is its own job.
+
+Verified by running: 261 frontend tests pass, `oxlint` clean, `tsc -b && vite build` clean,
+and both marks photographed in a browser against the running backend — `docs/ui/FZ-196/`,
+which also shows the bolt this replaces.
+
 ## Going to Market
 
 Not a milestone: one story, and it is separate from `Milestone 15` because it is not security
