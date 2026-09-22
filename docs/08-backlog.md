@@ -2632,6 +2632,43 @@ Verified by the run that matters: `verify.yml` exercises `checkout`, `setup-java
 proof — six jobs green, including the full backend suite against Testcontainers, which is
 exactly the thing `OI-33` said had to be watched rather than read.
 
+### FZ-196 — The Wordmark and the Favicon
+**Status:** DONE
+
+The operator chose two options from the design deck (`FreezeHub Screens.dc.html`, turns 2
+and 3): **`2c`** for the logo and **`3a`** for the favicon. This implements exactly those.
+
+**`2c` — the wordmark.** "FreezeHub" set in the heading face with a **magenta full stop**,
+between a 5px rule above and a 1px rule below at masthead size, 3px/1px in a nav. The point
+is the mark: it is `--color-accent-2`, the ink the product already spends on *a restriction
+is in force*, so the logo says what the interface says. The deck's own label makes that the
+argument for it — *"una sola tinta de acento, y el color significa lo mismo que en el resto
+del producto"*.
+
+**`3a` — the favicon.** The literal crop of `2c`: the initial and the point, paper on ink,
+in a square. It replaces a purple gradient bolt that shared no ink with Broadsheet and
+predated it.
+
+**A component, because a logo that differs per screen is not a logo.** `Wordmark` separates
+the two halves deliberately: the point works at any size and is the brand; the rules are
+masthead furniture and exist only at the sizes the deck drew (44 / 17 / 13). So the header
+and the landing nav take `rules="nav"`, and the sign-in screen takes the point alone at the
+30px `1i` chose for it, rather than a variant the deck never drew. Four call sites, one
+definition, and two type-only `.brand` rules deleted as dead.
+
+**What the favicon cannot do, stated rather than discovered later.** Its colours are the
+tokens written out, because a favicon renders outside the document and cannot read the app's
+custom properties — retune the tokens and this file must be retuned with them. And the
+letterform is `<text>`, not an outline, so it depends on a serif being installed: a favicon
+does not fetch webfonts, and the stack falls back to Georgia. At 16px — the size `3a` was
+chosen to survive — that is close enough in colour and weight. Outlining the glyph would
+make it exact on every machine and needs the font binary plus a tool to extract the path,
+which is its own job.
+
+Verified by running: 261 frontend tests pass, `oxlint` clean, `tsc -b && vite build` clean,
+and both marks photographed in a browser against the running backend — `docs/ui/FZ-196/`,
+which also shows the bolt this replaces.
+
 ## Going to Market
 
 Not a milestone: one story, and it is separate from `Milestone 15` because it is not security
@@ -4639,7 +4676,7 @@ Acceptance:
   action must not produce two kinds of record.
 
 ### FZ-189 — A URL, Not a JSON Document
-**Status:** TODO · **Touches** `OI-23`
+**Status:** DONE · **Touches** `OI-23`, and does not close it
 
 `IntegrationsSection` asks the operator to hand-type raw JSON, and its placeholders are the
 only guidance: `{"webhookUrl": "https://hooks.slack.com/..."}`, `{"recipients": [...]}`,
@@ -4663,6 +4700,38 @@ Acceptance:
 - An invalid URL is refused at the field, naming what is wrong with it.
 - Existing integrations keep working — the change is to how config is composed, not to what is
   stored.
+
+**Built with one deliberate departure from this entry.** It said to put `OI-23`'s host
+validation in the new field. `OI-23` says the opposite, and it is the more considered of
+the two: *"Decided in `FZ-125`: the fix is egress, not validation"*, because a webhook URL
+is attacker-chosen by design and *"validating at save and resolving at send is a gap a DNS
+name can be moved through"*. Its application half is **already closed by `FZ-126`** —
+connect-time address checks, no redirects followed.
+
+So the field checks **shape, and nothing that resolves a name**: is it a URL, is it https,
+does it have a host, does it carry a userinfo authority. No `InetAddress` lookup, no
+allowlist, and three comments saying so, because the next person to read this code will be
+looking for a security boundary and must not think they have found one. The boundary stays
+in `OutboundAddressPolicy`.
+
+The userinfo case is worth refusing at the field anyway, and not for security: `OI-23`
+names `https://something.example.com@<internal-address>/` as the trick that defeats a
+prefix check, and an operator who pastes one should be told immediately rather than
+watching deliveries fail with a message they cannot act on.
+
+**What changed, mechanically.** `CHANNELS` replaces `CONFIG_HELP` and carries each
+channel's field label, placeholder, hint and config key; `composeConfig` turns what was
+typed into the JSON the backend already expects. Stored shape unchanged. Slack and webhook
+get a single-line URL input — a three-row textarea for one URL invites a second line the
+backend will refuse — and email keeps a textarea because a recipient list is genuinely
+multi-line. Changing channel clears the field, so a webhook URL cannot be left behind in a
+recipients box.
+
+**A test caught the contract change, as it should have.** `SettingsPage.test.tsx` drove
+the old textarea. One case needed more than a mechanical edit: *"explains a config the
+backend rejects"* used an `http://` URL, which the field now refuses before any request is
+made, so it was asserting a path it could no longer reach. It now uses a value the form
+accepts and the server refuses, which is the case that actually matters.
 
 ### FZ-190 — Administrator and Developer
 **Status:** TODO · **Decision required:** see below
@@ -4705,6 +4774,51 @@ Worth answering with the question the view exists for: *what can I not see today
 dashboard already answers "what is on now" and "what is next". A calendar answers "when is it
 safe to plan a release", which neither of the others does.
 
+### FZ-193 — The Suite Was Starving Itself
+**Status:** DONE · **Resolves** `OI-47`
+
+The frontend suite failed three to eight tests on a developer machine and passed every
+time in CI. Every failing file passed in isolation, and the failing set differed between
+consecutive runs.
+
+**It was not flaky tests. It was starvation, and the suite was causing it.** Vitest
+defaults to one worker per core. On this 16-core machine — already running a backend
+build and two other agent sessions — `npm run test` took the load average from 16 to 77.
+Each worker then gets a fraction of a core, a test needing one second of CPU takes five,
+and five seconds is the default timeout. CI passed because a CI runner has the machine to
+itself, which is exactly why CI could never reproduce it.
+
+Three changes, for three different reasons:
+
+- **`testTimeout: 15_000`.** A timeout catches a hang; it is not a performance budget.
+  Five seconds was measuring the machine, not the code.
+- **`maxWorkers: '50%'`.** Still parallel, and no longer the reason somebody else's build
+  times out. On a machine running several sessions this is what keeps any result
+  meaningful.
+- **`setupUser()`, a `userEvent.setup({ delay: null })` helper**, in the three files
+  `OI-47` named. Filling one restriction form types about seventy characters, and by
+  default `userEvent` yields to the event loop after each one — seventy scheduler
+  round-trips and seventy renders. Nothing in those tests asserts on typing *timing*, so
+  the delay bought nothing and cost the most exactly when the machine was busiest.
+
+**Measured, not asserted.** Before: 2 failures with the load average going 16 → 77.
+After: three consecutive full runs, 255 passing each time, at load averages of 89, 141
+and 256. The fix holds at three times the load that broke it.
+
+**The first attempt was not enough, which is worth recording.** Config alone — timeout
+plus worker cap — passed once at load 171 and then failed one test at 118. One green run
+does not disprove a flake; it took the `userEvent` change to make it survive repetition.
+
+Also fixed here, because it is the same subject: `SignUpPage.test.tsx` had a
+`no-unsafe-optional-chaining` warning from `FZ-185`, where `init?.headers` short-circuits
+and the assertion would pass whether the header was absent or the request was.
+
+Acceptance:
+
+- Three consecutive full-suite runs pass on a loaded developer machine.
+- The suite does not drive the machine to saturation on its own.
+- `npm run lint` is clean.
+
 ### FZ-192 — A Mark for the Slack App
 **Status:** DONE for the SVG · **The PNG export and upload are a human step**
 
@@ -4735,3 +4849,39 @@ human one. Worth stating rather than discovering at upload.
 
 Constraint worth honouring: it renders at 20 px beside a message. Detail that survives a
 favicon is the brief; anything finer is invisible where it is actually seen.
+
+### FZ-194 — A Bound, and a Rule About What Goes In It
+**Status:** DONE · **Resolves** `OI-40`
+
+`notification.last_error` was unbounded `text`. It is `varchar(500)` now, truncated in the
+entity, and `03-data-model.md` states what may go in it.
+
+**The senders were already careful, which is why this was easy to miss.** Each composes its
+own message, and the webhook one reads the response with `toBodilessEntity()` and reports the
+exception's *class name* rather than its message — deliberately, because Spring puts the
+request URI in that. Nothing passes a customer's response body through.
+
+**What made the column unbounded is one line in the dispatcher.**
+`NotificationDelivery` catches every `RuntimeException` and stores `getMessage()` verbatim, so
+any library's message — a driver's, a parser's, one carrying a fragment of whatever it was
+handed — arrives at whatever length it happens to be. The catch is not narrowed here: it is
+what stops one bad destination killing the dispatch pass for every other notification.
+
+**Bounded in the entity, not at the call sites.** Three writers set this field today and a
+fourth would be easy to add. One door means a later writer cannot forget.
+
+**A null message now becomes an empty string.** `getMessage()` is null for a
+`NullPointerException` and several others, and a `FAILED` row whose only account of itself is
+null cannot be told from one that never recorded a reason.
+
+500 matches `demo_request.notify_error`, which bounds the same kind of value (`FZ-083`). One
+convention rather than two.
+
+Acceptance:
+
+- Every write is truncated, asserted per writer rather than once.
+- A short message is kept whole — the bound costs the ordinary case nothing.
+- Clearing on eventual success still works, so a stale error is never shown as current.
+- The migration truncates before it narrows the type; an existing long row would otherwise
+  fail the alter, and this table is the record of announcements that never arrived.
+

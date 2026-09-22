@@ -241,7 +241,7 @@ integration_id   BIGINT NOT NULL REFERENCES integration(id) ON DELETE CASCADE
 event            VARCHAR(30) NOT NULL
 status           VARCHAR(20) NOT NULL DEFAULT 'PENDING'
 attempts         INTEGER NOT NULL DEFAULT 0
-last_error       TEXT NULL
+last_error       VARCHAR(500) NULL
 created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 sent_at          TIMESTAMPTZ NULL
@@ -259,6 +259,7 @@ Notes:
 - Rows are written **in the same transaction as the domain change**, which is what makes the intent survive a crash between "restriction activated" and "notification queued" (`02-architecture.md`).
 - `event` values are named for what happened rather than reusing `RestrictionStatus`: `ACTIVATED` is an event, `ACTIVE` is a state, and `00-product.md` also lists a "starting soon" notification that is not a status at all.
 - `attempts` and `last_error` exist now because a row's whole purpose is to be retried; the retry *policy* is `FZ-044`.
+- **`last_error` is bounded at 500 characters, and the rule is what it may contain** (`OI-40`). Every sender composes its own message; none passes a third party's response body through, and the webhook sender reads the response bodiless and reports the exception's class name rather than its message — Spring puts the request URI in that. What made the column unbounded anyway is that `NotificationDelivery` catches every `RuntimeException` and stores `getMessage()` verbatim, so any library's message arrives at whatever length it happens to be. The bound is applied in the entity rather than at each call site, so a writer added later cannot forget it. 500 matches `demo_request.notify_error`, which bounds the same kind of value.
 - **Not implemented in `FZ-040`:** the "restriction starting soon" notification `00-product.md` lists. It needs a lead-time decision (how soon is soon) that no document makes, and it is triggered by the passage of time rather than by a transition. Recorded as a gap on `FZ-040`.
 
 ### `api_key`

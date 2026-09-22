@@ -56,7 +56,11 @@ describe('SignUpPage', () => {
       company: 'Northwind',
       email: 'founder@northwind.test',
     })
-    expect((init?.headers as Record<string, string>).Authorization).toBeUndefined()
+    // Defaulted, not optional-chained (`FZ-193`). `init?.headers?.Authorization` is also
+    // undefined when there were no headers at all, so it would pass for the wrong reason.
+    // An empty object asserts that the header is absent, not that the request was.
+    const headers = (init?.headers ?? {}) as Record<string, string>
+    expect(headers.Authorization).toBeUndefined()
   })
 
   test('acknowledges without claiming an organization was created', async () => {
