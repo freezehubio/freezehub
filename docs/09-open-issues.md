@@ -249,6 +249,37 @@ a suite developers stop reading, and the next real regression arrives in a run t
 had three red lines in it. CI being green is not a defence — it means the machine that
 notices is the one nobody watches.
 
+### OI-49 — One address can own two organizations, if one of them skipped Cognito
+**Severity:** Gap (narrow) · **Owner:** needs a story · **Found in:** `FZ-185` testing
+
+Signup's only duplicate check is the identity provider refusing the address: `users.email`
+is unique *per organization* (`uq_users_organization_email`), while the Cognito pool is
+shared, so the pool is what knows an address has been seen. That is the right design and
+it is written up in `06-security.md`.
+
+It has one hole. **Two paths create a `users` row without a Cognito identity**, and an
+address they used stays claimable by self-serve signup:
+
+- `scripts/seed-demo.sh`, which writes rows in SQL and calls Cognito nowhere;
+- `scripts/provision-organization.sh` run **without** `--user-pool-id`.
+
+**Observed, not theorised.** Signing up as `dana@northwind.test` against a local database
+that already held a seeded organization for that address produced a *second* organization.
+The in-memory `LocalIdentityProvider` had no record of the seeded user, so nothing refused
+it.
+
+**Mostly a local-profile artefact, and not entirely.** In a deployed environment the pool
+persists, so the seeded case cannot arise. The provisioning case can: the script makes
+`--user-pool-id` optional and, without it, writes a local-only subject. It already warns
+loudly that the Administrator *cannot sign in*, which bounds the harm — the duplicate
+organization belongs to somebody who could never reach it anyway.
+
+**Why record it rather than fix it.** "One address, one organization" reads like an
+invariant and is not one; the next person to rely on it should find this first. The
+cheapest real fix is making `LocalIdentityProvider` load existing `users.email` values at
+startup, which would have made the local behaviour match production and surfaced this
+before it was written. Neither belongs in a story about a signup form.
+
 ### OI-48 — The dashboard and the gate disagree about what is in force
 **Severity:** Defect (cosmetic today) · **Owner:** deferred by the operator, 2026-09-21 · **Found in:** `FZ-183` testing
 

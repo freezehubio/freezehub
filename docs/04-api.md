@@ -47,7 +47,7 @@ The organization is `PENDING_VERIFICATION` until somebody signs in, which happen
 
 There is no endpoint to read, resend or cancel a signup, for the same reason there is none for a demo request.
 
-**No user interface reaches this yet.** The form belongs on the public site, which is `FZ-111` and still blocked. Until it ships, `curl` is the only caller.
+**The form is at `/signup`** (`FZ-185`), reachable from the landing page as the secondary call to action — "Book a demo" still leads. It sends no `Authorization` header, because the caller has no account by definition.
 
 It is rate limited per caller (`FZ-087`), which is why that story shipped first, and it accepts a bounded body: every field has a maximum length, because what an endpoint with no credential will accept is part of its security.
 

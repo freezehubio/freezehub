@@ -46,12 +46,18 @@ describe('LandingPage', () => {
     expect(screen.getByText(/ghcr\.io\/freezehubio\/freeze-check:v1/)).toBeInTheDocument()
   })
 
-  test('makes no claim of a self-serve trial', () => {
-    // FZ-082 is not built. gtm/README.md forbids a claim that is not true today, and the
-    // deck's primary call to action was "Start free trial".
+  test('offers the trial, and still leads with the demo', () => {
+    // FZ-185 built /signup, so "start free trial" is now true and the claim is allowed.
+    // Which of the two leads is a commercial decision, not a layout one: at this stage
+    // the conversations are worth more than the volume, so the demo keeps the primary
+    // button and the trial takes the secondary. Asserted on the classes because that IS
+    // the decision -- swapping them is a deliberate act, not a tidy-up.
     renderRoute(<LandingPage />, { token: null })
 
-    expect(screen.queryByText(/free trial/i)).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Book a demo' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Book a demo' })).toHaveClass('btn-primary')
+
+    const trial = screen.getByRole('link', { name: 'Start free trial' })
+    expect(trial).toHaveAttribute('href', '/signup')
+    expect(trial).toHaveClass('btn-secondary')
   })
 })

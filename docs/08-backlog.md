@@ -1648,7 +1648,7 @@ One figure needs backend work: **refused as unregistered** is a count of `blocke
 `1i` and `1k`. `1k` is the dashboard at 390px, so it is responsive work on `FZ-106` rather than a separate screen.
 
 ### FZ-111 — Landing Page
-**Status:** DONE for the page · **Still owes** the signup form (`FZ-082`) — see below
+**Status:** DONE · **The signup form it owed** was built by `FZ-185`
 
 `1j`, at `/`, public.
 
@@ -4488,3 +4488,44 @@ Acceptance:
 
 - `OI-48` states both causes, why it is safe, and why shorter polling is not the fix.
 - The deferral is attributed and dated.
+
+---
+
+### FZ-185 — The Signup Form
+**Status:** DONE · **Completes** `FZ-082` · **Discharges** `FZ-111`
+
+`/signup`, public: company name, work email, `POST /api/signup`. `FZ-082` built the
+endpoint and `FZ-111` built the public route, and neither could be used by a customer
+without the other plus this.
+
+**Both doors, demo still primary.** The operator's decision, asked before building rather
+than assumed: at five customers the conversations are worth more than the volume, so
+"Book a demo" keeps the primary button and "Start free trial" takes the secondary.
+Promoting the trial later is one line. `LandingPage.test.tsx` asserts on the two button
+*classes*, because which one leads is the decision — swapping them should be a deliberate
+act, not a tidy-up somebody does while adjusting spacing.
+
+"See what a pipeline asks" gave way rather than the hero growing a third button: three
+equal-weight actions is no hierarchy, and `#pipeline` is still one click away as
+"Integrations" in the nav.
+
+**The acknowledgement is identical for every outcome, and that is the feature.** An
+address already in use renders the same "Check your email" screen as a new one, because
+the endpoint answers the same `202` either way. A page that said "already registered"
+would be a customer-enumeration oracle wearing a helpful message. Verified live, not just
+in a unit test: submitting a taken address produced a screen indistinguishable from the
+successful one and created zero rows.
+
+**Three documents were making a claim that had stopped being true.**
+`gtm/customer/setup-guide.md` told prospects there is no self-serve signup — correct while
+no form existed, wrong the moment one did. It now describes both routes and keeps the
+point the old wording was really making, which was about there being no cross-tenant admin
+console. `docs/04-api.md` still called `FZ-111` blocked. The landing page's own comment
+said two things the deck draws were not built; one of them now is.
+
+Acceptance:
+
+- `/signup` is reachable with no token and sends no `Authorization` header.
+- A duplicate address is indistinguishable from a new one, in the UI as well as the API.
+- The landing page offers the trial as the secondary action, demo primary.
+- No document still says self-serve signup does not exist.

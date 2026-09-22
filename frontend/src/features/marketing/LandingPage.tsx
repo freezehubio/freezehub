@@ -11,15 +11,16 @@ import styles from './LandingPage.module.css'
  * second bucket, distribution and certificate, and renaming the hostname Cognito callbacks
  * already point at.
  *
- * <b>Two things `1j` draws are not built here, deliberately.</b> The deck's primary call to
- * action is "Start free trial" and its code sample is `uses: freezehub/freeze-check@v1`.
- * Neither is true, and `gtm/README.md` forbids a claim that is not true today — a landing
- * page's code sample being the first thing a visitor copies.
+ * <b>One thing `1j` draws is still not built here.</b> The deck's code sample is
+ * `uses: freezehub/freeze-check@v1`, which is not a real reference; the sample below is
+ * the shipped container from `connectors/README.md`. `gtm/README.md` forbids a claim that
+ * is not true today, and a landing page's code sample is the first thing a visitor copies.
  *
- * <b>The trial CTA has a precise trigger, not a vague one.</b> `FZ-082` builds
- * `POST /api/signup` and <i>no signup screen</i>, so an endpoint existing does not make
- * "start free trial" true: there is still nothing for a visitor to fill in. Change this
- * button when a signup <i>page</i> ships, not when the API does.
+ * <b>The trial CTA had a precise trigger, and `FZ-185` met it.</b> `FZ-082` built
+ * `POST /api/signup` and no signup screen, and an endpoint existing did not make "start
+ * free trial" true while there was nothing for a visitor to fill in. `/signup` now exists,
+ * so the button does too — as the <i>secondary</i> action. "Book a demo" stays primary:
+ * at this stage the conversations are worth more than the volume.
  */
 export function LandingPage() {
   const { isAuthenticated } = useAuth()
@@ -47,9 +48,18 @@ export function LandingPage() {
             memory. FreezeHub is one authoritative place to declare a freeze, tell everyone,
             and let pipelines ask before they deploy.
           </p>
+          {/*
+            Both doors, demo still primary (`FZ-185`). The trigger this file named — change
+            the trial CTA when a signup *page* ships, not when the API does — has now been
+            met by that page existing.
+
+            "See what a pipeline asks" gave way rather than being added to: three
+            equal-weight actions in one hero is no hierarchy at all, and #pipeline is still
+            one click away as "Integrations" in the nav above.
+          */}
           <div className={styles.ctas}>
             <a className="btn btn-primary" href="#demo">Book a demo</a>
-            <a className="btn btn-secondary" href="#pipeline">See what a pipeline asks</a>
+            <Link className="btn btn-secondary" to="/signup">Start free trial</Link>
           </div>
         </div>
 
@@ -175,9 +185,13 @@ export function LandingPage() {
       <section id="demo" className={styles.closing}>
         <h2>FreezeHub is pre-launch</h2>
         <p>
-          We are looking for design partners, which means a demo, a conversation about whether
-          it fits, and an organization we set up for you — not a signup form. You would be
-          among the first customers, with the access to us that implies.
+          We are looking for design partners, which means a demo, a conversation about
+          whether it fits, and an organization we set up for you. You would be among the
+          first customers, with the access to us that implies.
+        </p>
+        <p>
+          If you would rather just try it, <Link to="/signup">start a free trial</Link> —
+          fourteen days, every feature, no card. We would still like the conversation.
         </p>
         <p className={styles.note}>
           What it does not do: FreezeHub cannot stop your deployment and does not try to.
