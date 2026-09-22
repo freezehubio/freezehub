@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { setupUser } from '../../test/user'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { DeploymentChecksPage } from './DeploymentChecksPage'
 import { renderRoute } from '../../test/renderRoute'
@@ -127,7 +127,7 @@ describe('DeploymentChecksPage', () => {
 
   test('filters to what was refused, and puts it in the URL', async () => {
     // So "everything we refused during the freeze" is a link someone can send.
-    const user = userEvent.setup()
+    const user = setupUser()
     const spy = stubApi([[check({ decision: 'BLOCK', blockedReason: 'RESTRICTION' })]])
     const { router } = renderRoute(<DeploymentChecksPage />, { path: '/deployment-checks' })
 
@@ -155,7 +155,7 @@ describe('DeploymentChecksPage', () => {
   test('pages by cursor rather than by offset', async () => {
     // A full page means there may be more; the next request starts before the last id
     // seen, so a deployment happening mid-read cannot shift the window.
-    const user = userEvent.setup()
+    const user = setupUser()
     const fullPage = Array.from({ length: 50 }, (_, index) => check({ id: 100 - index }))
     const spy = stubApi([fullPage, [check({ id: 40 })]])
     renderRoute(<DeploymentChecksPage />, { path: '/deployment-checks' })
