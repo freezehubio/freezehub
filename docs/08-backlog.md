@@ -2669,6 +2669,46 @@ Verified by running: 261 frontend tests pass, `oxlint` clean, `tsc -b && vite bu
 and both marks photographed in a browser against the running backend — `docs/ui/FZ-196/`,
 which also shows the bolt this replaces.
 
+### FZ-197 — A Skill for Working This Repository in Parallel
+**Status:** DONE
+
+`.claude/skills/session-sync/SKILL.md`. No application code.
+
+`next-story` answers **what to work on** and is deliberately single-session: it reads
+`master` and the backlog, so run it in three windows and it recommends the same story three
+times. This is the other half — **who else is live, what have they taken, and may I take
+this.**
+
+**The gap it closes is a window git cannot see.** A story is invisible to every other
+session between "a session decided to do it" and "a branch reached the remote". Everything
+collides in that window, and all of it happened here on 2026-09-22: `FZ-193`, `FZ-194` and
+`FZ-195` were claimed within minutes of being checked and one already carried a commit;
+a worktree named `freezehub-FZ-146` held `FZ-168`; `freezehub-FZ-138b` was a second attempt
+at a story another session was finishing; and 36 of 37 worktrees were residue on merged
+branches.
+
+So the skill reads three sources and trusts none alone — `ListAgents` for live sessions,
+remote branches and open pull requests for claims that landed, `git worktree list` for work
+in progress — and cross-references them into one table. It also carries the two documents
+that collide when several stories finish at once, `08-backlog.md` and `09-open-issues.md`,
+with the anchored-insert rule and the assertion that goes with it: an insert anchored at
+"the first `|---|---|---|`" once put four rows inside an unrelated table and survived a
+merge.
+
+**What it does not claim.** The claim protocol is push-the-branch-before-you-work, and there
+is a residual race it states rather than hides: between checking `ls-remote` and pushing,
+another session can claim the same id, and because both branches point at the same commit
+both pushes succeed. Git has no create-only-if-absent that helps. The resolution is stated —
+first session whose *commit* lands keeps the id, the other re-claims, nobody force-pushes —
+and the live announcement to peers is what covers the case git is blind to. A lane that
+exists only in a message is still a lane: `FZ-193` read as free from `ls-remote` while
+another session held it, and honouring the message rather than the mechanical check is what
+avoided the collision.
+
+Tracked, because that is what makes it exist: project skills are discovered per working
+directory, and until this is on `master` it is visible only from the shared checkout — the
+one place the skill itself says not to work in.
+
 ## Going to Market
 
 Not a milestone: one story, and it is separate from `Milestone 15` because it is not security
