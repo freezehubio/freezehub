@@ -4706,10 +4706,29 @@ dashboard already answers "what is on now" and "what is next". A calendar answer
 safe to plan a release", which neither of the others does.
 
 ### FZ-192 — A Mark for the Slack App
-**Status:** TODO
+**Status:** DONE for the SVG · **The PNG export and upload are a human step**
 
 The Slack application has no profile picture. Slack wants **512×512 PNG**, and the icon is
 what an announcement is recognised by in a channel where everything else is also a bot.
+
+**Built:** `docs/brand/slack-app-icon.svg`, plus a `docs/brand/README.md` carrying the
+export commands and the constraint.
+
+**A pause, not a snowflake.** A snowflake is the literal reading of "freeze" and its
+points are the first thing to disappear when the mark is shrunk by a factor of
+twenty-five. Two heavy bars are the most legible thing that fits in a small square, and a
+pause is what a freeze does to a deployment. Checked at 20 px in a mock message row
+rather than asserted — see `docs/ui/FZ-192/after.jpg`.
+
+**Full bleed, no corner radius**, because Slack masks the avatar itself and a radius here
+would round it twice. The bars sit inside the middle 60 percent so no mask clips them.
+
+**Found while doing it:** `frontend/public/favicon.svg` is not brand-consistent. It is a
+purple `#863bff` shape with a dozen Gaussian-blur filters, left over from a template, and
+it matches nothing else in the product — the application's accent is `#0088b0`. The new
+mark uses the accent and the README warns against copying the favicon for anything else.
+Replacing the favicon is not this story and is not filed; it is cosmetic and nobody has
+complained.
 
 **What can be authored here is an SVG**, from which the PNG is an export — that step is a
 human one. Worth stating rather than discovering at upload.

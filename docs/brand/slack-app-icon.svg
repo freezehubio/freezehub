@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FreezeHub's mark for the Slack application (FZ-192).
+
+  WHAT SLACK WANTS is a 512x512 PNG. This is the source; exporting it is a human step, and
+  README.md beside this file says how. Authoring in SVG keeps the mark editable and
+  diffable; committing only a PNG would leave a binary nobody can adjust.
+
+  DESIGNED FOR 20 PIXELS, not for 512. That is where it is actually seen: a small square
+  beside a message, in a channel where everything else is also a bot. So there is one
+  shape, one colour, and no detail that survives being shrunk by a factor of twenty-five.
+  A snowflake is the obvious literal reading of "freeze" and was rejected for exactly that
+  reason: its points are the first thing to disappear.
+
+  A PAUSE, because that is what a freeze does to a deployment, and because two heavy bars
+  are the most legible thing that fits in a small square. It reads before it is recognised,
+  which is the job.
+
+  FULL BLEED, no corner radius: Slack masks the avatar itself, and rounding here as well
+  would round it twice. The bars sit inside the middle 60 percent so nothing is clipped by
+  whatever mask is applied.
+
+  The colour is the accent token from the application's own stylesheet, NOT the purple in
+  frontend/public/favicon.svg, which is left over from a template and matches nothing else
+  in the product.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="FreezeHub">
+  <title>FreezeHub</title>
+  <rect width="512" height="512" fill="#0088b0"/>
+  <g fill="#ffffff">
+    <rect x="150" y="140" width="76" height="232" rx="16"/>
+    <rect x="286" y="140" width="76" height="232" rx="16"/>
+  </g>
+</svg>
