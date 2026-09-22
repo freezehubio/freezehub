@@ -4313,6 +4313,11 @@ the freeze is about what reaches the environment. Checking first would also mean
 at minute zero of a ten-minute pipeline that you cannot ship, having wasted nothing but
 also having learned nothing the last step would not have told you.
 
+> **The second sentence of that paragraph is wrong — corrected by `FZ-183`.** Checking
+> first saves the build; that is the point of doing it. The placement was right for a
+> reason this entry never gave: a freeze can begin *during* the build, so a check at
+> minute zero can miss it. Read `FZ-183` instead.
+
 **It works despite `OI-43`.** The check needs the Policy API and a key, not AWS, so it runs
 while the rest of these workflows still cannot.
 
@@ -4328,3 +4333,57 @@ Acceptance:
   `freezehub-frontend`.
 - `infra/README.md` lists the variable and the secret, with how to set the secret without
   it reaching a shell history.
+
+---
+
+### FZ-183 — Check Early, Gate Late
+**Status:** DONE · **Corrects** `FZ-182` · **Found by** the operator, reading a build log
+
+`FZ-182` put the deployment check after the build and justified it badly. The operator
+asked the obvious question — *shouldn't the check come first, to save building an artifact
+we cannot ship?* — and on resources they were right. The entry claimed checking first
+"wastes the ten minutes anyway". Checking first is exactly what saves them.
+
+**But the late check is not an efficiency choice, and cannot be moved.** A freeze can be
+announced *while the pipeline runs*. Declared at minute three of a forty-minute build, it
+is invisible to a check at minute zero, and the deploy goes out at minute forty into a
+freeze that was in force for most of it — the precise failure this product exists to
+prevent, committed by the product itself. The early check is cheap. The late check is
+correct.
+
+**So: both.** `deploy-frontend.yml` asks twice — once after checkout to fail fast, once
+immediately before the publish as the gate.
+
+**The early one runs `on-error: allow`, and only the early one.** A one-second blip at
+minute zero should not cost a build for a reason that is not a freeze, and an
+authoritative check runs later regardless. This does not weaken enforcement: a missing key
+or a wrong URL still fails the step, because that switch has never covered setup problems
+(`FZ-094`) — otherwise revoking a key would silently disable the gate everywhere.
+
+**`deploy-singlebox.yml` gets no early check.** It builds nothing; everything before its
+gate is a checkout and a string comparison. An early check there would ask the same
+question two seconds sooner and introduce a second answer that can disagree with the
+first. Recorded in the file so the asymmetry is not later "fixed".
+
+**Checking twice is free, and that is a decision we already made.** `11-commercial.md` §3:
+metering evaluations "taxes the behaviour the product depends on", so they are unlimited on
+every plan as a stated commitment. It would be incoherent to then advise customers to
+check once to save resources.
+
+**The documentation mattered more than our own pipeline.** For the FreezeHub frontend the
+saving is about fourteen seconds of a seventeen-second job. But `setup-guide.md` — the
+document handed to prospects — told customers to put the check *"immediately before the
+step that deploys, not at the start of the pipeline"*, which costs a customer with a
+forty-minute build a runner-hour per blocked deploy. `connectors/README.md` and
+`examples/README.md` additionally offered *"or in a job the deploy job `needs`"*, which is
+the stale-answer pattern presented as equivalent to the gate. All three corrected.
+
+Acceptance:
+
+- `deploy-frontend.yml` checks after checkout with `on-error: allow` and before the
+  publish at the default.
+- `deploy-singlebox.yml` is unchanged except for a comment recording why it has one check.
+- No comment or backlog entry still claims checking first saves nothing; `FZ-182` carries
+  a correction pointing here.
+- The three customer- and engineer-facing documents give the two-call pattern, the
+  mid-build-freeze reasoning, and the fact that evaluations are unmetered.

@@ -72,7 +72,11 @@ An API key reaches `/api/policy/**` and nothing else: it cannot read your restri
       ghcr.io/freezehubio/freeze-check:v1
 ```
 
-Put it in the job that deploys, before the deploy step — or in a job the deploy job `needs`. Do not add `continue-on-error`; it turns every freeze into a warning.
+Put it in the job that deploys, **immediately before the deploy step**. Not in a separate job the deploy job `needs`, and not at the top of the pipeline: a freeze announced while the build runs would be missed entirely, and the deploy would go out into it. What matters is the gap between the answer and the deployment.
+
+If the build is long enough that you want to fail fast, call it **twice** — once at the start with `FREEZEHUB_ON_ERROR=allow`, and again before the deploy step at the default `block`. The early call is an optimisation and should never be what fails your pipeline; the late one is the gate. Evaluations are unlimited on every plan, so the second call costs nothing.
+
+Do not add `continue-on-error`; it turns every freeze into a warning.
 
 The `GITHUB_*` variables are passed through so the check is recorded against a person and a commit rather than "some pipeline". They are optional — omit them and the gate still works, the record is just less useful afterwards.
 

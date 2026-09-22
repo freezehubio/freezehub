@@ -48,6 +48,13 @@ jobs:
       # role at all. The check needs no cloud access, only the Policy API and a key, which
       # is also why it works while OI-43 keeps the rest of this workflow from running.
       #
+      # NO EARLY FAIL-FAST CHECK HERE, unlike deploy-frontend.yml (FZ-183). That one exists
+      # to avoid paying for a build before learning the answer; this workflow builds
+      # nothing. Everything above is a checkout and a string comparison, so an earlier
+      # check would ask the same question two seconds sooner and add a second answer that
+      # can disagree with this one. Add one if expensive work ever appears above — not for
+      # symmetry with the other file.
+      #
       # It fails closed. If FreezeHub is unreachable this job stops, which is the
       # behaviour we ask customers to accept and should therefore live with ourselves.
       - name: Ask FreezeHub whether this may deploy
