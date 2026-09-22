@@ -9,14 +9,23 @@ Everything here is what the product does today. Where something is not built, it
 
 ## Before you start
 
-**We create your account.** There is no self-serve signup. You tell us the company name and
-the first administrator's email address, and we provision the organization and that
-person's identity. They receive a temporary password and are asked to change it on first
-sign-in. Everybody after the first is invited from inside the product.
+**Two ways in, and we would rather you took the first.**
 
-That is a deliberate choice rather than a missing feature — an in-product way to create
-organizations would mean a privileged account able to act across tenants, which is the one
-thing the security model does not have.
+**Talk to us.** You tell us the company name and the first administrator's email address,
+and we provision the organization and that person's identity. We are pre-launch and
+looking for design partners, so this comes with a conversation about whether FreezeHub
+fits and direct access to the people building it.
+
+**Or start a trial yourself** at `/signup` — company name, work email, fourteen days with
+every feature and no card. You become the administrator.
+
+Either way you receive a temporary password and are asked to change it on first sign-in,
+and everybody after the first is invited from inside the product.
+
+**There is still no admin console, and that is deliberate.** Nobody at FreezeHub has an
+account that can act across tenants — provisioning is an operator running a script with
+database credentials, not a privileged login, because a privileged login is the one thing
+the security model does not have.
 
 **You will need**, before the last step:
 
@@ -237,7 +246,7 @@ Stated here so it is not discovered later:
 - **The check is voluntary.** A pipeline that does not call FreezeHub is not stopped by
   FreezeHub — nothing here reaches into your repositories or your cloud. A required GitHub
   status check that cannot be skipped is a plausible future and is not built.
-- **No self-serve signup**, as above.
+- **No admin console.** There is a self-serve trial, but no in-product way for us to administer your organization — see above for why.
 - **No SSO beyond the built-in directory** — no SAML, no Okta, no Entra.
 - **No email notifications yet.**
 - **One region, United States.** No EU data residency.

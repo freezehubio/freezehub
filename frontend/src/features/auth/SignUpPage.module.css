@@ -1,0 +1,72 @@
+.page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-6);
+}
+
+/* The card is the page, as on sign-in — it carries the padding rather than a frame. */
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 24rem;
+  padding: var(--space-8);
+}
+
+.title {
+  /* 30px, as 1i sets it: the wordmark on this screen is a mark, not a page heading. */
+  margin: 0 0 6px;
+  font-size: 30px;
+  letter-spacing: -0.01em;
+}
+
+.hint {
+  margin: 0 0 var(--space-6);
+  color: var(--fh-text-muted);
+  font-size: 12.5px;
+}
+
+.label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 5px;
+  color: color-mix(in srgb, var(--color-text) 70%, transparent);
+}
+
+/* Uses the global .input; nothing to add. */
+.input {
+  composes: input from global;
+}
+
+.error {
+  margin: var(--space-2) 0 0;
+  color: var(--fh-danger);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.button {
+  margin-top: var(--space-4);
+}
+
+.note {
+  margin: 32px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-neutral-800);
+}
+
+/* On a phone the card is the page — a centred box with margins wastes the width. */
+@media (max-width: 30rem) {
+  .page {
+    align-items: flex-start;
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .card {
+    width: 100%;
+    max-width: none;
+  }
+}
