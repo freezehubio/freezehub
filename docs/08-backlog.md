@@ -4387,3 +4387,26 @@ Acceptance:
   a correction pointing here.
 - The three customer- and engineer-facing documents give the two-call pattern, the
   mid-build-freeze reasoning, and the fact that evaluations are unmetered.
+
+---
+
+### FZ-184 — Record the Dashboard/Gate Disagreement
+**Status:** DONE · **Records** `OI-48` · **Found in:** `FZ-183` testing
+
+Documentation only. The operator noticed that a restriction starting now takes about a
+minute to appear under **Active now**, and decided to leave it — *"in case we see it as a
+blocker for a customer, we change it."*
+
+Recorded rather than fixed, because the investigation found more than a refresh delay: the
+dashboard reads the reconciled `status` column, which `ChangeRestrictionRepository:83`
+documents as the wrong source and which `PolicyService` deliberately refuses to use. The
+gate and the screen therefore disagree for up to a minute. It errs safe — enforcement never
+reads `status`, so nothing is ever wrongly permitted — but the deferral should be a decision
+someone can find later, not a thing that was noticed once in a conversation.
+
+`OI-48` carries the causes, the safety argument, and the fix to make if a customer hits it.
+
+Acceptance:
+
+- `OI-48` states both causes, why it is safe, and why shorter polling is not the fix.
+- The deferral is attributed and dated.

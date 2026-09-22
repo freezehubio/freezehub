@@ -249,6 +249,48 @@ a suite developers stop reading, and the next real regression arrives in a run t
 had three red lines in it. CI being green is not a defence — it means the machine that
 notices is the one nobody watches.
 
+### OI-48 — The dashboard and the gate disagree about what is in force
+**Severity:** Defect (cosmetic today) · **Owner:** deferred by the operator, 2026-09-21 · **Found in:** `FZ-183` testing
+
+A restriction announced with a start time of now or earlier does not appear under **Active
+now** for up to a minute, and then only after a reload.
+
+**Two causes, and a third thing underneath.**
+
+1. `freezehub.lifecycle.interval` is `PT1M`, so the reconciler updates `status` once a minute.
+2. `useDashboard.ts` sets no `refetchInterval`, so even once `status` catches up the page
+   does not know until it remounts or the tab regains focus.
+
+The third is the one that matters. `ChangeRestrictionRepository:83` states the rule:
+
+> Derived from the persisted timestamps, **never from `status`**. The status column is
+> maintained by a reconciler running on an interval (`FZ-025`), so it lags.
+
+`PolicyService` obeys it — `findInForce` compares timestamps. The dashboard does not:
+`useDashboard.ts:42` filters on `restriction.status === 'ACTIVE'`, through a list endpoint
+querying `r.status in :openStatuses`. **So the gate and the screen disagree for up to a
+minute**: the freeze is already blocking deploys while the dashboard shows nothing in force.
+
+**It errs safe.** It under-reports; no deployment is ever permitted that should have been
+blocked, because enforcement never reads `status`. That is why this is deferred rather than
+fixed.
+
+**What it costs is trust, at the worst moment.** The operator announcing a freeze is
+watching the dashboard to confirm it took, and the screen tells them it did not. The
+plausible responses are announcing it a second time, or telling colleagues it is not working.
+
+**Deferred deliberately** — *"We can leave the delay over there. In case we see it as a
+blocker for a customer, we change it."* Revisit if a customer reports it.
+
+**The fix, when it comes, is not shorter polling.** Make the list query use the same
+predicate as `findInForce`, so "in force" has one definition and it is the enforcement one,
+then add a modest `refetchInterval` so a freeze that starts while someone is watching
+appears without a reload. Deriving it client-side from `startsAt`/`endsAt` is faster to
+write and puts a domain rule in the frontend, which `CLAUDE.md` §5 forbids.
+
+**Tenth instance of the two-halves pattern**: the hazard is documented in the repository
+and the dashboard walked into it anyway.
+
 ### OI-2 — No real Cognito identity provider
 
 **Severity:** Gap · **RESOLVED by** `FZ-046` · **Found in:** `FZ-016`
