@@ -1,0 +1,245 @@
+/*
+ * The fortnight timeline (`FZ-191`, direction `1b`).
+ *
+ * Row heights are shared between the gutter and the plot because they are two columns of
+ * one chart: a label and its bar have to sit on the same line, and they are in different
+ * stacking contexts so the now-rule can run through every row as one line rather than as a
+ * tick repeated per row.
+ */
+
+.schedule {
+  margin-bottom: var(--space-8);
+}
+
+.heading {
+  font: 600 21px/1.2 var(--font-heading);
+  margin: 0 0 6px;
+}
+
+.note {
+  margin: 0 0 22px;
+  font-size: 15px;
+  color: var(--color-neutral-800);
+}
+
+/* — the chart — */
+
+.chart {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 0 18px;
+  align-items: start;
+}
+
+.gutter {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Holds the gutter level with the plot, whose first child is the day scale. */
+.axisSpacer {
+  height: 28px;
+}
+
+.rowLabel {
+  display: flex;
+  align-items: center;
+  height: 46px;
+  min-width: 0;
+}
+
+.rowName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowName:hover {
+  text-decoration: underline;
+}
+
+.runwayLabel {
+  font-size: 15px;
+  color: var(--color-neutral-700);
+}
+
+.plot {
+  position: relative;
+  min-width: 0;
+}
+
+.axis {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  height: 28px;
+  align-items: end;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-text);
+  font: 400 12px var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-neutral-700);
+}
+
+.axisDay {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.axisToday {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/*
+ * Now. Full-strength ink and the only vertical line on the chart, because everything on
+ * this view is read relative to it.
+ */
+.nowRule {
+  position: absolute;
+  top: 22px;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-text);
+  pointer-events: none;
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  height: 46px;
+  display: flex;
+  align-items: center;
+}
+
+/* One gridline per day, so a bar's width can be counted and not only compared. */
+.track,
+.runwayTrack {
+  position: relative;
+  height: 26px;
+  width: 100%;
+  background: repeating-linear-gradient(
+    to right,
+    var(--color-divider) 0 1px,
+    transparent 1px calc(100% / 14)
+  );
+}
+
+.runwayTrack {
+  background: none;
+}
+
+.bar {
+  position: absolute;
+  top: 0;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  font: 600 13px var(--font-body);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/*
+ * Magenta is the claim that deployments are refused — the same claim the rail and the
+ * hard-freeze tag make, in the same ink.
+ */
+.barHard {
+  background: var(--fh-danger);
+  color: var(--color-bg);
+}
+
+/*
+ * An advisory refuses nothing, so it is drawn as an outline: present on the schedule,
+ * visibly not a wall.
+ */
+.barAdvisory {
+  border: 1px solid var(--color-neutral-600);
+  color: var(--color-neutral-800);
+  background: var(--color-bg);
+}
+
+.barText {
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+/* — clear runway — */
+
+.runway {
+  position: absolute;
+  top: 0;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-neutral-200);
+  border: 1px solid var(--color-divider);
+  box-sizing: border-box;
+  font: 600 13px var(--font-body);
+  color: var(--color-neutral-800);
+  overflow: hidden;
+}
+
+.runwayText {
+  white-space: nowrap;
+}
+
+.noRunway {
+  font-size: 14px;
+  color: var(--color-neutral-700);
+  line-height: 26px;
+}
+
+.summary {
+  margin: 20px 0 0;
+  font-size: 15px;
+  color: var(--color-neutral-800);
+}
+
+/*
+ * The chart is `aria-hidden`; this is what a screen reader reads instead. Not
+ * `display: none`, which would remove it from the accessibility tree as well.
+ */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * Narrow screens: scroll, do not reflow (the pattern `FZ-134` settled on for the
+ * completed table).
+ *
+ * The alternative — labels above their own bars — was tried and abandoned: the gutter and
+ * the plot are siblings, so collapsing them into one column interleaves every label with
+ * the wrong row. A chart whose axis means "one fourteenth of a fortnight" also stops
+ * meaning anything once it is 180px wide, so a minimum width is the honest answer.
+ */
+.scroller {
+  overflow-x: auto;
+}
+
+.chart {
+  min-width: 620px;
+}

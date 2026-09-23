@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 import type { RestrictionSummary } from '../../types/api'
 import { RestrictionCard } from './RestrictionCard'
+import { ScheduleTimeline } from './ScheduleTimeline'
 import { useDashboardRestrictions, useDeploymentCheckSummary } from './useDashboard'
 import { useEnvironments } from '../catalog/useCatalog'
 import {
@@ -21,6 +23,12 @@ import styles from './DashboardPage.module.css'
  * table, `1b`'s four metrics below them, and `1c`'s "Then what".
  */
 export function DashboardPage() {
+  /*
+   * Which of the two the reader is looking at (`FZ-191`). Component state, not a route or a
+   * stored preference: it is a glance, not a setting, and a dashboard that remembers it
+   * would show a returning reader the schedule when they came back to ask what is on now.
+   */
+  const [view, setView] = useState<'now' | 'schedule'>('now')
   const restrictions = useDashboardRestrictions()
   const summary = useDeploymentCheckSummary()
   const environments = useEnvironments()
@@ -95,11 +103,47 @@ export function DashboardPage() {
       </div>
 
       {/*
-        * The present beside the future. Upcoming used to sit under this as its own group
-        * of cards, which meant every scheduled freeze appeared three times on one page —
-        * once as a card, then as its start and its completion below (FZ-113).
+        * Two readings of the same restrictions (`FZ-191`). A tablist rather than the
+        * carousel the direction sketched: there are two views and a reader wants the one
+        * they came for, not the next one round.
         */}
-      <div className={styles.columns}>
+      <div className={styles.views} role="tablist" aria-label="Dashboard view">
+        <button
+          className={view === 'now' ? `${styles.viewTab} ${styles.viewTabOn}` : styles.viewTab}
+          type="button"
+          role="tab"
+          id="view-now"
+          aria-selected={view === 'now'}
+          aria-controls="view-now-panel"
+          onClick={() => setView('now')}
+        >
+          Now and next
+        </button>
+        <button
+          className={
+            view === 'schedule' ? `${styles.viewTab} ${styles.viewTabOn}` : styles.viewTab
+          }
+          type="button"
+          role="tab"
+          id="view-schedule"
+          aria-selected={view === 'schedule'}
+          aria-controls="view-schedule-panel"
+          onClick={() => setView('schedule')}
+        >
+          Schedule
+        </button>
+      </div>
+
+      {view === 'schedule' ? (
+        <div id="view-schedule-panel" role="tabpanel" aria-labelledby="view-schedule">
+          {/*
+            * Active and scheduled together: the timeline's axis is what separates them, so
+            * splitting them before it would undo the point of drawing them on one.
+            */}
+          <ScheduleTimeline restrictions={[...data.active, ...data.upcoming]} />
+        </div>
+      ) : (
+      <div className={styles.columns} id="view-now-panel" role="tabpanel" aria-labelledby="view-now">
         <Group
           heading="Active now"
           emptyText="Nothing is active. Deploys are not being blocked."
@@ -144,6 +188,7 @@ export function DashboardPage() {
           )}
         </section>
       </div>
+      )}
 
       <section className={styles.group} aria-labelledby="metrics-heading">
         <h2 className={styles.groupHeading} id="metrics-heading">
