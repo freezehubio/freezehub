@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { DashboardPage } from './DashboardPage'
 import { renderRoute } from '../../test/renderRoute'
+import { setupUser } from '../../test/user'
 import type {
   DeploymentCheckSummary,
   RestrictionDetail,
@@ -317,5 +318,82 @@ describe('DashboardPage', () => {
     const [, init] = vi.mocked(fetch).mock.calls[0]
     const headers = (init as RequestInit).headers as Record<string, string>
     expect(headers.Authorization).toBe('Bearer a-real-token')
+  })
+})
+
+/**
+ * The view control (`FZ-191`). What matters is that it *swaps* — the two readings of the
+ * same restrictions must not both be on the page, or the page answers its own question
+ * twice and the control means nothing.
+ */
+describe('the schedule view', () => {
+  beforeEach(() => sessionStorage.clear())
+  afterEach(() => vi.unstubAllGlobals())
+
+  test('starts on now-and-next, because that is what the page is for', async () => {
+    stubWorld({ live: [activeFreeze()], details: { 1: detailFor(activeFreeze(), [1]) } })
+    renderRoute(<DashboardPage />)
+
+    expect(await screen.findByRole('heading', { name: /Active now/ })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /Next 14 days/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Now and next' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  test('swaps the two readings rather than showing both', async () => {
+    const user = setupUser()
+    stubWorld({ live: [activeFreeze()], details: { 1: detailFor(activeFreeze(), [1]) } })
+    renderRoute(<DashboardPage />)
+
+    await user.click(await screen.findByRole('tab', { name: 'Schedule' }))
+
+    expect(screen.getByRole('heading', { name: /Next 14 days/ })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /Active now/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /Then what/ })).not.toBeInTheDocument()
+  })
+
+  test('and swaps back', async () => {
+    const user = setupUser()
+    stubWorld({ live: [activeFreeze()], details: { 1: detailFor(activeFreeze(), [1]) } })
+    renderRoute(<DashboardPage />)
+
+    await user.click(await screen.findByRole('tab', { name: 'Schedule' }))
+    await user.click(screen.getByRole('tab', { name: 'Now and next' }))
+
+    expect(screen.getByRole('heading', { name: /Active now/ })).toBeInTheDocument()
+  })
+
+  test('draws the scheduled restrictions as well as the active ones', async () => {
+    // The timeline's axis is what separates present from future, so splitting them before
+    // it would undo the reason for drawing them together.
+    const user = setupUser()
+    const active = activeFreeze()
+    const upcoming = restriction({
+      id: 2,
+      name: 'Year-end close',
+      status: 'SCHEDULED',
+      startsAt: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+      endsAt: new Date(Date.now() + 5 * 86_400_000).toISOString(),
+    })
+    stubWorld({ live: [active, upcoming], details: { 1: detailFor(active, [1]) } })
+    renderRoute(<DashboardPage />)
+
+    await user.click(await screen.findByRole('tab', { name: 'Schedule' }))
+
+    expect(screen.getByRole('link', { name: 'Year-end close' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Black Friday Freeze' })).toBeInTheDocument()
+  })
+
+  test('leaves the metrics and the status line alone — they answer a different question', async () => {
+    const user = setupUser()
+    stubWorld({ live: [activeFreeze()], details: { 1: detailFor(activeFreeze(), [1]) } })
+    renderRoute(<DashboardPage />)
+
+    await user.click(await screen.findByRole('tab', { name: 'Schedule' }))
+
+    expect(screen.getByRole('heading', { name: /At a glance/ })).toBeInTheDocument()
+    expect(screen.getByText(/in force now/i)).toBeInTheDocument()
   })
 })

@@ -4900,20 +4900,62 @@ where this starts to become RBAC. Not guessed here.
 Requires updating `06-security.md`, `00-product.md` and a migration for existing rows.
 
 ### FZ-191 — The Dashboard's Other View
-**Status:** TODO · **Decision required before building**
+**Status:** DONE · **Decision taken:** the timeline (direction `1b`) · **Decides** the question this entry held open
 
-A control that swaps **Active now** and **Then what** for a view of the schedule itself,
-described as a carousel with a *Next* affordance.
+A control that swaps **Active now** and **Then what** for the schedule itself, drawn as a
+fortnight.
 
-**Underspecified in one way that decides the work.** "The scheduling itself" is at least three
-different components: a calendar month with freezes drawn on days, a horizontal timeline of
-overlapping windows, or a sorted list of upcoming windows with their scope. The first is the
-most work and the most familiar; the second shows overlap, which is the thing the list cannot
-show; the third is nearly free and adds least.
+**The decision this was blocked on.** Three components answered to "the scheduling itself":
+a calendar month, a horizontal timeline of overlapping windows, or a sorted list. The
+operator chose the timeline, and it is the one that answers the question the view exists for
+— *what can I not see today?* A list can say a freeze runs Monday to Friday and another runs
+Wednesday to the following Tuesday; it cannot show that they overlap, and it cannot show the
+gap between them at all. Time as an axis shows both without asserting anything.
 
-Worth answering with the question the view exists for: *what can I not see today?* The
-dashboard already answers "what is on now" and "what is next". A calendar answers "when is it
-safe to plan a release", which neither of the others does.
+**Clear runway is the feature, not the bars.** The bars are legible on a list too. What is
+not is *when there is room* — so the gaps between hard freezes are computed and drawn as
+their own row, and stated as a sentence underneath. **Advisories are deliberately excluded
+from that calculation**: an advisory refuses no deployment (`01-domain.md`), so runway it
+overlaps is still runway. Counting it would make the one figure a release is planned against
+pessimistic, and a pessimistic figure gets ignored.
+
+**Colour follows the level here, not the status**, which differs from `RestrictionDetailPage`
+and is the one deliberate inconsistency. There, magenta means "this is stopping deployments
+*now*" and a scheduled freeze in magenta would overstate it. Here the horizontal axis *is*
+time: where a bar sits against the now-rule already says whether it is in force. Spending
+colour on that too would say it twice and leave nothing to separate a hard freeze from an
+advisory — the distinction that decides whether a deployment is refused.
+
+**A tablist, not the carousel the direction sketched.** There are two views. A reader wants
+the one they came for, not the next one round.
+
+**Three things the geometry has to get right, and each has a test.** A freeze that began
+before the fortnight is drawn from the left edge, which unmarked reads as *starts today* — a
+different and wrong claim, so it carries `‹`. A freeze an hour long is 0.3% of a fortnight, a
+hairline, so bars have a floor — and the floor is pulled back inside the chart rather than
+allowed to overhang, because an overhang means "continues past this fortnight". A freeze
+entirely beyond the window returns no bar at all and is **named in a sentence** rather than
+dropped, since a freeze scheduled for next month is the thing a reader is most likely to
+assume this view was showing them.
+
+**Found while building it, both by a test rather than by review:**
+
+- `scheduleTimeline.ts` beside `ScheduleTimeline.tsx` are **one file** on a case-insensitive
+  filesystem, which is every macOS checkout here. TypeScript resolved the import to the
+  wrong one and failed with a message about a missing export. The geometry is
+  `scheduleGeometry.ts`.
+- The first draft put `aria-hidden` on the gutter, which held the restriction **links** —
+  hiding them from a screen reader while leaving them reachable by Tab, which is worse than
+  either alone. The gutter now carries each name *and* its sentence, and only the plot is
+  hidden.
+
+Acceptance:
+
+- Overlapping windows are visibly overlapping.
+- The next clear runway is stated as a sentence and drawn as a block.
+- A restriction outside the fortnight is named, not dropped.
+- The geometry is tested against a fixed instant, so it passes in every time zone rather
+  than in the one the machine happens to be in.
 
 ### FZ-193 — The Suite Was Starving Itself
 **Status:** DONE · **Resolves** `OI-47`
