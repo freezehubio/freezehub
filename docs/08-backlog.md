@@ -5253,3 +5253,47 @@ Acceptance:
 - Either half can be released alone.
 - Merging to `master` still publishes nothing.
 - The three workflows stay individually dispatchable, which is how a rollback is done.
+
+### FZ-204 — The Guard That Replaces the Spend Limit
+**Status:** DONE · **Prerequisite for** `OI-43`
+
+`infra/shared/budget.tf` — a monthly AWS Budget with an actual and a forecasted alert, plus
+the ordering change that makes it useful.
+
+**Activating advanced features takes a control away.** It lifts the service control policy
+behind `OI-43`, which is the point, and in the same moment removes the **enforced spend
+limit** — until now the only thing between a mistake and an unbounded bill, applied for free
+and without anybody configuring it. `D-37` already required a Budget "the same day"; nothing
+had built one, so activating today would have left the account with no spend guard at all.
+
+**The runbook now sets the budget first and activates second.** "The same day" leaves a
+window; doing it first removes the window. The apply that creates the budget is the same one
+step 3 runs later with the OIDC toggle on, so it costs nothing extra.
+
+**$40, against `D-35`'s projected $18 a month.** High enough not to cry wolf on an ordinary
+month, low enough that the 80% actual alert arrives around $32 — while the month can still
+be salvaged. The forecast alert at 100% is the one that matters: something left running at
+3am shows up there days before it shows up in actual spend.
+
+**`budget_alert_email` has no default, deliberately.** An alert nobody receives is worse than
+no alert, because it looks like a control.
+
+**Stated rather than discovered: an alert is weaker than the limit it replaces.** The limit
+refused; a budget only tells somebody. That downgrade is the price of CI and belongs in the
+decision, not in a bill.
+
+**Two defects of mine, fixed here.** `FZ-201` wrote step 4 of the runbook through a `perl`
+substitution, and Perl interpolated `$(` as its own GID variable: the published command read
+`--body "20 20 12 61 79 … terraform -chdir=…"`. The same substitution ate `$18` in a later
+line. Both were on `master`. Step 4 is rewritten — from a heredoc, not a substitution — and
+now **checks each value before setting it**, because `gh variable set` with an empty `--body`
+does not fail: it prompts, so a missed step quietly sets the variable to whatever is pasted
+next. That is the same silent-empty-value shape that shipped a frontend without
+`VITE_COGNITO_DOMAIN`.
+
+Acceptance:
+
+- A budget exists before the enforced limit is removed, not the same day.
+- Alerts reach a named address; there is no default to fall back on.
+- No runbook command contains a value that was interpolated away.
+- Publishing a variable fails loudly when its source is empty.

@@ -45,3 +45,14 @@ variable "aws_account_id" {
     error_message = "An AWS account id is twelve digits."
   }
 }
+
+variable "budget_limit_usd" {
+  description = "Monthly cost budget in USD (FZ-204). `D-35` projects the single box at about $18 a month, so the default leaves room for a second environment or a bad day without alerting on an ordinary one. It is an alert, not a cap: nothing stops at this number."
+  type        = string
+  default     = "40"
+}
+
+variable "budget_alert_email" {
+  description = "Where budget alerts go (FZ-204). No default, deliberately: an alert nobody receives is worse than no alert, because it looks like a control. This is the replacement for the enforced spend limit that activating advanced features removes (D-37)."
+  type        = string
+}
