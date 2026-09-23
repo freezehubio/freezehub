@@ -144,8 +144,10 @@ jobs:
           \"echo AWS_REGION=${AWS_REGION} >> .env\",\
           \"echo COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID} >> .env\",\
           \"echo COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID} >> .env\",\
-          \"echo DATABASE_PASSWORD=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/database-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
-          \"echo ENCRYPTION_KEY=\\\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/encryption-key --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
+          \"echo DATABASE_PASSWORD=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/database-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
+          \"echo ENCRYPTION_KEY=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/encryption-key --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
+          \"grep -q '^DATABASE_PASSWORD=.' .env || { echo 'DATABASE_PASSWORD is empty - is /freezehub-${ENVIRONMENT}/database-password set?' >&2; exit 1; }\",\
+          \"grep -q '^ENCRYPTION_KEY=.' .env || { echo 'ENCRYPTION_KEY is empty - is /freezehub-${ENVIRONMENT}/encryption-key set?' >&2; exit 1; }\",\
           \"chmod 600 .env\",\
           \"echo $BACKUP_B64 | base64 -d > backup.sh\",\
           \"chmod 700 backup.sh\",\
