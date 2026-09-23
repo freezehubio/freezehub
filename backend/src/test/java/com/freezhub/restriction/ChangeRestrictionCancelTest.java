@@ -68,7 +68,7 @@ class ChangeRestrictionCancelTest {
     private Caller callerFor(Organization organization) {
         String subject = "subject-" + System.nanoTime();
         User user = userRepository.saveAndFlush(
-                new User(organization.getId(), subject, subject + "@acme.test", UserRole.MEMBER));
+                new User(organization.getId(), subject, subject + "@acme.test", UserRole.ADMINISTRATOR));
         return new Caller(TestTokens.forSubject(jwtEncoder, subject), user.getId());
     }
 

@@ -50,7 +50,7 @@ Nothing about it weakens tenant isolation: signup creates a *new* organization a
 
 **Implemented by `FZ-016`:** `POST /api/invites`, Administrator-only. The Cognito `AdminCreateUser` call is behind an `IdentityProvider` port — same local/real split as JWT validation below, since no real Cognito user pool exists yet. Only the local fake ships now; a real Cognito-backed implementation is required before this endpoint runs against a deployed environment (see `FZ-016`'s known gap in `08-backlog.md`).
 
-**Resolved by `FZ-012`:** minimal role model — `users.role` is one of `ADMINISTRATOR` or `MEMBER`. This is not "advanced RBAC" (`00-product.md`'s exclusion): it gates a short, enumerated list of organization-level actions (see Authorization, below), not general resource permissions. `Team`/`Application`/`Environment`/restriction management remain open to any authenticated org member unless a future requirement says otherwise.
+**Resolved by `FZ-012`:** minimal role model — `users.role` is one of `ADMINISTRATOR` or `MEMBER`. This is not "advanced RBAC" (`00-product.md`'s exclusion): it gates a short, enumerated list of organization-level actions (see Authorization, below), not general resource permissions. `Team`/`Application`/`Environment`/restriction management remain open to any authenticated org member unless a future requirement says otherwise. **`FZ-190` is that requirement** — see Authorization, below.
 
 ### Local development and automated tests
 
@@ -133,9 +133,16 @@ MVP does not implement advanced RBAC (`00-product.md`, Out of Scope). Role check
 - configure a notification destination (`FZ-045`) — it decides who hears about a freeze, and its configuration can hold a credential;
 - issue or revoke an API key (`FZ-052`) — a key authenticates as the whole organization.
 
-- read anything under `/actuator` except health (`FZ-065`) — the counters there are aggregate across every tenant, so they are not an organization's data at all. An administrator is not the right bar either, merely a cheaper one than the fix: see `OI-21`.
+- read anything under `/actuator` except health (`FZ-065`) — the counters there are aggregate across every tenant, so they are not an organization's data at all. An administrator is not the right bar either, merely a cheaper one than the fix: see `OI-21`;
+- **create, edit or cancel a restriction, and change the catalog** (`FZ-190`).
 
-Every other authenticated action is available to any user within their own organization.
+Every other authenticated action — **every read** — is available to any user within their own organization.
+
+**The last one closed a gap between the product document and the schema.** `00-product.md` names three actors and describes the Engineer as somebody who *"checks active/upcoming restrictions and determines whether their application/environment is affected"*: read-only, in that document, since before the role model existed. The code let any member change anything, so the two disagreed and the code won.
+
+**The consequence, stated because it is the part that is easy to get wrong:** the Release/Engineering Manager that `00-product.md` names must hold `ADMINISTRATOR`, since creating a freeze is now an administrator action. Two roles still, not three — a third would be the advanced RBAC `00-product.md` excludes. If the Manager should be distinguishable from the Administrator, that is a new role and a new decision.
+
+**Enforcement is `@PreAuthorize` on the write endpoints**, so it holds regardless of what any client shows. The frontend hides affordances a member cannot use, which is a courtesy rather than a control (`CLAUDE.md` §5).
 
 `/actuator/health` and its probes stay unauthenticated, because the load balancer reads them.
 

@@ -238,4 +238,29 @@ describe('RestrictionsPage', () => {
       expect(await screen.findByRole('alert')).toBeInTheDocument()
     })
   })
+
+  describe('what a member sees (FZ-190)', () => {
+    test('is offered no way to create or cancel', async () => {
+      stubFetch([
+        restriction({ id: 1, name: 'Peak trading', status: 'ACTIVE' }),
+        restriction({ id: 2, name: 'Year-end close', status: 'SCHEDULED' }),
+      ])
+      renderRoute(<RestrictionsPage />, { path: '/restrictions', role: 'MEMBER' })
+
+      await screen.findByRole('table')
+      expect(screen.queryByRole('link', { name: 'New restriction' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^Cancel / })).not.toBeInTheDocument()
+    })
+
+    test('can still read every restriction', async () => {
+      // The half that matters. An engineer's whole use of FreezeHub is finding out whether
+      // they may deploy; hiding the actions must not hide the answer.
+      stubFetch([restriction({ id: 1, name: 'Peak trading', status: 'ACTIVE' })])
+      renderRoute(<RestrictionsPage />, { path: '/restrictions', role: 'MEMBER' })
+
+      const table = await screen.findByRole('table')
+      expect(within(table).getByRole('link', { name: 'Peak trading' })).toBeInTheDocument()
+      expect(within(table).getByText('Revenue-critical period')).toBeInTheDocument()
+    })
+  })
 })

@@ -4843,7 +4843,37 @@ It is the same lesson as `FZ-193`: the substitute that diverges from reality hid
 path that must not be wrong.
 
 ### FZ-190 — Administrator and Developer
-**Status:** TODO · **Decision required:** see below
+**Status:** DONE
+
+**The decision, taken by the operator:** two roles, not three. An administrator manages
+freezes and the catalog; everyone else reads. The consequence is that `00-product.md`'s
+Release/Engineering Manager must hold `ADMINISTRATOR`, since creating a freeze is now an
+administrator action — recorded in both documents, because a third role would be the
+advanced RBAC `00-product.md` excludes and is a separate decision.
+
+**Enforced with `@PreAuthorize` on the write endpoints** of restrictions and all three
+catalog controllers. Reads are untouched: an engineer's whole use of the product is finding
+out whether they may deploy, and breaking that would defeat the point.
+
+**48 existing tests failed, and every one of them was right to.** They encoded the old rule
+by creating their acting user as `MEMBER` and then writing. Each was a shared token helper,
+so the fix was one line per file — but the count is the honest measure of how much of the
+product this changes. The tests that deliberately assert a member is refused were left alone.
+
+**A test written badly taught something worth keeping.** `POST /api/restrictions` with `{}`
+as a member answers **400, not 403**: Spring binds and validates the request body during
+argument resolution, before `@PreAuthorize` runs on the method. The test now sends a valid
+body, so the guard is what refuses it rather than the validator.
+
+**The frontend hides what a member cannot use**, which is a courtesy and not a control — the
+backend refuses regardless. `useCurrentUser` reads `/api/me`, which already returned the
+role and which nothing had ever called. The two pages differ on purpose: the list *hides*
+the controls, because a row has no room to explain itself, and the detail page *disables*
+them with the reason beside them, which is the convention that page already had for a
+completed restriction.
+
+`renderRoute` seeds the role and defaults to `ADMINISTRATOR`, so existing tests keep
+exercising what they were written for and a member view is one option away.
 
 `users.role` is `ADMINISTRATOR` or `MEMBER`, and a `MEMBER` may create, edit and cancel
 restrictions. The request is that only an administrator manages freezes and everyone else

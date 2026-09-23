@@ -33,9 +33,13 @@ Configures the organization, users, catalog, integrations, and machine access.
 
 Creates, updates, schedules, and cancels deployment restrictions.
 
+Requires `ADMINISTRATOR` (`FZ-190`): these are administrator actions, so this actor and the Organization Administrator are the same role today. Distinguishing them is a new role and a new decision.
+
 ### Engineer
 
 Checks active/upcoming restrictions and determines whether their application/environment is affected.
+
+Read-only (`FZ-190`). `MEMBER` may read everything in the organization and change nothing.
 
 ### CI/CD System
 

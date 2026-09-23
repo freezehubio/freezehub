@@ -18,9 +18,20 @@ import { AuthProvider } from '../features/auth/AuthProvider'
  */
 export function renderRoute(
   element: ReactElement,
-  options: { path?: string; route?: string; token?: string | null } = {},
+  options: {
+    path?: string
+    route?: string
+    token?: string | null
+    /**
+     * Who is signed in, for anything gated on role (`FZ-190`).
+     *
+     * Defaults to ADMINISTRATOR so existing tests keep exercising the behaviour they were
+     * written for; pass 'MEMBER' to assert what a read-only user sees.
+     */
+    role?: 'ADMINISTRATOR' | 'MEMBER'
+  } = {},
 ) {
-  const { path = '/', route, token = 'test-token' } = options
+  const { path = '/', route, token = 'test-token', role = 'ADMINISTRATOR' } = options
 
   if (token === null) {
     sessionStorage.removeItem('freezehub.token')
@@ -30,6 +41,15 @@ export function renderRoute(
 
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
+  })
+
+  // Seeded rather than fetched. useCurrentUser reads ['me'], and a test that had to stub
+  // /api/me alongside the endpoint it actually cares about would be asserting plumbing.
+  queryClient.setQueryData(['me'], {
+    userId: 1,
+    organizationId: 1,
+    email: 'test@acme.test',
+    role,
   })
 
   // The route pattern must not carry the query string, but the initial entry must — that

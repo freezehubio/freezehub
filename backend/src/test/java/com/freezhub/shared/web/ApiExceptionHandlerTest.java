@@ -91,7 +91,7 @@ class ApiExceptionHandlerTest {
         teamRepository.saveAndFlush(new Team(organizationId, "Payments"));
 
         mockMvc.perform(post("/api/teams")
-                        .header("Authorization", "Bearer " + memberToken)
+                        .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Payments\"}"))
                 .andExpect(status().isConflict())

@@ -4,6 +4,7 @@ import com.freezhub.audit.AuditActor;
 import com.freezhub.shared.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,6 +27,7 @@ public class TeamController {
         this.teamService = teamService;
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TeamResponse create(@AuthenticationPrincipal AuthenticatedUser caller, @Valid @RequestBody TeamRequest request) {
@@ -42,12 +44,14 @@ public class TeamController {
         return TeamResponse.from(teamService.get(caller.organizationId(), teamId));
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PatchMapping("/{teamId}")
     public TeamResponse rename(@AuthenticationPrincipal AuthenticatedUser caller, @PathVariable Long teamId,
                                 @Valid @RequestBody TeamRequest request) {
         return TeamResponse.from(teamService.rename(caller.organizationId(), AuditActor.of(caller), teamId, request.name()));
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @DeleteMapping("/{teamId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal AuthenticatedUser caller, @PathVariable Long teamId) {

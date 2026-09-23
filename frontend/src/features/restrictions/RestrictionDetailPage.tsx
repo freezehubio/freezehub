@@ -5,6 +5,7 @@ import { ApiError } from '../../api/client'
 import { cancelRestriction, getRestriction, getRestrictionImpact } from '../../api/restrictions'
 import { LevelBadge, StatusBadge } from '../../components/Badges'
 import { useAuth } from '../auth/authContext'
+import { useCanManage } from '../auth/useCurrentUser'
 import { useApplications, useEnvironments, useTeams } from '../catalog/useCatalog'
 import { formatInstant } from '../../utils/datetime'
 import type { RestrictionDetail } from '../../types/api'
@@ -85,6 +86,7 @@ export function RestrictionDetailPage() {
   const teams = useTeams()
   const applications = useApplications()
   const environments = useEnvironments()
+  const canManage = useCanManage()
 
   const cancel = useMutation({
     mutationFn: () => cancelRestriction(token, id),
@@ -133,6 +135,10 @@ export function RestrictionDetailPage() {
   }
 
   const detail = restriction.data
+  // A member may read a restriction and change nothing (`FZ-190`). Combined with the status
+  // rules rather than replacing them: an administrator looking at a completed freeze and a
+  // member looking at a scheduled one are both refused, for different reasons.
+  const mayChange = canManage
   const editable = detail.status === 'SCHEDULED'
   const cancellable = detail.status === 'SCHEDULED' || detail.status === 'ACTIVE'
 
@@ -278,7 +284,7 @@ export function RestrictionDetailPage() {
           * stays on the page when the rule forbids it — disabled, with the reason beside
           * it. Removing it answers "where is Edit?" with silence.
           */}
-        {editable ? (
+        {editable && mayChange ? (
           <Link className={styles.secondary} to={`/restrictions/${id}/edit`}>
             Edit
           </Link>
@@ -292,16 +298,18 @@ export function RestrictionDetailPage() {
           className={styles.danger}
           type="button"
           onClick={requestCancel}
-          disabled={!cancellable || cancel.isPending}
-          aria-describedby={cancellable ? undefined : 'action-rule'}
+          disabled={!cancellable || !mayChange || cancel.isPending}
+          aria-describedby={cancellable && mayChange ? undefined : 'action-rule'}
         >
           {cancel.isPending ? 'Cancelling…' : 'Cancel restriction'}
         </button>
 
         <p className={styles.rule} id="action-rule">
-          {cancellable
-            ? 'Editing is closed once a restriction is active. Cancelling ends it now and notifies every channel.'
-            : `This restriction is ${detail.status.toLowerCase()} and can no longer be changed.`}
+          {!mayChange
+            ? 'Only an administrator can change a restriction. You can still read it and check whether a deployment is affected.'
+            : cancellable
+              ? 'Editing is closed once a restriction is active. Cancelling ends it now and notifies every channel.'
+              : `This restriction is ${detail.status.toLowerCase()} and can no longer be changed.`}
         </p>
       </div>
     </main>

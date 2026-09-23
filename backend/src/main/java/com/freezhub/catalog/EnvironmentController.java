@@ -4,6 +4,7 @@ import com.freezhub.audit.AuditActor;
 import com.freezhub.shared.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,6 +27,7 @@ public class EnvironmentController {
         this.environmentService = environmentService;
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EnvironmentResponse create(@AuthenticationPrincipal AuthenticatedUser caller,
@@ -43,12 +45,14 @@ public class EnvironmentController {
         return EnvironmentResponse.from(environmentService.get(caller.organizationId(), environmentId));
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PatchMapping("/{environmentId}")
     public EnvironmentResponse rename(@AuthenticationPrincipal AuthenticatedUser caller, @PathVariable Long environmentId,
                                        @Valid @RequestBody EnvironmentRequest request) {
         return EnvironmentResponse.from(environmentService.rename(caller.organizationId(), AuditActor.of(caller), environmentId, request.name()));
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @DeleteMapping("/{environmentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal AuthenticatedUser caller, @PathVariable Long environmentId) {

@@ -4,6 +4,7 @@ import com.freezhub.audit.AuditActor;
 import com.freezhub.shared.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +30,7 @@ public class ChangeRestrictionController {
         this.impacts = impacts;
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public RestrictionResponse create(@AuthenticationPrincipal AuthenticatedUser caller,
@@ -43,6 +45,7 @@ public class ChangeRestrictionController {
      * than DELETE: the restriction is kept as a record with status CANCELLED, not removed.
      * 409 if it is COMPLETED or already CANCELLED.
      */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PostMapping("/{restrictionId}/cancel")
     public RestrictionResponse cancel(@AuthenticationPrincipal AuthenticatedUser caller,
                                       @PathVariable Long restrictionId) {
@@ -53,6 +56,7 @@ public class ChangeRestrictionController {
      * Full replacement of a still-SCHEDULED restriction's editable state (FZ-023).
      * 409 if it is no longer SCHEDULED, 404 if unknown or owned by another organization.
      */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PutMapping("/{restrictionId}")
     public RestrictionResponse update(@AuthenticationPrincipal AuthenticatedUser caller,
                                       @PathVariable Long restrictionId,

@@ -49,7 +49,7 @@ class EnvironmentControllerTest {
 
     private String tokenForNewUser(String subjectSuffix, Organization organization) {
         userRepository.saveAndFlush(new User(
-                organization.getId(), "subject-" + subjectSuffix, subjectSuffix + "@acme.test", UserRole.MEMBER));
+                organization.getId(), "subject-" + subjectSuffix, subjectSuffix + "@acme.test", UserRole.ADMINISTRATOR));
         return TestTokens.forSubject(jwtEncoder, "subject-" + subjectSuffix);
     }
 

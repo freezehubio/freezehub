@@ -78,7 +78,7 @@ class ChangeRestrictionControllerTest {
     private String tokenFor(Organization organization) {
         String subject = "subject-" + System.nanoTime();
         userRepository.saveAndFlush(
-                new User(organization.getId(), subject, subject + "@acme.test", UserRole.MEMBER));
+                new User(organization.getId(), subject, subject + "@acme.test", UserRole.ADMINISTRATOR));
         return TestTokens.forSubject(jwtEncoder, subject);
     }
 
