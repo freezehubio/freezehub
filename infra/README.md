@@ -124,6 +124,7 @@ distribution. Certificate validation blocks until the DNS records propagate.
 AWS_DEPLOY_ROLE_ARN        github_deploy_role_arn
 AWS_REGION                 (your region)
 ECR_REPOSITORY_URL         ecr_repository_url
+SINGLEBOX_INSTANCE_ID      (single box only) instance_id, for the Release workflow
 ECS_CLUSTER                ecs_cluster_name
 ECS_SERVICE                ecs_service_name
 ECS_TASK_FAMILY            ecs_task_family

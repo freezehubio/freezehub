@@ -213,8 +213,13 @@ exist, `AWS_DEPLOY_ROLE_ARN` is `null`, and all four deploy workflows fail at th
 credentials step. Every release is therefore **by hand**, and this section is the hand
 procedure.
 
-Three workflows, because two of the three steps are shared with the ECS posture and one is
-not (`FZ-166`):
+**Once CI is on, this is one dispatch: `Release`** (`FZ-203`). It chains the three below and
+passes the image tag itself, so the copy-paste between two dispatches — where a release went
+out against the wrong tree — is gone. It is still a button somebody presses, deliberately:
+see § *Turning CI on*.
+
+Three workflows underneath, because two of the three steps are shared with the ECS posture
+and one is not (`FZ-166`):
 
 | Order | Workflow | Does |
 |---|---|---|
@@ -356,20 +361,27 @@ the two recorded above), so the argument for doing it is not tidiness.
    terraform -chdir=infra/shared apply
    ```
 
-4. **Publish the role**, which is the variable every workflow is missing:
+4. **Publish the two variables CI is missing:**
 
    ```bash
    gh variable set AWS_DEPLOY_ROLE_ARN \
-     --body "$(terraform -chdir=infra/shared output -raw github_deploy_role_arn)"
+     --body "20 20 12 61 79 80 81 98 333 701 33 100 204 250 395 398 399 400terraform -chdir=infra/shared output -raw github_deploy_role_arn)"
+
+   # `Release` passes this to the box so nobody pastes an instance id (`FZ-203`)
+   gh variable set SINGLEBOX_INSTANCE_ID \
+     --body "20 20 12 61 79 80 81 98 333 701 33 100 204 250 395 398 399 400terraform -chdir=infra/singlebox output -raw instance_id)"
    ```
 
-5. **Dispatch from `master`.** The trust policy names `refs/heads/master`, so a dispatch from
+5. **Dispatch `Release` from `master`.** One workflow, which chains the three and passes the
+   image tag itself (`FZ-203`). The trust policy names `refs/heads/master`, so a dispatch from
    any other branch fails at the credentials step — correct, and confusing the first time it
    happens.
 
-   ```text
-   Build image  →  Deploy single-box (with the tag it prints)  →  Deploy frontend
-   ```
+   Tick `backend`, `frontend` or both. A frontend-only release skips the box and its ~15
+   second gap; a backend-only one skips the CloudFront invalidation.
+
+   The three underlying workflows remain individually dispatchable, which is how a rollback
+   is done: `Deploy single-box` with an earlier `image_tag`, no rebuild.
 
 6. **Verify the deploy the way § *Verifying a deploy actually landed* says**, not by the
    workflow going green. A green workflow proves the steps ran.

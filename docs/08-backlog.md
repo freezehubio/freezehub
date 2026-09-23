@@ -5154,3 +5154,51 @@ Acceptance:
 - No workflow references a repository variable that does not exist.
 - The image builds natively, with a cache that survives between runs.
 - The enablement sequence names every step, including the one nobody can undo.
+
+### FZ-203 — One Release, In Order
+**Status:** DONE
+
+`Release` — a workflow that chains build → box → frontend and passes the image tag itself.
+
+**The hand-off was where releases went wrong, not the workflows.** Each of the three was
+correct; what failed was the coordination between them. One release went out from a tree 24
+commits behind, and another shipped a frontend built without the Cognito variables, leaving
+nobody able to sign in. Both were somebody carrying a value between two dispatches. That is
+the part a workflow can do and a person should not have to.
+
+**Deliberately not triggered on `push`, and this is the part to disagree with if any.**
+`deploy-singlebox.yml` already carried the rule — *"publishing changes what customers reach,
+and `freeze-check.sh` fails closed, so a deploy is the one moment FreezeHub can block every
+customer at once"* — and it is specific to this product rather than ordinary caution: a bad
+deploy does not merely break FreezeHub, it stops every customer's pipeline, because their
+connector fails closed on an unreachable API. So merging still does not publish. What is
+automated is the clerical work around the decision, not the decision.
+
+**Backend and frontend are separately tickable**, because most releases are one of them. A
+frontend-only release should not take the box's ~15 second gap (`FZ-153`), and a backend-only
+one should not invalidate CloudFront for nothing.
+
+**Two mistakes found while writing it, both of which would have failed on first use:**
+
+- **A called workflow inherits no secrets.** Without `secrets: inherit` the freeze check
+  receives an empty API key and fails closed — FreezeHub refusing to deploy FreezeHub, for
+  entirely the wrong reason.
+- **A skipped dependency skips its dependants.** Plain `needs: [box]` would have made a
+  frontend-only release silently do nothing. It is `always()` plus an explicit result check,
+  which still withholds the frontend when the box *fails* — shipping a UI against a backend
+  that did not deploy is worse than shipping neither.
+
+**Needs one new repository variable**, `SINGLEBOX_INSTANCE_ID`, so nobody pastes an instance
+id. `14-operations.md` § *Turning CI on* sets it beside `AWS_DEPLOY_ROLE_ARN`.
+
+**Not verified by running it**, and cannot be until `OI-43` lifts. YAML validity is checked;
+workflow semantics are reasoned from the documentation, and `actionlint` is not installed
+here. The two mistakes above were found by reading, which is the only method available and
+is not as good as running it once.
+
+Acceptance:
+
+- One dispatch releases both halves, in order, with no value carried by hand.
+- Either half can be released alone.
+- Merging to `master` still publishes nothing.
+- The three workflows stay individually dispatchable, which is how a rollback is done.
