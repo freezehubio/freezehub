@@ -207,6 +207,12 @@ it must use the raw bytes. `https://webhook.site` is enough to see the headers a
 
 ## Releasing, on the single box
 
+**Read this first: the workflows cannot run today.** `OI-43` — AWS's sign-up experience
+denies `iam:*Provider*` through a service control policy, so the OIDC provider does not
+exist, `AWS_DEPLOY_ROLE_ARN` is `null`, and all four deploy workflows fail at the
+credentials step. Every release is therefore **by hand**, and this section is the hand
+procedure.
+
 Three workflows, because two of the three steps are shared with the ECS posture and one is
 not (`FZ-166`):
 
@@ -222,6 +228,115 @@ touches no compute.
 **Do not run `Deploy`.** That workflow is the ECS posture: it builds, rolls out a task
 definition, and publishes the frontend in one dispatch. On this posture there is no cluster
 for it to roll out to, and it would fail after pushing the image.
+
+### The guards, and why each one is here
+
+A hand deploy is the workflow with its assertions removed. Every one of these exists because
+its absence already caused something:
+
+1. **You are in the right account.** `FZ-175` applied Terraform into the wrong one and
+   nothing stopped it. A laptop's ambient credentials have been observed pointing at a
+   different account than the deployment's, as **root**.
+2. **Your checkout is current.** A deploy on 2026-09-22 shipped a tree that was 24 commits
+   behind, so a merged story reached the site and a later one did not. The site then held a
+   combination no commit describes.
+3. **The build variables are the ones the code reads.** A deploy shipped without
+   `VITE_COGNITO_DOMAIN` and the site fell back to the development sign-in form, whose
+   endpoint does not exist outside the `local` profile. **Nobody could sign in at all.** The
+   workflow has a `test -n` for exactly this; the hand path skipped it.
+4. **You looked at the result.** A deploy that returns `200` proves the bucket accepted
+   bytes, not that the right bytes are being served.
+
+```bash
+# 1 — the account guard. Not optional.
+aws sts get-caller-identity --query Account --output text   # must be 668471252983
+
+# 2 — the staleness guard
+git -C ~/dev/freezehub fetch --prune origin
+git -C ~/dev/freezehub status -sb | head -1                 # must be up to date with origin/master
+```
+
+### Frontend, by hand
+
+Every value below is a repository variable; `gh variable list` prints them.
+
+```bash
+cd frontend && npm ci
+
+VITE_API_BASE_URL=https://api.freezehub.io \
+VITE_COGNITO_DOMAIN=freezehub-beta.auth.us-east-2.amazoncognito.com \
+VITE_COGNITO_CLIENT_ID=1baicl02uro0in2mv6gsr88mfk \
+  npm run build
+
+# 3 — guard: the workflow's test -n, after the fact
+grep -q "freezehub-beta.auth" dist/assets/*.js \
+  || { echo "STOP: this build ships the development sign-in"; exit 1; }
+
+aws s3 sync dist "s3://freezehub-beta-frontend-668471252983" --delete --region us-east-2
+aws cloudfront create-invalidation --distribution-id E1UE997VT1TXCT --paths '/*'
+```
+
+**`VITE_COGNITO_DOMAIN`, not `VITE_COGNITO_HOSTED_UI_DOMAIN`.** The workflow reads
+`vars.COGNITO_HOSTED_UI_DOMAIN` and assigns it to `VITE_COGNITO_DOMAIN`; copying the name
+from the wrong side of that colon is what broke sign-in. The code reads
+`import.meta.env.VITE_COGNITO_DOMAIN` in `frontend/src/features/auth/cognito.ts`.
+
+**There is no runtime override.** All three are baked in at build time — a browser cannot be
+told the API address afterwards. A wrong value deploys successfully and fails silently.
+
+### Backend, by hand
+
+```bash
+TAG=$(git rev-parse --short HEAD)
+aws ecr get-login-password --region us-east-2 \
+  | docker login --username AWS --password-stdin 668471252983.dkr.ecr.us-east-2.amazonaws.com
+docker buildx build --platform linux/arm64 --push \
+  -t "668471252983.dkr.ecr.us-east-2.amazonaws.com/freezehub-beta:$TAG" backend
+```
+
+`linux/arm64` matters: the box is Graviton and an `amd64` image will pull and refuse to run.
+
+**For the rollout, copy the command list out of `.github/workflows/deploy-singlebox.yml`
+rather than out of this document.** It is roughly thirty quoted shell fragments that write
+`compose.yaml`, `Caddyfile`, `.env` at `0600`, the backup unit and timer, then
+`docker compose up -d --wait`. Transcribing it into prose is how a step goes missing —
+`OI-46` found the backup had never been installed for exactly that reason. The workflow file
+is the source of truth; this runbook deliberately does not restate it.
+
+Then wait for the real outcome, which is what the workflow does and what a hand deploy most
+often forgets:
+
+```bash
+aws ssm get-command-invocation --command-id "$COMMAND_ID" \
+  --instance-id "$INSTANCE_ID" --query Status --output text
+```
+
+`send-command` returning only proves the API accepted it.
+
+### Verifying a deploy actually landed
+
+The check that has caught every divergence so far. **The asset hash must change**; if it did
+not, nothing shipped:
+
+```bash
+H=$(curl -s https://app.freezehub.io | grep -oE '/assets/[^"]+\.js'); echo "$H"
+curl -s "https://app.freezehub.io$H" > /tmp/live.js
+
+grep -c "freezehub-beta.auth" /tmp/live.js     # sign-in reaches Cognito; 0 means it does not
+grep -c "Is the freeze on"    /tmp/live.js     # a marker from the story you just shipped
+```
+
+For the backend, pick an endpoint the release changed. `POST /api/signup` answering `401`
+means the running build predates `FZ-082`, because that endpoint is unauthenticated by
+design.
+
+### When `OI-43` lifts
+
+Activating advanced features (`D-37`, irreversible, removes the enforced spend limit) allows
+the OIDC provider, after which `github_oidc_enabled = true` and a re-apply of `infra/shared`
+make all three workflows runnable on dispatch. **Every guard above then becomes automatic**,
+which is the argument for doing it: four hand deploys have produced four divergences from
+what the workflow would have done (`FZ-178`, `FZ-182`, and the two recorded here).
 
 ## "A deploy failed"
 
