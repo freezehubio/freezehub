@@ -1,0 +1,105 @@
+# One release, in order, from CI (FZ-203).
+#
+# A release is three steps that must happen in sequence, and until now each was its own
+# dispatch with the image tag copied by hand between the first and the second. That hand-off
+# is where releases went wrong: one went out from a tree 24 commits behind, and another
+# shipped a frontend built without the Cognito variables, leaving nobody able to sign in.
+# Neither was a failure of the workflows — both were failures of the coordination around
+# them, which is exactly the part a workflow can do and a person should not have to.
+#
+# DELIBERATELY NOT ON `push`. `deploy-singlebox.yml` states the rule and it still holds:
+# publishing changes what customers reach, and `freeze-check.sh` fails closed, so a bad
+# deploy does not merely break FreezeHub — it stops every customer's pipeline at once. That
+# makes "should we publish this" a decision somebody takes, not a consequence of merging.
+# What this removes is the clerical work around the decision, not the decision.
+#
+# The freeze gate is inside each called workflow and runs unchanged, so FreezeHub still asks
+# FreezeHub before deploying itself.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to release to'
+        required: true
+        default: beta
+        type: string
+      backend:
+        description: 'Build and deploy the backend to the box'
+        required: true
+        default: true
+        type: boolean
+      frontend:
+        description: 'Build and publish the frontend'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+# One release at a time. Two overlapping releases would race on the box and could leave it
+# running an image neither of them chose.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # Both halves are optional because most releases are one of them. A frontend-only change
+  # should not take the ~15 second gap a box deploy costs (`FZ-153`), and a backend-only one
+  # should not invalidate CloudFront for nothing.
+  image:
+    if: ${{ inputs.backend }}
+    uses: ./.github/workflows/build-image.yml
+    with:
+      environment: ${{ inputs.environment }}
+
+  box:
+    if: ${{ inputs.backend }}
+    needs: image
+    uses: ./.github/workflows/deploy-singlebox.yml
+    with:
+      # The tag comes from the job that built it. This is the copy-paste that is being
+      # removed: it cannot now disagree with what was pushed.
+      image_tag: ${{ needs.image.outputs.image_tag }}
+      # A repository variable rather than a typed input, for the same reason — a release
+      # should not depend on somebody pasting the right instance id.
+      instance_id: ${{ vars.SINGLEBOX_INSTANCE_ID }}
+    # A called workflow inherits no secrets. Without this the freeze check receives an
+    # empty API key and fails closed — FreezeHub refusing to deploy FreezeHub, for the
+    # wrong reason.
+    secrets: inherit
+
+  # Ordered after the box, and the order is the point: the API first, so a frontend that
+  # expects a new endpoint never reaches a browser before the endpoint exists.
+  #
+  # `always()` and an explicit result check, rather than plain `needs`, because a skipped
+  # dependency skips its dependants by default — without it a frontend-only release would
+  # silently do nothing, which is the failure this whole workflow exists to stop. A *failed*
+  # box still withholds the frontend, deliberately: shipping a UI against a backend that did
+  # not deploy is worse than shipping neither.
+  site:
+    if: ${{ always() && inputs.frontend && (needs.box.result == 'success' || needs.box.result == 'skipped') }}
+    needs: [box]
+    uses: ./.github/workflows/deploy-frontend.yml
+    with:
+      environment: ${{ inputs.environment }}
+    secrets: inherit
+
+  released:
+    if: always()
+    needs: [image, box, site]
+    runs-on: ubuntu-latest
+    steps:
+      - name: What shipped, and what to check
+        run: |
+          echo "backend: ${{ needs.box.result }}   frontend: ${{ needs.site.result }}"
+          echo "image:   ${{ needs.image.outputs.image_tag || 'not built' }}"
+          echo ""
+          echo "A green workflow proves the steps ran. Verify what is being served:"
+          echo "  docs/14-operations.md, 'Verifying a deploy actually landed'"
+          echo ""
+          echo "Rollback: run this again with backend=true and an earlier image tag via"
+          echo "'Deploy single-box' directly — the image for that tag is still in ECR."

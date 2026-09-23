@@ -9,6 +9,10 @@
 # fails closed, so a deploy is the one moment FreezeHub can block every customer at once.
 name: Deploy single-box
 
+# `workflow_call` as well as dispatch (`FZ-203`), so `Release` can chain build → box →
+# frontend and pass the tag itself. That removes the copy-paste between two dispatches, which
+# is where a release went out against the wrong tree. It does not make the deploy automatic:
+# the paragraph above is still the rule, and `Release` is still a button somebody presses.
 on:
   workflow_dispatch:
     inputs:
@@ -18,6 +22,14 @@ on:
       instance_id:
         description: 'Target instance (terraform -chdir=infra/singlebox output -raw instance_id)'
         required: true
+  workflow_call:
+    inputs:
+      image_tag:
+        required: true
+        type: string
+      instance_id:
+        required: true
+        type: string
 
 permissions:
   contents: read
