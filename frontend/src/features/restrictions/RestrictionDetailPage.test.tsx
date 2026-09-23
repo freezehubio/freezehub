@@ -291,4 +291,20 @@ describe('RestrictionDetailPage', () => {
       '/notifications?show=failed',
     )
   })
+
+
+  test('tells a member why the actions are closed, rather than just greying them (FZ-190)', async () => {
+    // The page's own convention is to keep a control and explain it, because it has room for
+    // a sentence where a table row has not. A member gets the same treatment a completed
+    // restriction gets: disabled, with the reason beside it.
+    stubApi(detail({ status: 'SCHEDULED' }))
+    renderRoute(<RestrictionDetailPage />, {
+      path: '/restrictions/7',
+      route: '/restrictions/:restrictionId',
+      role: 'MEMBER',
+    })
+
+    expect(await screen.findByRole('button', { name: 'Cancel restriction' })).toBeDisabled()
+    expect(screen.getByText(/Only an administrator can change a restriction/)).toBeInTheDocument()
+  })
 })

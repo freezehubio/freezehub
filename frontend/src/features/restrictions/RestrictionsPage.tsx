@@ -8,6 +8,7 @@ import type { RestrictionStatus, RestrictionSummary } from '../../types/api'
 import { cancelRestriction } from '../../api/restrictions'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../auth/authContext'
+import { useCanManage } from '../auth/useCurrentUser'
 import styles from './RestrictionsPage.module.css'
 
 /**
@@ -36,6 +37,7 @@ export function RestrictionsPage() {
   const selected = parseStatuses(searchParams.getAll('status'))
   const { data, isPending, isError, error, refetch } = useRestrictionList(selected)
   const { token } = useAuth()
+  const canManage = useCanManage()
   const queryClient = useQueryClient()
   const [actionError, setActionError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<number | null>(null)
@@ -87,9 +89,14 @@ export function RestrictionsPage() {
     <main className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.title}>Restrictions</h1>
-        <Link className={styles.newButton} to="/restrictions/new">
-          New restriction
-        </Link>
+{/* Hidden rather than disabled for a member (`FZ-190`): the backend refuses the
+            write either way, and a disabled control invites a question the page cannot
+            answer. */}
+        {canManage && (
+          <Link className={styles.newButton} to="/restrictions/new">
+            New restriction
+          </Link>
+        )}
       </div>
 
       {/*
@@ -194,7 +201,7 @@ export function RestrictionsPage() {
                     {/* Absent rather than disabled where the status forbids it: a row is
                         one glance, and a greyed control still reads as "there is something
                         here for me". The detail page has room to explain why; this has not. */}
-                    {isCancellable(restriction) && (
+                    {canManage && isCancellable(restriction) && (
                       <button
                         className={styles.cancel}
                         type="button"

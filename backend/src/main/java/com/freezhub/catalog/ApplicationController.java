@@ -4,6 +4,7 @@ import com.freezhub.audit.AuditActor;
 import com.freezhub.shared.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,6 +28,7 @@ public class ApplicationController {
         this.applicationService = applicationService;
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApplicationResponse create(@AuthenticationPrincipal AuthenticatedUser caller,
@@ -48,6 +50,7 @@ public class ApplicationController {
         return ApplicationResponse.from(application, applicationService.teamIds(applicationId));
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PatchMapping("/{applicationId}")
     public ApplicationResponse rename(@AuthenticationPrincipal AuthenticatedUser caller, @PathVariable Long applicationId,
                                        @Valid @RequestBody ApplicationRequest request) {
@@ -55,12 +58,14 @@ public class ApplicationController {
         return ApplicationResponse.from(application, applicationService.teamIds(applicationId));
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @DeleteMapping("/{applicationId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal AuthenticatedUser caller, @PathVariable Long applicationId) {
         applicationService.delete(caller.organizationId(), AuditActor.of(caller), applicationId);
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PutMapping("/{applicationId}/teams/{teamId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void associateTeam(@AuthenticationPrincipal AuthenticatedUser caller,
@@ -68,6 +73,7 @@ public class ApplicationController {
         applicationService.associateTeam(caller.organizationId(), AuditActor.of(caller), applicationId, teamId);
     }
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @DeleteMapping("/{applicationId}/teams/{teamId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void disassociateTeam(@AuthenticationPrincipal AuthenticatedUser caller,

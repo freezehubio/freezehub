@@ -69,7 +69,7 @@ class CatalogDeletionInUseTest {
                 organizationRepository.saveAndFlush(new Organization("Acme " + System.nanoTime()));
         String subject = "subject-" + System.nanoTime();
         User user = userRepository.saveAndFlush(
-                new User(organization.getId(), subject, subject + "@acme.test", UserRole.MEMBER));
+                new User(organization.getId(), subject, subject + "@acme.test", UserRole.ADMINISTRATOR));
         return new Fixture(organization, TestTokens.forSubject(jwtEncoder, subject), user.getId());
     }
 
