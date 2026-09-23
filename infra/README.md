@@ -56,11 +56,13 @@ You need, and Terraform will not create for you:
    the four lines. Every provider also asserts `var.aws_account_id`, so the silent case
    fails before creating anything.
 
-   **`shared/` will not apply as written** (`OI-43`): `github-oidc.tf` creates an
-   `aws_iam_openid_connect_provider` and `iam:*Provider*` is denied by an SCP that cannot
-   be modified. That file is separable — nothing outside it references its resources
-   except two outputs — so the rest of `shared/` is reachable once it is split out or
-   toggled off. `bootstrap/` and `singlebox/` are unaffected.
+   **`shared/` applies whole** (`FZ-205`). It did not until 2026-09-23: `github-oidc.tf`
+   creates an `aws_iam_openid_connect_provider`, and AWS's new sign-up experience denied
+   `iam:*Provider*` through an SCP that could not be modified (`OI-43`, now closed).
+   Activating advanced features lifted the denial. On a **fresh** account that has not been
+   activated the denial applies again, and `github_oidc_enabled` defaults to `false` for
+   exactly that reason — the rest of `shared/` is reachable with the toggle off.
+   `bootstrap/` and `singlebox/` were never affected.
 4. **A verified SES identity**, if email notifications are wanted. The task role can send;
    SES still has to be out of the sandbox to send anywhere.
 
@@ -139,7 +141,7 @@ Set `github_repository` in `terraform.tfvars` before applying: the OIDC trust po
 That table is the ECS posture's (`deploy.yml`). The beta deploys `singlebox/` through `deploy-singlebox.yml`, which reads:
 
 ```text
-AWS_DEPLOY_ROLE_ARN        github_deploy_role_arn      (../shared, once OI-43 is lifted)
+AWS_DEPLOY_ROLE_ARN        github_deploy_role_arn      (../shared, needs github_oidc_enabled)
 AWS_REGION                 (your region)
 ECR_REPOSITORY_URL         ecr_repository_url          (../shared)
 ENVIRONMENT                (beta)

@@ -207,16 +207,18 @@ it must use the raw bytes. `https://webhook.site` is enough to see the headers a
 
 ## Releasing, on the single box
 
-**Read this first: the workflows cannot run today.** `OI-43` — AWS's sign-up experience
-denies `iam:*Provider*` through a service control policy, so the OIDC provider does not
-exist, `AWS_DEPLOY_ROLE_ARN` is `null`, and all four deploy workflows fail at the
-credentials step. Every release is therefore **by hand**, and this section is the hand
-procedure.
+**Read this first: a release is one dispatch — `Release`** (`FZ-203`). It chains the three
+workflows below and passes the image tag itself, so the copy-paste between two dispatches —
+where a release went out against the wrong tree — is gone. It is still a button somebody
+presses, deliberately.
 
-**Once CI is on, this is one dispatch: `Release`** (`FZ-203`). It chains the three below and
-passes the image tag itself, so the copy-paste between two dispatches — where a release went
-out against the wrong tree — is gone. It is still a button somebody presses, deliberately:
-see § *Turning CI on*.
+**The hand procedure below is the fallback, not the path** (`FZ-205`). CI could not
+authenticate to AWS at all until 2026-09-23, when advanced features were activated and the
+OIDC provider, the deploy role and its inline policy were created — `OI-43`, closed. What is
+kept below is how a release is diagnosed when a workflow fails, and how one is taken if CI
+cannot run. Reach for it only then: four hand deploys produced four divergences from what the
+workflow would have done (`FZ-178`, `FZ-182`, and the two recorded under § *Verifying a
+deploy actually landed*).
 
 Three workflows underneath, because two of the three steps are shared with the ECS posture
 and one is not (`FZ-166`):
@@ -341,6 +343,11 @@ This is the procedure that makes everything above unnecessary. **Four hand deplo
 produced four divergences** from what the workflow would have done (`FZ-178`, `FZ-182`, and
 the two recorded above), so the argument for doing it is not tidiness.
 
+**Done for beta on 2026-09-23** (`FZ-205`). Kept, because it is the procedure for the next
+environment and because steps 4–6 are how a variable is re-published when one changes. What it
+cost is recorded with the resolved `OI-43`: activation cannot be undone, and the enforced
+spend limit it removed is not coming back — `FZ-204`'s budget only alerts.
+
 **Step 1 is irreversible and only you can take it.**
 
 1. **Set the budget up first, then activate.** Activation lifts the service control policy
@@ -377,9 +384,26 @@ the two recorded above), so the argument for doing it is not tidiness.
 
    ```bash
    aws sts get-caller-identity --query Account --output text   # must be the deployment's
-   # set github_oidc_enabled = true in infra/shared/terraform.tfvars
+   ```
+
+   Then set `github_oidc_enabled = true` in `infra/shared/terraform.tfvars`. **Open the file
+   and add the line**, or use `printf` — not `echo … >>`. `terraform.tfvars` is hand-edited
+   and need not end in a newline, and appending to a file that does not produces
+   `budget_alert_email = "…"github_oidc_enabled = true`: one line Terraform cannot parse, from
+   a command that reported success. That happened here.
+
+   ```bash
+   printf '\ngithub_oidc_enabled = true\n' >> infra/shared/terraform.tfvars
+   grep -c '^github_oidc_enabled' infra/shared/terraform.tfvars   # must print 1, not 0 or 2
+   terraform fmt infra/shared/terraform.tfvars   # re-aligns; FAILS if the file does not parse
+
    terraform -chdir=infra/shared apply
    ```
+
+   **Read the plan before approving it.** It should say `3 to add, 0 to change, 0 to destroy`.
+   Anything under *change* or *destroy* touches the estate that is already serving — in
+   particular the Cognito user pool, whose replacement would invalidate every existing
+   identity. Stop and find out why rather than approving it.
 
 4. **Publish the two variables CI is missing.**
 

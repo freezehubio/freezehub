@@ -25,7 +25,7 @@ variable "api_domain_name" {
 }
 
 variable "github_oidc_enabled" {
-  description = "Whether to create the GitHub Actions OIDC provider and deploy role. Off by default because this account denies iam:*Provider* through an unmodifiable SCP (OI-43); an apply with it on fails. Turn it on after activating advanced features (D-37)."
+  description = "Whether to create the GitHub Actions OIDC provider and deploy role. Off by default because a new account denies iam:*Provider* through an unmodifiable SCP (OI-43); an apply with it on fails there. Turn it on after activating advanced features (D-37) — done for this account on 2026-09-23 (FZ-205)."
   type        = bool
   default     = false
 }
