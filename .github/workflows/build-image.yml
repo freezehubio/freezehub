@@ -35,7 +35,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # ARM64 runner, so the image builds natively rather than under emulation (`FZ-201`).
+    # Free on public repositories and the same price as x86 on private ones.
+    runs-on: ubuntu-24.04-arm
     environment: ${{ inputs.environment }}
     outputs:
       image_tag: ${{ steps.image.outputs.tag }}
@@ -57,23 +59,36 @@ jobs:
         id: image
         run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
 
       # linux/arm64 for both postures, and for the same reason: the Fargate task runs
       # ARM64 and so does the t4g.small the box is (FZ-152). An amd64 image would simply
       # fail to start on either.
+      #
+      # NO `setup-qemu-action`, and no `platforms:` (FZ-201). The runner is ARM64, so this
+      # builds natively and the platform follows from the host. Emulating it on an x86
+      # runner cost 7.3x, measured: 2m03s native against 15m02s emulated, on the same
+      # machine with the same `--no-cache`. The Maven build is the part that suffers ---
+      # `javac` alone was 18.5x slower, and the JVM took nearly four minutes to reach
+      # "Scanning for projects".
+      #
+      # The cache is the other half. This Dockerfile deliberately resolves dependencies in
+      # their own layer, and says that layer "survives most builds and the download is paid
+      # once" --- true on a laptop and false in CI, where nothing persisted the layer cache
+      # between runs. It was re-resolving all 23 dependencies every time: 97.8s natively,
+      # 520.4s emulated. `type=gha` makes the Dockerfile's layering mean something here.
       - name: Build and push the image
         uses: docker/build-push-action@v7
         with:
           context: backend
-          platforms: linux/arm64
           push: true
-          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ steps.image.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: ${{ vars.ECR_REPOSITORY_URL }}:${{ steps.image.outputs.tag }}
 
       - name: Say what to do with it
         run: |
-          echo "Pushed ${{ vars.ECR_REPOSITORY }}:${{ steps.image.outputs.tag }}"
+          echo "Pushed ${{ vars.ECR_REPOSITORY_URL }}:${{ steps.image.outputs.tag }}"
           echo ""
           echo "Single box: run 'Deploy single-box' with image_tag=${{ steps.image.outputs.tag }}"
           echo "ECS:        'Deploy' builds and rolls out in one dispatch"

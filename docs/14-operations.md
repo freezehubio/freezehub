@@ -330,13 +330,53 @@ For the backend, pick an endpoint the release changed. `POST /api/signup` answer
 means the running build predates `FZ-082`, because that endpoint is unauthenticated by
 design.
 
-### When `OI-43` lifts
+### Turning CI on, and retiring the hand path
 
-Activating advanced features (`D-37`, irreversible, removes the enforced spend limit) allows
-the OIDC provider, after which `github_oidc_enabled = true` and a re-apply of `infra/shared`
-make all three workflows runnable on dispatch. **Every guard above then becomes automatic**,
-which is the argument for doing it: four hand deploys have produced four divergences from
-what the workflow would have done (`FZ-178`, `FZ-182`, and the two recorded here).
+This is the procedure that makes everything above unnecessary. **Four hand deploys have
+produced four divergences** from what the workflow would have done (`FZ-178`, `FZ-182`, and
+the two recorded above), so the argument for doing it is not tidiness.
+
+**Step 1 is irreversible and only you can take it.**
+
+1. **Activate advanced features** on the account (`D-37`). It lifts the service control
+   policy that denies `iam:*Provider*`, which is the whole of `OI-43`. It also **removes the
+   enforced spend limit**, so `D-37` requires an AWS Budget with an alarm set the same day —
+   the limit was doing that job for free until now.
+
+2. **Confirm the repository the role will trust.** `infra/shared/terraform.tfvars` must set
+   `github_repository = "freezehubio/freezehub"`. The trust policy is scoped to
+   `repo:<that>:ref:refs/heads/master`, and getting it wrong is the difference between only
+   this repository being able to deploy and anyone's being able to.
+
+3. **Enable and apply**, from a shell in the deployment's account:
+
+   ```bash
+   aws sts get-caller-identity --query Account --output text   # must be the deployment's
+   # set github_oidc_enabled = true in infra/shared/terraform.tfvars
+   terraform -chdir=infra/shared apply
+   ```
+
+4. **Publish the role**, which is the variable every workflow is missing:
+
+   ```bash
+   gh variable set AWS_DEPLOY_ROLE_ARN \
+     --body "$(terraform -chdir=infra/shared output -raw github_deploy_role_arn)"
+   ```
+
+5. **Dispatch from `master`.** The trust policy names `refs/heads/master`, so a dispatch from
+   any other branch fails at the credentials step — correct, and confusing the first time it
+   happens.
+
+   ```text
+   Build image  →  Deploy single-box (with the tag it prints)  →  Deploy frontend
+   ```
+
+6. **Verify the deploy the way § *Verifying a deploy actually landed* says**, not by the
+   workflow going green. A green workflow proves the steps ran.
+
+Nothing else needs changing: every other variable the three workflows read is already set,
+and the deploy role already carries ECR push, SSM `SendCommand`, S3 and CloudFront
+invalidation — checked against what each workflow actually does (`FZ-201`).
 
 ## "A deploy failed"
 
