@@ -5037,3 +5037,41 @@ Acceptance:
   that produced these files.
 - No export is named for a property it does not have.
 - `README.md` no longer argues against what the directory contains.
+
+### FZ-200 — The Runbook Described a Path Nobody Could Take
+**Status:** DONE
+
+`14-operations.md` § *Releasing* listed three workflows to dispatch. **None of them can run.**
+`OI-43` leaves `AWS_DEPLOY_ROLE_ARN` null, so every deploy fails at the credentials step and
+every release is by hand — which the runbook did not mention, let alone describe.
+
+**A hand deploy is the workflow with its assertions removed**, and the section is now
+organised around putting them back. Each guard is there because its absence already cost
+something:
+
+| Guard | What happened without it |
+|---|---|
+| You are in the right account | `FZ-175` applied into the wrong one; a laptop's ambient credentials have since been seen pointing at a different account as **root** |
+| Your checkout is current | A deploy shipped a tree 24 commits behind, so one merged story reached the site and a later one did not |
+| The build variables are the ones the code reads | A deploy shipped without `VITE_COGNITO_DOMAIN`; the site fell back to the development sign-in and **nobody could sign in at all** |
+| You looked at the result | A `200` proves the bucket accepted bytes, not that the right bytes are served |
+
+**The backend rollout is deliberately not restated here.** It is thirty quoted shell
+fragments in `deploy-singlebox.yml`, and the runbook now says to copy them from the workflow
+rather than from prose — `OI-46` found the backup had never been installed because a step
+went missing in exactly that translation. A runbook that paraphrases a command list competes
+with it.
+
+**The variable name is called out by name**, because it is the specific mistake that broke
+sign-in: the workflow assigns `vars.COGNITO_HOSTED_UI_DOMAIN` to `VITE_COGNITO_DOMAIN`, and
+copying from the wrong side of that colon produces a build that deploys cleanly and cannot
+authenticate.
+
+Ends with the argument for `OI-43`: four hand deploys have produced four divergences from
+what the workflow would have done, and lifting it makes every guard above automatic.
+
+Acceptance:
+
+- Every command is checked against the workflow or the code it came from, not reconstructed.
+- The bucket, distribution, region and registry match the repository variables.
+- The section says plainly that the workflow path does not work today.
