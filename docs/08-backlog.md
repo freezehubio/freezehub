@@ -5297,3 +5297,54 @@ Acceptance:
 - Alerts reach a named address; there is no default to fall back on.
 - No runbook command contains a value that was interpolated away.
 - Publishing a variable fails loudly when its source is empty.
+
+### FZ-206 — The First Release Failed, and Why
+**Status:** DONE · **Fixes** `FZ-201`, `FZ-203` · **Found by** running them
+
+The first `Release` dispatch failed. Two defects, both only findable by running it, which is
+what `FZ-205` said the first dispatch was for.
+
+**Declaring a GitHub Environment changes the OIDC subject claim.** A job with
+`environment: beta` presents `repo:freezehubio/freezehub:environment:beta`, not
+`repo:freezehubio/freezehub:ref:refs/heads/master`. The trust policy allows only the second,
+so `sts:AssumeRoleWithWebIdentity` was refused — twelve retries and out.
+
+The evidence is exact: **the two jobs that failed are the two that declared an environment**
+(`build-image.yml`, `deploy-frontend.yml`), and `deploy-singlebox.yml`, which never declared
+one, was skipped rather than failed. `deploy.yml` carried the same line and would have failed
+the same way on the ECS posture; fixed here too, rather than left as a landmine in a file
+nobody runs today.
+
+**The environment is dropped rather than the trust policy widened.** `beta` had
+`"protection_rules": []` and `"deployment_branch_policy": null`, so it enforced nothing and
+granted nothing — every variable and secret these workflows read is repository-level. Keeping
+the branch inside the subject keeps **IAM** the thing that enforces "only master deploys",
+which a repository admin cannot change; an environment's deployment-branch rule is the same
+restriction owned by somebody else. The cost is stated: no entries in the Deployments tab, and
+a future approval gate for a production environment will have to revisit this.
+
+`inputs.environment` now has no consumer in `build-image.yml`. Kept, because it is the
+`workflow_call` contract both callers pass and `options: [beta]` means it cannot select the
+wrong thing — with a comment saying that whoever adds a second environment must make it select
+the ECR repository, since `vars.ECR_REPOSITORY_URL` is repository-level and a second value
+would today be accepted and then ignored.
+
+**A skipped job does not mean what the condition assumed.** `release.yml` let the frontend
+publish when `needs.box.result == 'skipped'`, intending "a frontend-only release". But `box`
+is *also* skipped when its own `needs: image` failed — so the run that failed to build an
+image went on to build the frontend, directly contradicting the comment above it claiming a
+failed box withholds the frontend. Only the unrelated credentials failure stopped it
+publishing a UI against a backend that never shipped. The condition now also reads
+`needs.image`.
+
+**What did work, first time:** the ARM64 runner, the frontend build with the Cognito variables
+that `FZ-179` added, and — the one worth noting — **FreezeHub gated itself**. Both the
+fail-fast check and the authoritative one ran the shipped connector against
+`api.freezehub.io` and returned a decision.
+
+Acceptance:
+
+- No job declares a GitHub Environment while the trust policy pins a branch.
+- A failed or cancelled image build withholds the frontend.
+- A frontend-only release still runs with the backend skipped.
+- The reason for both is in the files, so neither is re-introduced by someone tidying up.

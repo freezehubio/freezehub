@@ -80,9 +80,20 @@ jobs:
   # silently do nothing, which is the failure this whole workflow exists to stop. A *failed*
   # box still withholds the frontend, deliberately: shipping a UI against a backend that did
   # not deploy is worse than shipping neither.
+  #
+  # `needs.image` as well as `needs.box`, because a skipped box does not mean what the
+  # condition first assumed (FZ-206). `box` is skipped when `backend` is false — a
+  # frontend-only release, which should proceed — but it is *also* skipped when its own
+  # `needs: image` failed. The first real release did exactly that: the image build failed,
+  # the box was skipped, and the frontend went ahead and built, contradicting the paragraph
+  # above. Only an unrelated credentials failure stopped it publishing against a backend that
+  # never shipped.
   site:
-    if: ${{ always() && inputs.frontend && (needs.box.result == 'success' || needs.box.result == 'skipped') }}
-    needs: [box]
+    if: >-
+      ${{ always() && inputs.frontend
+          && needs.image.result != 'failure' && needs.image.result != 'cancelled'
+          && (needs.box.result == 'success' || needs.box.result == 'skipped') }}
+    needs: [image, box]
     uses: ./.github/workflows/deploy-frontend.yml
     with:
       environment: ${{ inputs.environment }}
