@@ -181,26 +181,58 @@ describe('RestrictionsPage', () => {
 
     test('asks before cancelling, and does nothing when declined', async () => {
       const spy = stubFetch([restriction({ id: 7, name: 'Peak trading', status: 'ACTIVE' })])
-      vi.spyOn(window, 'confirm').mockReturnValue(false)
       renderRoute(<RestrictionsPage />, { path: '/restrictions' })
 
       await screen.findByRole('table')
       const before = spy.mock.calls.length
       await userEvent.click(screen.getByRole('button', { name: 'Cancel Peak trading' }))
+      await userEvent.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Keep it' }),
+      )
 
-      expect(window.confirm).toHaveBeenCalled()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       expect(spy.mock.calls.length).toBe(before)
+    })
+
+    /**
+     * The assertion FZ-188 did not have (`FZ-202`). It checked that a confirmation was
+     * *shown*, never what it *said*, and shipped `Cancel ""?` with every check green — the
+     * name had been lost from the source as the file was written. The question is only
+     * worth asking if it names the freeze about to be lifted.
+     */
+    test('names the freeze it is about to cancel', async () => {
+      stubFetch([restriction({ id: 7, name: 'Peak trading', status: 'ACTIVE' })])
+      renderRoute(<RestrictionsPage />, { path: '/restrictions' })
+
+      await screen.findByRole('table')
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel Peak trading' }))
+
+      expect(
+        screen.getByRole('alertdialog', { name: 'Cancel “Peak trading”?' }),
+      ).toBeInTheDocument()
+    })
+
+    test('asks in the product, not through the browser', async () => {
+      stubFetch([restriction({ id: 7, name: 'Peak trading', status: 'ACTIVE' })])
+      const native = vi.spyOn(window, 'confirm')
+      renderRoute(<RestrictionsPage />, { path: '/restrictions' })
+
+      await screen.findByRole('table')
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel Peak trading' }))
+
+      expect(native).not.toHaveBeenCalled()
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
     })
 
     test('posts to the same endpoint the detail page uses', async () => {
       // The audit record must not be able to tell the two routes apart, which is only true
       // while both post here.
       const spy = stubFetch([restriction({ id: 7, name: 'Peak trading', status: 'ACTIVE' })])
-      vi.spyOn(window, 'confirm').mockReturnValue(true)
       renderRoute(<RestrictionsPage />, { path: '/restrictions' })
 
       await screen.findByRole('table')
       await userEvent.click(screen.getByRole('button', { name: 'Cancel Peak trading' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel freeze' }))
 
       await waitFor(() => {
         const posted = spy.mock.calls.find(
@@ -229,13 +261,15 @@ describe('RestrictionsPage', () => {
           ),
         ),
       )
-      vi.spyOn(window, 'confirm').mockReturnValue(true)
       renderRoute(<RestrictionsPage />, { path: '/restrictions' })
 
       await screen.findByRole('table')
       await userEvent.click(screen.getByRole('button', { name: 'Cancel Peak trading' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel freeze' }))
 
-      expect(await screen.findByRole('alert')).toBeInTheDocument()
+      // Reported on the page, with the dialog closed so the message can be read.
+      expect(await screen.findByRole('alert')).toHaveTextContent('Already completed.')
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
   })
 

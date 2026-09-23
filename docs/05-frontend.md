@@ -105,6 +105,18 @@ Error bodies are **RFC 9457 Problem Details** (`FZ-061`), so the wrapper reads `
 
 It still tolerates a body it cannot parse, and that is not leftover caution: a `401` from the security chain has no body at all, and anything served by a proxy in front of the API is outside the backend's control entirely.
 
+## Confirming what cannot be undone
+
+Irreversible actions ask first through `ConfirmDialog` (`FZ-202`), never through
+`window.confirm`, `alert` or `prompt` — `no-alert` makes those a lint error.
+
+- The title **names the thing**: `Cancel “Peak trading”?`, not `Are you sure?`.
+- The confirm button **says the action in full**; the dismiss button **says what it keeps**
+  and never repeats the action word.
+- Focus opens on the dismiss button.
+- Tests assert the dialog's accessible name, not merely that it opened. Asserting that a
+  confirmation *happened* is how `FZ-188` shipped one that named nothing.
+
 ## Time zone convention
 
 Follows `01-domain.md` invariants 9 and 10: instants are stored and compared in UTC, and **time zone is purely presentational**.

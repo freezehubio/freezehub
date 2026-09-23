@@ -9,6 +9,7 @@ import { cancelRestriction } from '../../api/restrictions'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../auth/authContext'
 import { useCanManage } from '../auth/useCurrentUser'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import styles from './RestrictionsPage.module.css'
 
 /**
@@ -41,6 +42,13 @@ export function RestrictionsPage() {
   const queryClient = useQueryClient()
   const [actionError, setActionError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<number | null>(null)
+  /**
+   * The row whose Cancel was pressed, while its confirmation is open.
+   *
+   * Held as the whole row rather than an id, so the dialog names the freeze from the row
+   * that was clicked — not from a lookup that could miss after the list refetches.
+   */
+  const [confirming, setConfirming] = useState<RestrictionSummary | null>(null)
 
   const cancel = useMutation({
     mutationFn: (id: number) => cancelRestriction(token, id),
@@ -49,24 +57,25 @@ export function RestrictionsPage() {
     },
   })
 
-  async function requestCancel(restriction: RestrictionSummary) {
+  // Cancelling from a list is one misclick away from every neighbouring row, which the
+  // detail page is not — so the list asks first and the detail page does not (FZ-188).
+  function requestCancel(restriction: RestrictionSummary) {
     setActionError(null)
+    setConfirming(restriction)
+  }
 
-    // The same confirmation shape as revoking an API key. Cancelling from a list is one
-    // misclick away from every neighbouring row, which the detail page is not.
-    if (
-      !window.confirm(
-        `Cancel ""? It ends now and every channel is notified. This cannot be undone.`,
-      )
-    ) {
-      return
-    }
-
+  async function confirmCancel() {
+    if (!confirming) return
+    const restriction = confirming
     setCancelling(restriction.id)
     try {
       await cancel.mutateAsync(restriction.id)
+      setConfirming(null)
     } catch (caught) {
-      // 409 means it finished or was cancelled already — likely while this list was open.
+      // Closed either way: the error belongs on the page, where it stays readable after
+      // the dialog is gone. 409 means it finished or was cancelled already — likely
+      // while this list was open.
+      setConfirming(null)
       setActionError(
         caught instanceof ApiError ? caught.message : 'Could not cancel the restriction.',
       )
@@ -205,7 +214,7 @@ export function RestrictionsPage() {
                       <button
                         className={styles.cancel}
                         type="button"
-                        onClick={() => void requestCancel(restriction)}
+                        onClick={() => requestCancel(restriction)}
                         disabled={cancelling !== null}
                         aria-label={`Cancel ${restriction.name}`}
                       >
@@ -219,6 +228,19 @@ export function RestrictionsPage() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirming !== null}
+        title={`Cancel “${confirming?.name ?? ''}”?`}
+        confirmLabel="Cancel freeze"
+        busyLabel="Cancelling…"
+        dismissLabel="Keep it"
+        busy={cancelling !== null}
+        onConfirm={() => void confirmCancel()}
+        onDismiss={() => setConfirming(null)}
+      >
+        <p>It ends now and every channel is notified. This cannot be undone.</p>
+      </ConfirmDialog>
     </main>
   )
 }

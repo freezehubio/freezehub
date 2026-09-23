@@ -1,0 +1,90 @@
+/*
+ * FZ-202. Broadsheet tokens throughout, so the dialog reads as part of the page it
+ * interrupts rather than as the browser's.
+ */
+
+.dialog {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  /* 16px of air either side on a phone; a readable measure on anything wider. */
+  width: min(440px, calc(100vw - 32px));
+  max-width: none;
+  margin: auto;
+}
+
+.dialog::backdrop {
+  background: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+
+/* The dialog element stays transparent so the backdrop click target is unambiguous; the
+   panel is what is drawn. */
+.panel {
+  background: var(--color-bg);
+  /* The heavy rule, in the ink the product spends on "this stops something" (FZ-196). */
+  border-top: 3px solid var(--fh-danger);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  /* The scale runs 1-2-3-4-6-8; there is no --space-5, and naming one would silently
+     resolve the whole shorthand to nothing. */
+  padding: var(--space-6) var(--space-6) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 22px;
+  line-height: 1.25;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.body {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fh-text-muted);
+}
+
+.body p {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Broadsheet has no danger button, so this is the one place that draws it — from the same
+   token SettingsPage's revoke link uses, filled here because it is the dialog's answer.
+
+   Two classes, deliberately. `.btn` sets `background: transparent` at one class of
+   specificity, and `.btn-primary` beats it only by sitting later in the same file. A
+   module stylesheet has no guaranteed order against a global one, so at equal
+   specificity this lost and rendered as bare text — the dangerous choice looking weaker
+   than "Keep it". Seen in the browser, not in a test. */
+.actions .destructive {
+  background: var(--fh-danger);
+  color: var(--color-bg);
+}
+
+.actions .destructive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--fh-danger) 86%, var(--color-text));
+}
+
+@media (max-width: 30rem) {
+  .actions {
+    flex-direction: column-reverse;
+  }
+
+  .actions > button {
+    width: 100%;
+  }
+}
