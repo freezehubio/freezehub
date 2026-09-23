@@ -58,7 +58,7 @@ jobs:
       #
       # Before the AWS credentials step on purpose: a frozen deploy should not assume a
       # role at all. The check needs no cloud access, only the Policy API and a key, which
-      # is also why it works while OI-43 keeps the rest of this workflow from running.
+      # is also why it kept working while OI-43 kept the rest of this workflow from running.
       #
       # NO EARLY FAIL-FAST CHECK HERE, unlike deploy-frontend.yml (FZ-183). That one exists
       # to avoid paying for a build before learning the answer; this workflow builds

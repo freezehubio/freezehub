@@ -1,9 +1,14 @@
 # Lets GitHub Actions deploy without any stored AWS credentials (FZ-064).
 #
-# **Off by default, because this account cannot create it** (OI-43). AWS's new sign-up
+# **Off by default, because a new account cannot create it** (OI-43). AWS's new sign-up
 # experience denies `iam:*Provider*` through a service control policy that cannot be
 # modified, so an apply with this enabled fails on the first resource. Activating advanced
 # features (D-37) lifts the denial; then set github_oidc_enabled = true and apply again.
+#
+# Done for this account on 2026-09-23 (FZ-205), so the toggle is on in terraform.tfvars and
+# these three resources exist. The default stays false: it is the right answer for an account
+# that has not been activated, and activation is irreversible and removes the enforced spend
+# limit, so it must never be something a default walks somebody into.
 #
 # A toggle rather than a separate root module (FZ-174): these resources share the shared
 # estate's lifecycle and are absent only because of an account capability we intend to
