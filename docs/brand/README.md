@@ -2,7 +2,19 @@
 
 The marks themselves live with the application: `frontend/public/favicon.svg` is option
 `3a`, and `frontend/src/components/Wordmark.tsx` is `2c` (`FZ-196`). This directory is for
-assets that are **uploaded somewhere else** and therefore have to be exported by hand.
+assets that are **uploaded somewhere else**.
+
+**The exports are committed** (`FZ-199`), in `exports/`. `FZ-192` argued against that — an
+SVG can be diffed and a PNG cannot — and the objection was right about the risk without
+being right about the remedy. What it was protecting against is a raster drifting from its
+source unnoticed. Regenerating by hand on whichever machine happens to have a renderer is
+not less prone to that; it just moves the drift somewhere nobody can see it, and it made
+every consumer of the mark wait on a human step. Committed exports at least make staleness
+**visible in a diff**, which is the property the objection actually wanted.
+
+The obligation that comes with it: **if you change the SVG, regenerate `exports/` in the
+same commit.** The commands are below, and a changed SVG with an unchanged `exports/` is a
+review comment.
 
 ## `slack-app-icon.svg` — the Slack application's profile picture (`FZ-192`)
 
@@ -60,3 +72,61 @@ it before committing — and change the favicon with it, or the product has two 
 Colours are the Broadsheet tokens written out, because a file rendered outside the document
 cannot read the app's CSS custom properties. Retune the tokens and both files must be
 retuned.
+
+## `exports/` — the rendered set (`FZ-199`)
+
+| | |
+|---|---|
+| `png/icon-{16,32,48,64,128,180,192,256,512,1024}.png` | ink plate, paper `F`, magenta point |
+| `favicon.ico` | multi-resolution: 16, 32, 48, 64, 128, 256 |
+| `icon-512.webp` · `icon-512.jpg` | q95 · q92 |
+| `icon-1024.pdf` | a raster inside a PDF wrapper, **not** vector |
+
+`180` is `apple-touch-icon`, `192` the common Android and PWA size, `512` what Slack wants.
+
+**Each size is rendered from the SVG, never downscaled from one large PNG.** `3a` was chosen
+to survive at 16 px and downscaling a serif is exactly how that is lost. At 16 px the
+middle arm softens and the point becomes a 2×2 blob; that is the documented floor, not a
+broken export.
+
+### Regenerating
+
+```bash
+for s in 16 32 48 64 128 180 192 256 512 1024; do
+  d=$(mktemp -d)
+  qlmanage -t -s $s -o "$d" docs/brand/slack-app-icon.svg >/dev/null 2>&1
+  cp "$d"/*.png "docs/brand/exports/png/icon-${s}.png"; rm -rf "$d"
+done
+
+magick docs/brand/exports/png/icon-{16,32,48,64,128,256}.png docs/brand/exports/favicon.ico
+cwebp -q 95 docs/brand/exports/png/icon-512.png -o docs/brand/exports/icon-512.webp
+magick docs/brand/exports/png/icon-512.png -background "#201e1d" -flatten -quality 92 \
+  docs/brand/exports/icon-512.jpg
+magick docs/brand/exports/png/icon-1024.png docs/brand/exports/icon-1024.pdf
+```
+
+`qlmanage` is macOS's WebKit renderer — the "a browser, which is what renders the favicon
+anyway" option above. **ImageMagick is used only for PNG→something**, never on the SVG, for
+the reason in the warning above: it drops `<text>` and exits `0`.
+
+On a machine without `qlmanage`, use `rsvg-convert -w $s -h $s` or Inkscape instead. Then
+look at the output, for the same reason as before.
+
+## The transparent variants
+
+`icon-transparent-on-dark.svg` and `icon-transparent-on-light.svg` are the same mark with
+the plate removed and the letterform recoloured — a subtraction, not a third mark.
+
+**SVG only, deliberately.** Transparent PNGs were attempted and are not here because
+`qlmanage` composites onto opaque white: the corner pixel of its output reads alpha `1`, so
+the files were named `transparent` and were not. ImageMagick cannot stand in, for the reason
+above. Rasterise these with `rsvg-convert` or Inkscape on a machine that has one — and check
+the corner pixel, because this failure is silent:
+
+```bash
+magick identify -format '%[pixel:p{5,5}]\n' out.png   # want alpha 0
+```
+
+**They have not been through the deck.** `FZ-192` is explicit that the mark is the
+operator's choice from the design deck, and these were derived rather than chosen. Treat
+them as convenience, not as approved brand.
