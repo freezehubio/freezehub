@@ -4,6 +4,7 @@ import { ApiError } from '../../api/client'
 import { createApiKey, listApiKeys, revokeApiKey } from '../../api/apiKeys'
 import { useAuth } from '../auth/authContext'
 import type { ApiKey, IssuedApiKey } from '../../types/api'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import styles from './SettingsPage.module.css'
 
 /**
@@ -23,6 +24,8 @@ export function ApiKeysSection() {
   const [name, setName] = useState('')
   const [issued, setIssued] = useState<IssuedApiKey | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** The key whose Revoke was pressed, while its confirmation is open (`FZ-202`). */
+  const [confirming, setConfirming] = useState<ApiKey | null>(null)
 
   const keys = useQuery<ApiKey[]>({
     queryKey: ['api-keys'],
@@ -53,6 +56,18 @@ export function ApiKeysSection() {
   }
 
   const forbidden = keys.error instanceof ApiError && keys.error.status === 403
+
+  // Permanent, and a pipeline stops working the moment it happens — so it asks first.
+  async function confirmRevoke() {
+    if (!confirming) return
+    try {
+      await revoke.mutateAsync(confirming.id)
+    } catch (caught) {
+      report(caught)
+    } finally {
+      setConfirming(null)
+    }
+  }
 
   return (
     <section className={styles.section} aria-labelledby="api-keys-heading">
@@ -120,17 +135,9 @@ export function ApiKeysSection() {
                     className={styles.danger}
                     type="button"
                     aria-label={`Revoke ${key.name}`}
-                    onClick={async () => {
+                    onClick={() => {
                       setError(null)
-                      // Permanent, and a pipeline stops working the moment it happens.
-                      if (!window.confirm(`Revoke "${key.name}"? Any pipeline using it will stop working immediately, and this cannot be undone.`)) {
-                        return
-                      }
-                      try {
-                        await revoke.mutateAsync(key.id)
-                      } catch (caught) {
-                        report(caught)
-                      }
+                      setConfirming(key)
                     }}
                   >
                     Revoke
@@ -162,6 +169,19 @@ export function ApiKeysSection() {
           </button>
         </form>
       )}
+
+      <ConfirmDialog
+        open={confirming !== null}
+        title={`Revoke “${confirming?.name ?? ''}”?`}
+        confirmLabel="Revoke key"
+        busyLabel="Revoking…"
+        dismissLabel="Keep it"
+        busy={revoke.isPending}
+        onConfirm={() => void confirmRevoke()}
+        onDismiss={() => setConfirming(null)}
+      >
+        <p>Any pipeline using it stops working immediately. This cannot be undone.</p>
+      </ConfirmDialog>
     </section>
   )
 }

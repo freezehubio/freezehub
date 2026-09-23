@@ -4747,6 +4747,8 @@ requirement nobody agreed to.
 ### FZ-188 — Cancel From the List
 **Status:** DONE
 
+> **Corrected by `FZ-202`:** its confirmation read `Cancel ""?` — the name was lost from the source when the file was written, and the test asserted only that a confirmation was shown. It is now an in-app dialog that names the freeze.
+
 `cancelRestriction` exists and is wired on the detail page. The list has no cancel action, so
 lifting a freeze costs a navigation to find the button.
 
@@ -5067,6 +5069,55 @@ Acceptance:
   that produced these files.
 - No export is named for a property it does not have.
 - `README.md` no longer argues against what the directory contains.
+
+### FZ-202 — Asking in the Product, Not Through the Browser
+**Status:** DONE · **Corrects** `FZ-188` · **Found by** the operator, cancelling a freeze
+
+Cancelling a freeze from the list opened the browser's own dialog, and it read:
+
+> Cancel ""? It ends now and every channel is notified. This cannot be undone.
+
+Two defects, and the second is the one that matters.
+
+**The name was missing from the source.** `RestrictionsPage.tsx` held a literal `""` where
+`${restriction.name}` belonged. It was written through a `perl -0777 -i -pe` substitution,
+and Perl read `${restriction.name}` as a Perl variable — undefined, so empty. The file
+compiled, `tsc` passed, `oxlint` passed, and **so did the test**, because it asserted
+`expect(window.confirm).toHaveBeenCalled()`: that a confirmation happened, never what it
+said. A dialog asking whether to lift a freeze, without naming the freeze, is the one
+safeguard between a misclick and an organization's deployments being unblocked.
+
+**And it was the browser's dialog at all** — a different typeface, a different voice, and a
+title bar reading `localhost:5173 says`, at the moment the product most needs to be trusted.
+`ApiKeysSection`'s revoke used the same pattern; it is the one `FZ-188` copied.
+
+**`ConfirmDialog`**, in `components/`: a native `<dialog>` opened with `showModal()`, which
+gives the page behind it `inert`, traps focus, closes on Escape and draws the backdrop
+without a dependency. Mounted only while open, so its title is always read from the row that
+was clicked. Focus starts on the safe choice, so Enter on a freshly opened destructive dialog
+destroys nothing. **The dismiss button never repeats the action word** — a dialog asking
+"Cancel this freeze?" with a button labelled "Cancel" is a coin toss — so it is *Keep it* /
+*Cancel freeze*, and *Keep it* / *Revoke key*.
+
+**The test that would have caught it now exists, and was proved to.** `names the freeze it is
+about to cancel` asserts the dialog's accessible name is `Cancel “Peak trading”?`. With the
+name removed from the component it fails; restored, it passes. Checked by doing it rather than
+reading it.
+
+**`no-alert` is on**, so a native `confirm`, `alert` or `prompt` is now a lint error — proved
+with a throwaway file, which `oxlint` rejected with *"Use a custom UI instead"*. It catches the
+class of mistake, not this instance: the call was legitimate, the string was not. That is what
+the new test is for.
+
+**Found by looking, not by testing.** The first render drew *Cancel freeze* as bare text:
+`.btn` sets `background: transparent` at one class of specificity, and the dialog's danger
+style lost to it on stylesheet order — the dangerous choice looking weaker than *Keep it*.
+Fixed with specificity rather than load order, and kept as
+`docs/ui/FZ-202/caught-in-review-unfilled-button.jpg`.
+
+**Not changed, deliberately:** the detail page still cancels without asking. That is
+`FZ-188`'s decision — a list row is one misclick from its neighbours and the detail page is
+not — and it is not this story's to reverse.
 
 ### FZ-200 — The Runbook Described a Path Nobody Could Take
 **Status:** DONE

@@ -88,19 +88,24 @@ describe('ApiKeysSection', () => {
 
   test('asks before revoking, because there is no way back', async () => {
     const user = userEvent.setup()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const native = vi.spyOn(window, 'confirm')
     const spy = stubApi([apiKey()])
     renderRoute(<ApiKeysSection />, { path: '/settings' })
 
     await user.click(await screen.findByRole('button', { name: 'Revoke gitlab-ci' }))
 
-    expect(confirm).toHaveBeenCalled()
+    // In the product, and naming the key — the part FZ-188's copy of this pattern lost.
+    expect(screen.getByRole('alertdialog', { name: 'Revoke “gitlab-ci”?' })).toBeInTheDocument()
+    expect(native).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Keep it' }))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(spy.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
   })
 
   test('revokes once confirmed', async () => {
     const user = userEvent.setup()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     const spy = stubApi([apiKey()], () => new Response(JSON.stringify(apiKey({ revoked: true })), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -108,6 +113,7 @@ describe('ApiKeysSection', () => {
     renderRoute(<ApiKeysSection />, { path: '/settings' })
 
     await user.click(await screen.findByRole('button', { name: 'Revoke gitlab-ci' }))
+    await user.click(screen.getByRole('button', { name: 'Revoke key' }))
 
     await waitFor(() =>
       expect(
