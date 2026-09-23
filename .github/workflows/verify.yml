@@ -89,6 +89,15 @@ jobs:
         with:
           terraform_version: '1.9.8'
 
+      # The one part of deploying that nothing could check without deploying (FZ-208).
+      # `deploy-singlebox.yml` builds a JSON array of shell commands inside a double-quoted
+      # shell string inside YAML, and an escaping mistake there is invisible until a box
+      # runs it. This renders it, parses it, and syntax-checks the result. No AWS access,
+      # no secrets — and deliberately not via the AWS CLI, which accepted the invalid JSON
+      # that caused the failure this was written for.
+      - name: Check the deploy command the box would receive
+        run: node .github/test/check-deploy-command.js
+
       - name: Check formatting
         working-directory: infra
         run: terraform fmt -check -recursive

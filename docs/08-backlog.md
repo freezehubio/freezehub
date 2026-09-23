@@ -5454,3 +5454,56 @@ Acceptance:
   as strings against GitHub's own API rather than by eye.
 - The ids are variables with the command to re-derive them after a rename or transfer.
 - The runbook's first move on an AssumeRole refusal is to print both strings.
+
+### FZ-208 — The Deploy Command Nobody Could Read
+**Status:** DONE · **Fixes** `FZ-178` · **Found by** the first deploy that reached the box
+
+The release got through credentials, built the image, pushed it and delivered the SSM
+command — and the box refused it:
+
+```
+line 14: syntax error near unexpected token `('
+```
+
+**One escape level too many.** `\\\$(` in the workflow source becomes `\$(` in the JSON;
+bash reads `\$` as an escaped dollar and the bare `(` is a syntax error. `\$(` becomes
+`$(`, which the runner leaves alone and the box substitutes — which is where it must happen,
+since the runner's role cannot read the parameters and the instance role can.
+
+**The AWS CLI accepted JSON that is not valid.** `\$` is not a JSON escape, but the CLI
+passed it through rather than rejecting it, which is why a quoting bug surfaced as a shell
+error inside a script nobody can see instead of as a failed API call. "The deploy was
+accepted" therefore proves nothing, and the check added here deliberately does not use the
+CLI.
+
+**This is the fourth defect of the same family in five stories** — `FZ-201`'s two Perl
+interpolations, `FZ-205`'s `echo >>`, and now this. The shape has been identical every time:
+**a construct nothing validates, edited by a command that cannot fail.** So the fix is not
+only the two characters.
+
+`.github/test/check-deploy-command.js` renders the commands array exactly as the workflow's
+shell does, parses it as JSON, runs `bash -n` over the joined script, and asserts that the
+two secret reads are still *unevaluated* `$(aws ssm get-parameter ...)` — because if they
+were ever evaluated on the runner they would come back empty and the box would get a blank
+password rather than an error. It runs in `verify.yml`, needs no AWS access and no secrets,
+and was confirmed to **fail on the unfixed workflow and pass on the fixed one** before being
+committed.
+
+**An empty value now fails by name.** A failed `get-parameter` does not fail the surrounding
+`echo`, so a missing SSM parameter would have written `DATABASE_PASSWORD=` and surfaced much
+later as a compose interpolation error naming the wrong thing. Two `grep -q` guards turn that
+into a message naming the parameter.
+
+**Also corrected, and out of this story's scope:** `CLAUDE.md` still said *"Nothing here has
+been applied"* about `infra/`. The beta is live and billable. It is one sentence in the file
+that governs every session, and it was false in the direction that invites a careless apply.
+The same paragraph now carries the `git rev-list --count HEAD..origin/master` guard, because
+applying from a checkout behind `master` reports "No changes" and looks like success — which
+happened during `FZ-207`.
+
+Acceptance:
+
+- The rendered command array is valid JSON and the joined script parses as bash.
+- The secret reads are evaluated on the box, not on the runner.
+- A missing SSM parameter fails with a message naming it.
+- CI fails if any of that stops being true.

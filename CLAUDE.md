@@ -263,8 +263,22 @@ terraform init -backend=false && terraform validate   # no AWS credentials neede
 terraform plan                                        # read-only, needs credentials
 ```
 
-Nothing here has been applied. `terraform apply` creates billable resources and is a
-human decision.
+**`shared/` and `singlebox/` have been applied** — the beta is live and billable, and the
+OIDC deploy role exists (`FZ-205`). `terraform apply` remains a human decision, and one taken
+against a **current** checkout: applying from a checkout behind `origin/master` reports "No
+changes" and looks like success, which has already happened once.
+
+```bash
+git rev-list --count HEAD..origin/master   # must be 0 before any apply
+```
+
+The deploy command the single box receives is built by string interpolation in
+`deploy-singlebox.yml` and cannot be reviewed by reading it. `verify.yml` runs this, and so
+can you:
+
+```bash
+node .github/test/check-deploy-command.js   # renders it, parses the JSON, bash -n the result
+```
 
 ### Test accounts
 
