@@ -161,72 +161,6 @@ the SIC must be informed. Neither has a procedure, and **every incident should b
 whether or not it was notifiable** — the register is what an auditor asks to see, and "we have
 had none" is not evidence of anything.
 
-### OI-43 — GitHub Actions cannot authenticate to AWS on the managed experience
-**Severity:** Blocker (for CI only) · **Owner:** `FZ-138` · **Found in:** `FZ-170`
-
-`infra/shared/github-oidc.tf:7` creates an `aws_iam_openid_connect_provider`. AWS's new
-sign-up experience denies `iam:*Provider*` through a service control policy that applies on
-the Free Tier *and* the Paid Plan and that "cannot be modified", so **`terraform apply` on
-`infra/shared/` fails** and `build-image.yml`, `deploy-frontend.yml` and
-`deploy-singlebox.yml` lose the only credential path they have (`FZ-064`).
-
-**Confirmed against the live account** (`FZ-171`), not just the published policy:
-`iam:ListOpenIDConnectProviders` returns `AccessDenied` with *"an explicit deny in a service
-control policy"*, naming one of the AWS-managed policies. The same check found `D-32` wrong — see below.
-
-**Nothing else is blocked.** `iam:CreateRole` is permitted and every service the one-box
-posture needs works in `us-east-2`, verified by calling each one. `D-35` is unaffected.
-`D-32` was **not** — `us-east-1` turned out to permit only global services, so the region
-moved to `us-east-2` (`FZ-171`). This issue is CI alone.
-
-**The fix is activating advanced features** (`D-37`), which is irreversible and removes the
-project's enforced spend limit. Until then deploys are by hand, which means no record of
-what shipped — the thing `FZ-152` built the workflows to provide. The stopgap is acceptable
-only while nothing is live.
-
-**This is not what blocks the first deploy, and it is worth being clear about the order.**
-`infra/shared/` has two required variables with no default — `domain_name` and
-`hosted_zone_id` — and creates an `aws_acm_certificate_validation` that blocks until DNS
-resolves. So `shared/` cannot be applied without a domain whatever happens to the OIDC
-provider, and the chain is:
-
-```
-domain → hosted zone → shared/ → Cognito pool → FZ-046 → singlebox/ → deploy → CI
-```
-
-This issue bites at the last step. Anything done about it before the domain exists is
-speculative.
-
-**When it does bite, the split is small.** Scoped while investigating, so it is not
-re-derived: `github-oidc.tf` holds three resources and nothing outside the file references
-them except two outputs in `outputs.tf`. It depends on exactly three things from the rest
-of `shared/` — `aws_ecr_repository.backend.arn`, `aws_s3_bucket.frontend.arn` and
-`aws_cloudfront_distribution.frontend.arn`.
-
-**Resolved as a `count` toggle** (`FZ-174`): `var.github_oidc_enabled`, default `false`,
-on the provider, the assume-role policy document, the role and its inline policy, with
-`one()` on the two outputs. The alternative — a fourth root module, matching `FZ-159`'s
-precedent of lifecycle boundaries as module boundaries — was rejected because these
-resources *share* the shared estate's lifecycle. They are absent only because of an
-account capability we intend to remove, and a module boundary would assert a difference
-that is not there.
-
-So `shared/` applies today with the toggle off. **Turning it on is the last step of
-activating advanced features**, not a separate migration: set `github_oidc_enabled = true`
-and apply again. Until then `github_deploy_role_arn` and `github_deploy_role_name` are
-`null`, which is what `../ecs` and the workflows would read.
-
-**The registrar does not matter, and AWS refuses to be one.** `route53domains:*` is
-permitted by the SCP and the API answers — but an actual registration fails with *"We can't
-finish registering your domain. Contact AWS Support"*. Amazon Registrar applies
-fraud-prevention checks to new accounts, and the restriction is account-level and removable
-only through a support case (Basic support covers it, free).
-
-Nothing depends on it. `shared/` asks for `domain_name` and `hosted_zone_id` and never asks
-who the registrar is, so **register anywhere and delegate the nameservers to a Route 53
-hosted zone** — which costs about $0.50 a month and is not blocked. The support case is
-worth opening only if AWS as registrar is wanted for its own sake.
-
 ### OI-45 — AWS reports root MFA as disabled, and it is unclear whether that is meaningful
 **Severity:** Question · **Owner:** needs an answer · **Found in:** `FZ-138`
 
@@ -558,11 +492,12 @@ Recorded now because the repository's own rule is that "no owner" is not a statu
 ## Resolved
 
 | Issue | Found in | Resolved by |
+|---|---|---|
+| **GitHub Actions could not authenticate to AWS at all** — AWS’s new sign-up experience denied `iam:*Provider*` through a service control policy that "cannot be modified", so `terraform apply` on `infra/shared/` failed and `build-image.yml`, `deploy-frontend.yml` and `deploy-singlebox.yml` lost the only credential path they had. Deploys were by hand, which is what produced four divergences from what the workflows would have done | `FZ-170` | `FZ-205` — advanced features activated 2026-09-23, lifting the policy; `github_oidc_enabled = true` then applied clean, `3 to add, 0 to change, 0 to destroy`, creating the provider, the role and its inline policy. `AWS_DEPLOY_ROLE_ARN` and `SINGLEBOX_INSTANCE_ID` are set, and every variable and secret the four workflows read is present — checked by diffing the `vars.`/`secrets.` references against `gh variable list`. **The price is real and `D-37` records it:** activation cannot be undone and removed the enforced spend limit, so `FZ-204`’s budget — which only alerts — is now the only guard on spend. The registrar note this issue carried is moot for the reason it always was: nothing depends on AWS being the registrar, and `app.freezehub.io` is delegated to a Route 53 zone |
 | **Whether `FZ-123` was superseded by the one box** — two readings of the same story were live at once, and it still claimed `OI-15` and `OI-21` | `FZ-160` | `FZ-162` — it is the beta apply, now pointing at `shared/` then `singlebox/`. `FZ-159` had already rewritten it to say so; a conflict resolution had split the entry, leaving the old body under the heading and the new one orphaned inside Milestone 14 |
 | **The connector image was not published, so nothing was installable** — every guideline in `connectors/README.md` named an image that did not exist, and the entry was wrong twice before settling on publishing one artifact rather than extracting a second repository | `FZ-090` | `FZ-099` — `ghcr.io/freezehubio/freeze-check:v1` is public, `linux/amd64` and `linux/arm64`, and verified by pulling it anonymously and watching it exit 2 when FreezeHub is unreachable |
 | **Stripe cannot be used from Colombia, and `FZ-084` assumes it can** — Stripe supports Brazil and Mexico in Latin America and not Colombia, so a built, tested and correct billing integration had no account to point at | `FZ-137` | `FZ-148` verified it against Stripe's own availability page, and `D-34` chose Paddle as merchant of record. Implementation is `FZ-149` |
 | **EU data residency was deferred by letting a default choose the region** — `us-east-1` was never decided, it was the `variables.tf` default, and a region cannot be changed after the first apply without moving the database *and* re-creating every identity | `FZ-080` | `FZ-135` removed the default and priced the choice; `FZ-141` records the decision (`D-32`): `us-east-1`, knowingly, with the EU answer accepted as a cost |
-|---|---|---|
 | **`deploy.yml` and `verify.yml` still ran actions targeting Node 20** — GitHub had deprecated that runtime and was force-running those actions on a newer one, so the workflows were relying on a compatibility shim with an end date | `FZ-099` | `FZ-140` — every `uses:` resolved to the runtime its own `action.yml` declares, which found two the issue had missed; the eight on node20 bumped, the ones already on node24 left alone, and the pinning question answered: actions stay on major tags, base images do not (`FZ-139`) |
 | **The Dockerfiles followed floating tags, so what shipped changed without a commit** — `eclipse-temurin:21-jre` moved from Ubuntu 24.04 to 26.04 under the project, which is how eight HIGH findings appeared in CI while a local scan of the same tag was clean | `FZ-127` | `FZ-139` — all three `FROM` lines pinned by digest, both backend stages moved to the variant that does not ship `/usr/bin/pebble`, and the scanner now reads the refs out of the Dockerfiles. The baseline is empty |
 | **Rate limiting covered only the unauthenticated endpoints** — nothing limited failed API-key attempts, the Stripe webhook, or authenticated traffic, leaving `/api/policy/**` unmetered: the endpoint whose unavailability blocks every customer's deployments, because the connector fails closed | `FZ-125` | `FZ-130` — four limits, the authenticated one counted per API key so that the defence cannot become the outage, and a client that sits out a `429` rather than failing the build (`D-31`) |

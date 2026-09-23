@@ -5298,6 +5298,61 @@ Acceptance:
 - No runbook command contains a value that was interpolated away.
 - Publishing a variable fails loudly when its source is empty.
 
+### FZ-205 — CI Can Deploy, and the Repository No Longer Says It Cannot
+**Status:** DONE · **Resolves** `OI-43` · **Completes** `FZ-200`, `FZ-201`, `FZ-203`, `FZ-204`
+
+Advanced features were activated, `infra/shared` applied with `github_oidc_enabled = true`,
+and the eight places that still asserted "the workflows cannot run" were corrected.
+
+**The apply: `3 to add, 0 to change, 0 to destroy`.** The OIDC provider, the deploy role and
+its inline policy. Nothing else in the shared estate moved — in particular the Cognito user
+pool was refreshed and not replaced, which was the specific thing to watch, because replacing
+it would invalidate every existing identity. The runbook now says to read the plan for that
+before approving it.
+
+**Least privilege, confirmed by reading the plan rather than trusting the file.** `SendCommand`
+is scoped twice — by resource tag `Project=freezehub` *and* to the `AWS-RunShellScript`
+document alone — and S3 and CloudFront name the one bucket and the one distribution. The role
+cannot change infrastructure, which is what its own description claims.
+
+**Every variable the workflows read was checked mechanically**, by extracting each `vars.` and
+`secrets.` reference from the four workflow files and diffing the set against
+`gh variable list` and `gh secret list`. Nothing missing, nothing set that is not read. Done
+this way because the failure it guards against — a variable that is absent rather than wrong —
+surfaces halfway through a deploy, and eye-checking a list of fifteen is how it is missed.
+
+**A third interpolation defect of mine, and the last of that family.** `FZ-204` fixed two; this
+is the append that produced `budget_alert_email = "…"github_oidc_enabled = true` in a live
+`terraform.tfvars` — one unparseable line, from an `echo … >>` that reported success against a
+file with no trailing newline. The runbook now says to open the file, or to use
+`printf '\n…\n'` followed by a `grep -c` that must print 1 and a `terraform fmt` that parses
+what was written. `fmt` rather than `fmt -check`, tested both ways: `-check` also fails a
+merely mis-aligned file, which a hand-edited `tfvars` routinely is, so it would cry wolf —
+plain `fmt` re-aligns that and still fails on a file that does not parse. The shape is the same each time: **a command that
+cannot fail, editing something nothing then validates.**
+
+**Found in passing: four resolved issues were not in the resolved table.** `09-open-issues.md`
+had its `|---|---|---|` four rows *below* its header, so the four newest entries rendered as
+prose. Repaired, and it is the hazard `session-sync` names — the file also contains a cost
+table with an identical separator, which is why an anchor must assert its section and not just
+its shape.
+
+**Not verified: no release has completed.** `FZ-201` and `FZ-203` were reasoned from the code
+and have still never executed end to end. What is checked is that they *can* start: the role
+exists and is assumable from `refs/heads/master`, `release.yml` is on `master` so dispatch can
+see it, and the freeze gate answers — `api.freezehub.io` returns `200` on health and `401`
+rather than a timeout on the policy endpoint, so the connector will get a decision instead of
+failing closed. The first dispatch remains the first real test of the ARM runner, the
+`type=gha` cache and the `Release` chain's `secrets: inherit` and `always()` guards.
+
+Acceptance:
+
+- `shared/` applies whole; the deploy role and provider exist.
+- No file states as current fact that CI cannot authenticate.
+- Every `vars.`/`secrets.` reference in the four workflows resolves to something set.
+- The runbook's `tfvars` edit cannot silently corrupt the file.
+- The resolved table renders as a table.
+
 ### FZ-206 — The First Release Failed, and Why
 **Status:** DONE · **Fixes** `FZ-201`, `FZ-203` · **Found by** running them
 
@@ -5348,3 +5403,4 @@ Acceptance:
 - A failed or cancelled image build withholds the frontend.
 - A frontend-only release still runs with the backend skipped.
 - The reason for both is in the files, so neither is re-introduced by someone tidying up.
+

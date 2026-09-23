@@ -314,9 +314,10 @@ you apply* has the rest.
 **The OIDC restriction bites last, not at `shared/`.** An earlier revision of this section
 put "needs advanced features" under `shared/`, which reads as though the whole module is
 unreachable. It is not: `github-oidc.tf` is the only part denied, and it is separable —
-nothing outside it references its resources except two outputs. As written `shared/` does
-still fail, so separating it is a prerequisite; `OI-43` scopes that to two small options.
-The decision is due when CI is wired up, which is after a deploy exists.
+nothing outside it references its resources except two outputs. It was resolved as a
+`count` toggle rather than a separate module (`FZ-174`), so `shared/` applies with
+`github_oidc_enabled = false` and applies whole once advanced features are activated —
+done here on 2026-09-23 (`FZ-205`, closing `OI-43`).
 
 **Register the domain anywhere; AWS will not do it.** `route53domains:*` is permitted by
 the SCP, but a registration fails with *"We can't finish registering your domain. Contact
