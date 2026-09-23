@@ -5105,3 +5105,52 @@ Acceptance:
 - Every command is checked against the workflow or the code it came from, not reconstructed.
 - The bucket, distribution, region and registry match the repository variables.
 - The section says plainly that the workflow path does not work today.
+
+### FZ-201 — Making CI Able to Deploy, and Quickly
+**Status:** DONE · **Unblocks** `OI-43` once the operator activates advanced features
+
+Two defects that would each have surfaced on the *first* CI deploy — which is to say after
+the irreversible step — plus the enablement procedure.
+
+**`ECR_REPOSITORY` was never a repository variable.** `build-image.yml` and `deploy.yml` both
+read `vars.ECR_REPOSITORY`; the repository has `ECR_REPOSITORY_URL`, which `deploy-singlebox`
+already uses. The tag would have rendered as `…amazonaws.com/:abc1234` — an empty repository
+name — and the push would have failed. Found by diffing every `vars.*` the three workflows
+read against `gh variable list`: two missing, and only one of them (`AWS_DEPLOY_ROLE_ARN`)
+was supposed to be. Both now use `ECR_REPOSITORY_URL`, so there is one variable and no way
+for two to disagree.
+
+**The image built under emulation, at 7.3x.** Measured rather than assumed, on one machine
+with `--no-cache`: **2m03s native against 15m02s emulated**. `javac` alone was 18.5x slower,
+and the JVM took nearly four minutes to reach *"Scanning for projects"*. The runner is now
+`ubuntu-24.04-arm` and `setup-qemu-action` is gone; `platforms:` goes with it, because the
+platform follows the host. `linux/arm64` is not the problem and does not change — the box is
+a `t4g.small` and an amd64 image would not start.
+
+**The Dockerfile's layering did nothing in CI.** It resolves dependencies in their own layer
+and says that layer *"survives most builds and the download is paid once"* — true on a laptop,
+false where no cache persisted between runs. It was re-resolving all 23 dependencies every
+time: 97.8s natively, 520.4s emulated. `cache-from`/`cache-to: type=gha` makes the layering
+mean something.
+
+**Audited rather than hoped:** the deploy role carries ECR push, SSM `SendCommand` and
+`GetCommandInvocation`, S3 read/write/delete and CloudFront invalidation — matched against
+what each of the three workflows actually does. The trust policy is scoped to
+`repo:<github_repository>:ref:refs/heads/master`, so a dispatch from another branch fails at
+the credentials step; the runbook says so, because it is confusing the first time.
+
+**What is left is the operator's**, and step one is irreversible: activating advanced features
+lifts the service control policy behind `OI-43`, and removes the enforced spend limit — which
+is why `D-37` pairs it with a Budget alarm the same day. `14-operations.md` § *Turning CI on*
+is the sequence.
+
+**Not verified end to end, and cannot be.** The workflows cannot run until the step above is
+taken, so this is a reading of them against the code and the repository variables, not an
+observation of them working. The timings are from this machine reproducing CI's conditions;
+the ratio transfers, the absolute seconds may not.
+
+Acceptance:
+
+- No workflow references a repository variable that does not exist.
+- The image builds natively, with a cache that survives between runs.
+- The enablement sequence names every step, including the one nobody can undo.

@@ -90,7 +90,10 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: backend
-          image: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ needs.image.outputs.image_tag }}
+          # ECR_REPOSITORY_URL, which already carries registry and repository (`FZ-201`).
+          # `ECR_REPOSITORY` was never a repository variable, so this rendered a task
+          # definition pointing at an empty repository name.
+          image: ${{ vars.ECR_REPOSITORY_URL }}:${{ needs.image.outputs.image_tag }}
 
       # Deliberately NOT `terraform apply`. Applying from CI would need a role able to
       # change the database, the certificates and the user pool — far more than deploying

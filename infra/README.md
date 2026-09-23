@@ -123,7 +123,7 @@ distribution. Certificate validation blocks until the DNS records propagate.
 ```text
 AWS_DEPLOY_ROLE_ARN        github_deploy_role_arn
 AWS_REGION                 (your region)
-ECR_REPOSITORY             (the repository name from ecr_repository_url)
+ECR_REPOSITORY_URL         ecr_repository_url
 ECS_CLUSTER                ecs_cluster_name
 ECS_SERVICE                ecs_service_name
 ECS_TASK_FAMILY            ecs_task_family
