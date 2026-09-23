@@ -4994,3 +4994,46 @@ Acceptance:
 - The migration truncates before it narrows the type; an existing long row would otherwise
   fail the alter, and this table is the record of announcements that never arrived.
 
+
+### FZ-199 — The Exports, Committed
+**Status:** DONE · **Revisits** `FZ-192`
+
+`docs/brand/exports/` — ten PNG sizes, a multi-resolution `favicon.ico`, WebP, JPG and a PDF,
+beside the SVG they come from. Plus two transparent variants of the mark, SVG only.
+
+**This reverses `FZ-192`'s call, and its objection deserves answering rather than ignoring.**
+That story kept exports out on the grounds that an SVG can be diffed and a PNG cannot, so a
+committed raster could drift from its source unnoticed. The risk is real; the remedy was
+backwards. Regenerating by hand on whichever machine happens to have a renderer does not
+prevent drift, it relocates it somewhere no diff will ever show — and it made every consumer
+of the mark wait on a human step. Committed exports make staleness **visible in a review**,
+which is what the objection actually wanted. The README now carries the obligation that comes
+with it: change the SVG, regenerate in the same commit.
+
+**Rendered per size, never downscaled.** `3a` was chosen to survive at 16 px and downscaling
+a serif is how that is thrown away. Verified by looking, magnified, at 16/32/48/64: clean
+from 32 up; at 16 the middle arm softens and the point becomes a 2×2 blob, which is the
+documented floor.
+
+**ImageMagick never touched the SVG.** It is installed, and `FZ-192` proved its SVG renderer
+drops `<text>` while exiting `0` — the broken output is committed as evidence. It is used
+here only for PNG→ICO/WebP/JPG/PDF, where it is sound. The SVG rasterising is `qlmanage`,
+which is the "a browser, which is what renders the favicon anyway" route the README already
+sanctioned.
+
+**The transparent variants are SVG only, and that is a finding rather than a shortcut.**
+Transparent PNGs were produced and then deleted: `qlmanage` composites onto opaque white, so
+the corner pixel of its output reads alpha `1`. The files were named `transparent` and were
+not. The check is one command and it is in the README, because the failure is silent in every
+viewer that shows a white page behind a white background.
+
+**They are derivations, not approved brand.** `FZ-192` is explicit that the mark is the
+operator's choice from the deck; the plate was subtracted and the letterform recoloured. The
+README says so where somebody reaching for them will read it.
+
+Acceptance:
+
+- Every export is regenerable from the committed commands, and those commands are the ones
+  that produced these files.
+- No export is named for a property it does not have.
+- `README.md` no longer argues against what the directory contains.

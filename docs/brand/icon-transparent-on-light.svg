@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DERIVED from docs/brand/slack-app-icon.svg (option 3a). The plate removed, letterform
+     recoloured for a light background. Same mark, not a new one. Not committed: FZ-192 is
+     explicit that the brand is the operator's choice from the deck. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="FreezeHub">
+  <title>FreezeHub</title>
+  <text x="256" y="376" text-anchor="middle"
+        font-family="'Source Serif 4','Source Serif Pro',Georgia,'Times New Roman',serif"
+        font-size="352" font-weight="600" letter-spacing="-7.04"
+        fill="#201e1d">F<tspan fill="#ff458e">.</tspan></text>
+</svg>
