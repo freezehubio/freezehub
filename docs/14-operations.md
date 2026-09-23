@@ -343,10 +343,30 @@ the two recorded above), so the argument for doing it is not tidiness.
 
 **Step 1 is irreversible and only you can take it.**
 
-1. **Activate advanced features** on the account (`D-37`). It lifts the service control
-   policy that denies `iam:*Provider*`, which is the whole of `OI-43`. It also **removes the
-   enforced spend limit**, so `D-37` requires an AWS Budget with an alarm set the same day —
-   the limit was doing that job for free until now.
+1. **Set the budget up first, then activate.** Activation lifts the service control policy
+   that denies `iam:*Provider*` — the whole of `OI-43` — and in the same moment **removes the
+   enforced spend limit**, which has been the only thing between a mistake and an unbounded
+   bill. `D-37` requires the replacement the same day; doing it first means there is no day.
+
+   ```bash
+   # in infra/shared/terraform.tfvars
+   budget_alert_email = "you@example.com"      # required, no default
+   # budget_limit_usd = "40"                    # optional; D-35 projects about 18 USD/month
+
+   terraform -chdir=infra/shared apply          # creates the budget; the OIDC role still off
+   ```
+
+   Then activate advanced features in the console. **It cannot be undone**, and the budget
+   only *alerts* — it does not refuse spend the way the limit did. That downgrade is the
+   price of CI.
+
+   Confirm it worked, with the probe `FZ-171` used:
+
+   ```bash
+   aws iam list-open-id-connect-providers
+   # AccessDenied "explicit deny in a service control policy" -> not active yet
+   # a list, even empty                                       -> active, continue
+   ```
 
 2. **Confirm the repository the role will trust.** `infra/shared/terraform.tfvars` must set
    `github_repository = "freezehubio/freezehub"`. The trust policy is scoped to
@@ -361,15 +381,28 @@ the two recorded above), so the argument for doing it is not tidiness.
    terraform -chdir=infra/shared apply
    ```
 
-4. **Publish the two variables CI is missing:**
+4. **Publish the two variables CI is missing.**
+
+   **Check each value before setting it.** `gh variable set` with an empty `--body` does not
+   fail — it falls through to an interactive prompt, so a missed step 3 quietly sets the
+   variable to whatever gets pasted next. That is the same silent-empty-value shape that
+   shipped a frontend without `VITE_COGNITO_DOMAIN` and left nobody able to sign in.
 
    ```bash
-   gh variable set AWS_DEPLOY_ROLE_ARN \
-     --body "20 20 12 61 79 80 81 98 333 701 33 100 204 250 395 398 399 400terraform -chdir=infra/shared output -raw github_deploy_role_arn)"
+   ROLE=$(terraform -chdir=infra/shared output -raw github_deploy_role_arn 2>/dev/null)
+   if [ -n "$ROLE" ]; then
+     gh variable set AWS_DEPLOY_ROLE_ARN --body "$ROLE"
+   else
+     echo "STOP: no deploy role in state — step 3 has not run"
+   fi
 
    # `Release` passes this to the box so nobody pastes an instance id (`FZ-203`)
-   gh variable set SINGLEBOX_INSTANCE_ID \
-     --body "20 20 12 61 79 80 81 98 333 701 33 100 204 250 395 398 399 400terraform -chdir=infra/singlebox output -raw instance_id)"
+   BOX=$(terraform -chdir=infra/singlebox output -raw instance_id 2>/dev/null)
+   if [ -n "$BOX" ]; then
+     gh variable set SINGLEBOX_INSTANCE_ID --body "$BOX"
+   else
+     echo "STOP: no instance in state — infra/singlebox has not been applied"
+   fi
    ```
 
 5. **Dispatch `Release` from `master`.** One workflow, which chains the three and passes the
