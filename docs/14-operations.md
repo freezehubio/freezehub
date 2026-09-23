@@ -434,6 +434,27 @@ spend limit it removed is not coming back — `FZ-204`'s budget only alerts.
    any other branch fails at the credentials step — correct, and confusing the first time it
    happens.
 
+   **`Not authorized to perform sts:AssumeRoleWithWebIdentity` has a second cause, and it is
+   not the branch** (`FZ-206`). A job that declares `environment:` makes GitHub send
+   `repo:<owner>/<repo>:environment:<name>` as the subject instead of
+   `repo:<owner>/<repo>:ref:refs/heads/master`, which the trust policy does not match. The
+   error is identical either way, and **no permission on the role can fix it** — assumption is
+   governed by the role's trust policy, not by anything the role is allowed to do. Check what
+   the token actually claims before editing IAM:
+
+   ```bash
+   # the branch the run used, and whether any job declares an environment
+   gh run view <run-id> --json headBranch --jq .headBranch
+   grep -n '^ *environment:' .github/workflows/*.yml   # job-level ones are indented 4 spaces
+
+   # what the role actually trusts (a permissions policy is the wrong place to look)
+   aws iam get-role --role-name freezehub-beta-github-deploy \
+     --query 'Role.AssumeRolePolicyDocument' --output json
+   ```
+
+   No job declares one today, deliberately — see the comment at the top of `build-image.yml`
+   for why the environment was dropped rather than the trust policy widened.
+
    Tick `backend`, `frontend` or both. A frontend-only release skips the box and its ~15
    second gap; a backend-only one skips the CloudFront invalidation.
 

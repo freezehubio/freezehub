@@ -34,7 +34,21 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    # NO `environment:` HERE, and it is not an oversight (FZ-206). A job that declares one
+    # makes GitHub change the OIDC subject claim from
+    #   repo:freezehubio/freezehub:ref:refs/heads/master
+    # to
+    #   repo:freezehubio/freezehub:environment:beta
+    # and the trust policy in infra/shared/github-oidc.tf allows only the first. The first
+    # real release failed here, on both jobs that declared one and on neither that did not.
+    #
+    # Keeping the branch in the subject is the point rather than a workaround: it is IAM
+    # that then enforces "only master deploys", which a repository admin cannot change. An
+    # environment's deployment-branch rule is the same restriction owned by someone else.
+    #
+    # `beta` carried no protection rules and no scoped secrets, so it was enforcing nothing
+    # and granting nothing. Every variable and secret these workflows read is repository-level.
+
 
     steps:
       - uses: actions/checkout@v7
