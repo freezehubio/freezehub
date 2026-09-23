@@ -5404,3 +5404,53 @@ Acceptance:
 - A frontend-only release still runs with the backend skipped.
 - The reason for both is in the files, so neither is re-introduced by someone tidying up.
 
+### FZ-207 — The Subject GitHub Actually Sends
+**Status:** DONE · **Corrects** `FZ-206` · **Fixes** the second failed release
+
+`sts:AssumeRoleWithWebIdentity` was refused because the trust policy matched a subject GitHub
+does not send. This repository has **immutable subject claims** enabled, so the token carries:
+
+```
+repo:freezehubio@329392711/freezehub@1356791848:ref:refs/heads/master
+```
+
+The policy demanded `repo:freezehubio/freezehub:ref:refs/heads/master`. Numeric owner and
+repository ids, not names. It could never have matched.
+
+**`FZ-206` blamed the wrong thing, and it cost a second release.** It observed that the two
+failing jobs were the two declaring `environment:`, which was true and is a real way to change
+the subject — but with immutable claims on, *both* forms miss, so the correlation was
+coincidence dressed as a cause. The fix was reasoned from a plausible mechanism and from which
+jobs failed, and never from the subject itself, which is the only thing that decides the
+outcome. **One command would have settled it before either release:**
+
+```bash
+gh api repos/OWNER/REPO/actions/oidc/customization/sub --jq .sub_claim_prefix
+```
+
+`FZ-206`'s other half stands on its own: the `release.yml` guard let a frontend publish after
+a failed image build, which was a genuine defect the run exposed and is unrelated to this.
+
+**The error says nothing useful, which is why guessing is expensive.** *"Not authorized to
+perform sts:AssumeRoleWithWebIdentity"* names an action and no condition, so it reads as a
+missing permission. It is not one — assumption is decided by the trust policy, and the role's
+permissions are never consulted. Granting the role `sts:*` by hand changed nothing, as it
+could not.
+
+**Matched rather than switched off, and that is the security argument.** GitHub can disable
+immutable subjects, which would restore the name-based form and let the old policy work. That
+is the weaker option: a name can be released and re-registered, so deleting this repository
+would let somebody else create `freezehubio/freezehub` and inherit a name-based trust policy.
+An id cannot be re-used. The names stay in the subject for readability; the ids carry the
+security.
+
+**Three things change the subject** — the branch, a job-level `environment:`, and whether
+immutable claims are on — and the runbook now says to compare the two strings rather than
+reason about which applies. Two of the three cost a release each to find by reasoning.
+
+Acceptance:
+
+- The rendered trust subject equals `sub_claim_prefix` + `:ref:refs/heads/master`, compared
+  as strings against GitHub's own API rather than by eye.
+- The ids are variables with the command to re-derive them after a rename or transfer.
+- The runbook's first move on an AssumeRole refusal is to print both strings.

@@ -18,6 +18,16 @@
 # to leak, nothing has to be rotated, and revoking access is deleting a role rather than
 # hunting for a key somebody pasted into a secret four months ago.
 
+locals {
+  # Exactly what GitHub reports for this repository:
+  #   gh api repos/freezehubio/freezehub/actions/oidc/customization/sub --jq .sub_claim_prefix
+  #
+  # Re-derive it after any repository or organization rename, transfer, or re-creation — the
+  # names below are cosmetic, the ids are what is matched:
+  #   gh api repos/OWNER/REPO --jq '"repo:\(.owner.login)@\(.owner.id)/\(.name)@\(.id)"'
+  github_subject_prefix = "repo:${var.github_repository_owner}@${var.github_owner_id}/${var.github_repository_name}@${var.github_repository_id}"
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
   count = var.github_oidc_enabled ? 1 : 0
 
@@ -53,10 +63,23 @@ data "aws_iam_policy_document" "github_assume_role" {
     # running here can assume the role. A `sub` left open — `repo:*`, or even this repo
     # with any ref — would let a pull request from a fork deploy to production, or let
     # somebody else's repository assume it outright. This is the whole security of OIDC.
+    #
+    # **The numeric ids are not decoration** (FZ-207). This repository has GitHub's immutable
+    # subject claims enabled, so the token's subject is
+    #   repo:freezehubio@329392711/freezehub@1356791848:ref:refs/heads/master
+    # and not the name-based form. `repo:${var.github_repository}:…` matched nothing, which
+    # is what refused the first two releases with "Not authorized to perform
+    # sts:AssumeRoleWithWebIdentity" — an error that names an action and says nothing about
+    # which condition failed.
+    #
+    # It is also the stronger form, which is why it is matched rather than switched off. A
+    # name can be released and re-registered: delete this repository and somebody else can
+    # create `freezehubio/freezehub`, and a name-based trust policy would hand them this role.
+    # An id cannot be re-used. Match what is sent and keep the stronger claim.
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:ref:refs/heads/master"]
+      values   = ["${local.github_subject_prefix}:ref:refs/heads/master"]
     }
   }
 }

@@ -375,10 +375,24 @@ spend limit it removed is not coming back — `FZ-204`'s budget only alerts.
    # a list, even empty                                       -> active, continue
    ```
 
-2. **Confirm the repository the role will trust.** `infra/shared/terraform.tfvars` must set
-   `github_repository = "freezehubio/freezehub"`. The trust policy is scoped to
-   `repo:<that>:ref:refs/heads/master`, and getting it wrong is the difference between only
-   this repository being able to deploy and anyone's being able to.
+2. **Confirm the repository the role will trust — by asking GitHub, not by typing a name**
+   (`FZ-207`). The trust policy matches the subject GitHub actually sends, and with immutable
+   subject claims enabled that carries numeric ids rather than names:
+
+   ```bash
+   gh api repos/OWNER/REPO/actions/oidc/customization/sub
+   # {"use_default":true,"use_immutable_subject":true,
+   #  "sub_claim_prefix":"repo:freezehubio@329392711/freezehub@1356791848"}
+   ```
+
+   `use_immutable_subject: true` means the four `github_*` variables in
+   `infra/shared/variables.tf` must describe **that** prefix; the names are cosmetic and the
+   ids are what is matched. If it is `false`, the subject is the name-based
+   `repo:<owner>/<repo>:…` form and the ids are ignored.
+
+   Getting this wrong is the difference between only this repository being able to deploy and
+   nobody being able to — or, if the ids were dropped in favour of names, between this
+   repository and whoever registers the name after it is released.
 
 3. **Enable and apply**, from a shell in the deployment's account:
 
@@ -434,26 +448,36 @@ spend limit it removed is not coming back — `FZ-204`'s budget only alerts.
    any other branch fails at the credentials step — correct, and confusing the first time it
    happens.
 
-   **`Not authorized to perform sts:AssumeRoleWithWebIdentity` has a second cause, and it is
-   not the branch** (`FZ-206`). A job that declares `environment:` makes GitHub send
-   `repo:<owner>/<repo>:environment:<name>` as the subject instead of
-   `repo:<owner>/<repo>:ref:refs/heads/master`, which the trust policy does not match. The
-   error is identical either way, and **no permission on the role can fix it** — assumption is
-   governed by the role's trust policy, not by anything the role is allowed to do. Check what
-   the token actually claims before editing IAM:
+   **`Not authorized to perform sts:AssumeRoleWithWebIdentity` means the subject did not
+   match, and the error will not tell you why.** It names an action and no condition, so it
+   reads like a missing permission. It is not one: **no permission on the role can fix it**,
+   because assumption is governed by the role's trust policy, not by anything the role is
+   allowed to do. Granting the role `sts:*` changes nothing, and was tried here.
+
+   **Compare the two strings before touching IAM.** Three separate things change the subject —
+   the branch, a job-level `environment:`, and whether immutable subject claims are on — and
+   two of the three cost a release each to find by guessing:
 
    ```bash
-   # the branch the run used, and whether any job declares an environment
-   gh run view <run-id> --json headBranch --jq .headBranch
-   grep -n '^ *environment:' .github/workflows/*.yml   # job-level ones are indented 4 spaces
+   # what GitHub will send
+   PREFIX=$(gh api repos/OWNER/REPO/actions/oidc/customization/sub --jq .sub_claim_prefix)
+   echo "$PREFIX:ref:refs/heads/master"
 
-   # what the role actually trusts (a permissions policy is the wrong place to look)
+   # what the role will accept (a permissions policy is the wrong place to look)
    aws iam get-role --role-name freezehub-beta-github-deploy \
-     --query 'Role.AssumeRolePolicyDocument' --output json
+     --query 'Role.AssumeRolePolicyDocument.Statement[0].Condition' --output json
    ```
 
-   No job declares one today, deliberately — see the comment at the top of `build-image.yml`
-   for why the environment was dropped rather than the trust policy widened.
+   They must be equal as strings. `StringLike` is case-sensitive and the value here carries no
+   wildcard, so "nearly" does not match.
+
+   The two modifiers, if the prefixes agree and it still fails:
+
+   - **the branch** — the policy names `refs/heads/master`, so any other ref is refused.
+     `gh run view <run-id> --json headBranch --jq .headBranch`
+   - **a job-level `environment:`** — it replaces `:ref:refs/heads/master` with
+     `:environment:<name>`. No job declares one; see the comment at the top of
+     `build-image.yml` for why it was dropped rather than the trust policy widened.
 
    Tick `backend`, `frontend` or both. A frontend-only release skips the box and its ~15
    second gap; a backend-only one skips the CloudFront invalidation.

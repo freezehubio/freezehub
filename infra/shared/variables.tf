@@ -30,10 +30,28 @@ variable "github_oidc_enabled" {
   default     = false
 }
 
-variable "github_repository" {
-  description = "owner/name of the repository allowed to deploy. The OIDC trust policy is scoped to it and to master, so getting this wrong is the difference between only this repository deploying and anyone's doing so."
+variable "github_repository_owner" {
+  description = "Owner (organization or user) of the repository allowed to deploy. Cosmetic in the trust policy — github_owner_id is what is actually matched — but it keeps the subject readable in the console."
   type        = string
-  default     = "freezehubio/freezehub"
+  default     = "freezehubio"
+}
+
+variable "github_repository_name" {
+  description = "Name of the repository allowed to deploy. Cosmetic in the trust policy; github_repository_id is what is matched."
+  type        = string
+  default     = "freezehub"
+}
+
+variable "github_owner_id" {
+  description = "Numeric id of the owner. Part of GitHub's immutable subject claim (FZ-207), which is what the token actually carries. Unlike the name it cannot be released and re-registered, so it is the half of the subject that carries the security. Re-derive with: gh api repos/OWNER/REPO --jq .owner.id"
+  type        = number
+  default     = 329392711
+}
+
+variable "github_repository_id" {
+  description = "Numeric id of the repository. See github_owner_id. Re-derive with: gh api repos/OWNER/REPO --jq .id"
+  type        = number
+  default     = 1356791848
 }
 
 variable "aws_account_id" {

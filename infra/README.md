@@ -134,7 +134,7 @@ FRONTEND_BUCKET            frontend_bucket
 CLOUDFRONT_DISTRIBUTION_ID cloudfront_distribution_id
 ```
 
-Set `github_repository` in `terraform.tfvars` before applying: the OIDC trust policy is scoped to it, and getting it wrong is the difference between only this repository being able to deploy and anyone's being able to.
+Check the subject GitHub will send before applying — `gh api repos/OWNER/REPO/actions/oidc/customization/sub` — and make `github_repository_owner`, `github_repository_name`, `github_owner_id` and `github_repository_id` describe it (`FZ-207`). With immutable subject claims enabled the subject carries numeric ids, not names, and a trust policy written against the names matches nothing. The OIDC trust policy is the whole of the access control here: getting it wrong is the difference between only this repository being able to deploy and nobody — or anybody — being able to.
 
 ### The single box needs a different set
 
