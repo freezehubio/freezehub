@@ -4929,16 +4929,35 @@ Acceptance:
 - `npm run lint` is clean.
 
 ### FZ-192 — A Mark for the Slack App
-**Status:** TODO
+**Status:** DONE for the SVG · **Follows** `3a` from `FZ-196` · **PNG export is a human step**
 
-The Slack application has no profile picture. Slack wants **512×512 PNG**, and the icon is
-what an announcement is recognised by in a channel where everything else is also a bot.
+The Slack application had no profile picture, so announcements arrived from the default
+grey square in a channel where everything else is also a bot. `FZ-186` gave the message
+structure; this gives it an identity.
 
-**What can be authored here is an SVG**, from which the PNG is an export — that step is a
-human one. Worth stating rather than discovering at upload.
+**It is `3a` at 512, not a new mark.** This story was first built against the old purple
+favicon and argued for the product's teal accent. `FZ-196` landed while it was in review
+and settled the question properly — the operator chose `2c` and `3a` from the design deck
+— so the icon was rebuilt as the favicon multiplied by eight: same ink, same paper, same
+magenta point, same font stack, same letter-spacing. A product whose avatar differs from
+its favicon has two marks rather than one.
 
-Constraint worth honouring: it renders at 20 px beside a message. Detail that survives a
-favicon is the brief; anything finer is invisible where it is actually seen.
+**The export is the fragile part, and it failed on the first attempt.** ImageMagick — the
+obvious tool, and present on this machine — renders the SVG with **no letterform at all**:
+its SVG renderer drops `<text>`, leaving a magenta square on ink, and exits `0`. That PNG
+would have been uploaded and nobody would have noticed until it was live. The output is
+committed as `docs/ui/FZ-192/bad-export-imagemagick.png` so the next person does not
+rediscover it, and the README names the tools that work.
+
+**Why it matters more here than for the favicon.** Both depend on a serif being installed,
+and `FZ-196` accepted that: the favicon re-renders on every viewer's machine and degrades
+to Georgia at the 16px `3a` was chosen to survive. A PNG cannot degrade — it can only be
+wrong, permanently, from the moment it is uploaded. `FZ-196` already names outlining the
+glyph as the durable fix and its own job; this entry is the second caller waiting on it.
+
+Verified by rendering in a browser at 128 / 64 / 20 px beside the shipped favicon and in a
+message row at actual size — `docs/ui/FZ-192/after.jpg`.
+
 
 ### FZ-194 — A Bound, and a Rule About What Goes In It
 **Status:** DONE · **Resolves** `OI-40`

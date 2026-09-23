@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FreezeHub's mark for the Slack application (FZ-192).
+
+  THIS IS OPTION 3a AT 512, not a new mark. `FZ-196` implemented the operator's choices
+  from the design deck: `2c` for the wordmark, `3a` for the favicon. A Slack avatar does
+  the same job as a favicon, so it is the same mark at a different size, and every value
+  below is `frontend/public/favicon.svg` multiplied by eight.
+
+  Inventing a third mark here would have been the wrong call twice over: the brand is
+  chosen from a deck by the operator, and a product whose avatar differs from its favicon
+  has two marks rather than one.
+
+  WHAT SLACK WANTS is a 512x512 PNG. This is the source; exporting it is a human step and
+  README.md beside this file says how. An SVG can be edited and diffed; a committed PNG
+  could not be.
+
+  THE EXPORT IS THE FRAGILE PART, and more so here than for the favicon. The letterform is
+  <text>, so it depends on a serif being installed on whichever machine runs the export,
+  and the result is then frozen into a PNG and uploaded. The favicon re-renders on every
+  viewer's machine and degrades gracefully to Georgia at 16px, which is what `3a` was
+  chosen to survive; a PNG cannot degrade, it can only be wrong. So the README asks for the
+  output to be looked at, and `FZ-196` already names outlining the glyph as the durable fix
+  and its own job.
+
+  Values are the Broadsheet tokens written out, exactly as the favicon writes them and for
+  the same reason: this file renders outside the document and cannot read the app's CSS
+  custom properties. If those tokens are retuned, this file is retuned with them, and so is
+  the favicon.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="FreezeHub">
+  <title>FreezeHub</title>
+  <rect width="512" height="512" fill="#201e1d"/>
+  <text x="256" y="376" text-anchor="middle"
+        font-family="'Source Serif 4','Source Serif Pro',Georgia,'Times New Roman',serif"
+        font-size="352" font-weight="600" letter-spacing="-7.04"
+        fill="#f3f2f2">F<tspan fill="#ff458e">.</tspan></text>
+</svg>
