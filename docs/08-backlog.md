@@ -1937,6 +1937,12 @@ choice with the egress and architecture questions answered rather than assumed.
 ### FZ-123 — Apply the Beta Deployment
 **Status:** DONE · **Resolves** `OI-15`, `OI-21` · **Deployed:** 2026-09-21
 
+**Correction, 2026-09-23 (`FZ-209`): the `Resolves OI-15, OI-21` above is wrong.** Neither
+was closed. `OI-21` is contradicted by the code itself — `application.yml` still names it as
+outstanding — and `OI-15`’s own question was never answered. Both are now marked as needing a
+story. The claim is left in place rather than edited out, because a status line that quietly
+changes is worse than one annotated: this is what the story asserted on the day it merged.
+
 **No longer blocked.** The account exists (`FZ-175`), `bootstrap/` and `shared/` are applied,
 and the identity work the whole thing waited on is done (`FZ-046`, `FZ-128`, `FZ-176`).
 What remains is applying `singlebox/`, building an image and deploying — all human actions
@@ -5549,3 +5555,51 @@ Acceptance:
 - The secret reads are evaluated on the box, not on the runner.
 - A missing SSM parameter fails with a message naming it.
 - CI fails if any of that stops being true.
+
+### FZ-209 — The Open Issues Were Not All Open
+**Status:** DONE · **Corrects** `FZ-123`'s resolution claim · **Found by** `next-story`
+
+`CLAUDE.md` §2 step 6 tells every session to read `09-open-issues.md` before implementing
+anything. That read returned 22 issues when 14 were live.
+
+**Eight entries were resolved and still filed under `## Open`** — `OI-2`, `OI-25`, `OI-32`,
+`OI-40`, `OI-44`, `OI-46`, `OI-47`, `OI-49`. Each carried a `RESOLVED by` marker in its own
+first line, so nothing was in doubt; they had simply never been moved. `FZ-205` repaired the
+resolved *table* and did not notice the entries that belonged in it, which is the same
+omission one level up.
+
+**Two were checked before moving rather than trusted.** `OI-2` said *"one consequence is not
+closed"* — that consequence became `OI-44` and `FZ-176` closed it. `OI-49` said "resolved for
+the local profile", and its remaining sliver turned out to be explicitly **accepted** in its
+own text, not outstanding. Moving either on the strength of the marker alone would have
+buried a live gap.
+
+**Three owner lines named a story that had finished without closing the issue**, which is
+worse than an issue being blocked: a blocked issue is waiting for something, an issue owned
+by a completed story is waiting for nobody.
+
+- `OI-21` — **the code contradicts the claim.** `application.yml` still carries *"A separate
+  management port the internet cannot reach is the real answer, and it is deployment work:
+  OI-21"*, and nothing sets `management.server.port`. `FZ-123` says it resolves this.
+- `OI-23` — **half closed.** `OutboundAddressPolicy` does the application half, and names its
+  own limit: a DNS rebind, whose durable answer is network egress control, *"which is
+  `FZ-123`'s to decide"*. `FZ-123` did not decide it.
+- `OI-15` — **its closing condition has been met and nobody noticed.** It says "it becomes
+  urgent the day someone outside the team needs a URL"; `app.freezehub.io` is live. Its cost
+  table is also the ECS posture that `D-35` superseded, so the figures no longer describe
+  the estate — recorded rather than deleted, because the argument about paying for
+  redundancy with no customers still holds.
+
+**`FZ-123`'s entry is annotated, not edited.** The false `Resolves` claim stays on the page
+with a correction under it. A status line that quietly changes is worse than one annotated:
+what the story asserted on the day it merged is itself a fact worth keeping.
+
+**Nothing here fixes an issue.** Three are now correctly unowned and one of them —
+`OI-21`, an actuator reachable by any administrator of any tenant on a live deployment — is
+worth reading before the next story is chosen.
+
+Acceptance:
+
+- Every entry under `## Open` is open.
+- No issue names an owner that has already finished.
+- No resolved entry's content is lost; each is a row in the table.
