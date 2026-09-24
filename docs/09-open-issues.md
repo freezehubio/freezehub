@@ -151,33 +151,6 @@ operator with production database credentials is a standing part of the design. 
 path that creates identities and leaves no trace is the first finding an access review
 produces, and there is no way to answer "who created this organization, and when" without it.
 
-### OI-41 — No contract or notice documents exist
-**Severity:** Gap · **RESOLVED by** `FZ-210` · **Found in:** `FZ-161`
-
-**Closed as stated.** All four exist in `legal/`: the Política de Tratamiento, the Aviso de
-Privacidad, the DPA and the subprocessor list. Drafted against `17-data-protection.md`, so
-their substance is the system as it is rather than as a template imagines it.
-
-**What that does not mean.** None is published, none has been through counsel, ten
-company-specific facts are unfilled, and the DPA's deletion clause describes something the
-product cannot do. That is **`OI-51`**, raised rather than folded in here: "the documents do
-not exist" and "the documents exist and nobody can read them" are different problems with
-different owners, and merging them is how the second one would go unnoticed behind the first
-one's tick.
-
-No DPA, no published subprocessor list, no privacy notice, and no Política de Tratamiento de
-Datos Personales — the last of which is a **statutory** instrument under Decreto 1377 Art. 13
-for a Colombian *responsable*, not an optional courtesy.
-
-`17-data-protection.md` supplies the structure and the substance for all four. What it cannot
-supply is the wording, the company's identifying details, or the confirmation of whether the
-databases must be registered in the RNBD — that threshold turns on total assets in UVT and
-wants checking against the current figure.
-
-**This blocks selling, not just compliance.** *"Send us your DPA"* and *"who are we actually
-buying from"* are two of the objections in `gtm/02-objections.md` most likely to end a real
-deal.
-
 ### OI-42 — No breach register
 **Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
 
@@ -376,6 +349,7 @@ Recorded now because the repository's own rule is that "no owner" is not a statu
 | **The nightly backup was never installed on the box** — the script, unit and timer existed in the repository, the deploy shipped neither, and the bucket was empty, while `FZ-155` described itself as waiting only on a restore drill. With PostgreSQL on a volume marked `delete_on_termination`, that dump was the only thing between an instance replacement and losing everything | `FZ-178` | `FZ-155` — the deploy ships all three files, writes `backup.env` and enables the timer; verified running on the instance |
 | **The frontend suite failed locally and passed in CI** — three to eight tests, a different set each run, every failing file passing in isolation. Not flaky tests: Vitest defaults to one worker per core, and the suite was taking a 16-core machine to a load average of 77. CI passed because a runner has the machine to itself, which is exactly why CI could never reproduce it | `FZ-179` | `FZ-193` — `maxWorkers: 50%`, a 15s timeout that catches a hang rather than measuring the machine, and a `userEvent` helper that stops typing seventy characters through seventy scheduler round-trips |
 | **One address could own two organizations**, where one of them skipped Cognito — `users.email` is unique per organization while the pool is shared, so the pool is what knows an address has been seen, and two scripts wrote rows without ever calling it | `FZ-185` testing | `FZ-195` — `LocalIdentityProvider` now consults the database as well as its own memory. The deployed half was never open, and the one remaining sliver, `provision-organization.sh` run without `--user-pool-id`, is **accepted**: it already warns that the Administrator cannot sign in, so the duplicate belongs to somebody who could never reach it |
+| **No contract or notice documents existed** — no DPA, no published subprocessor list, no privacy notice, and no Política de Tratamiento de Datos Personales, the last of which is a **statutory** instrument under Decreto 1377 Art. 13 for a Colombian *responsable* | `FZ-161` | `FZ-210` — all four drafted in `legal/` against `17-data-protection.md`. Closed as stated only: none is published or has been through counsel, company facts are unfilled, and the DPA's deletion clause describes something the product cannot do — that is `OI-51`, raised rather than folded in, because "the documents do not exist" and "nobody can read them" have different owners |
 | **GitHub Actions could not authenticate to AWS at all** — AWS’s new sign-up experience denied `iam:*Provider*` through a service control policy that "cannot be modified", so `terraform apply` on `infra/shared/` failed and `build-image.yml`, `deploy-frontend.yml` and `deploy-singlebox.yml` lost the only credential path they had. Deploys were by hand, which is what produced four divergences from what the workflows would have done | `FZ-170` | `FZ-205` — advanced features activated 2026-09-23, lifting the policy; `github_oidc_enabled = true` then applied clean, `3 to add, 0 to change, 0 to destroy`, creating the provider, the role and its inline policy. `AWS_DEPLOY_ROLE_ARN` and `SINGLEBOX_INSTANCE_ID` are set, and every variable and secret the four workflows read is present — checked by diffing the `vars.`/`secrets.` references against `gh variable list`. **The price is real and `D-37` records it:** activation cannot be undone and removed the enforced spend limit, so `FZ-204`’s budget — which only alerts — is now the only guard on spend. The registrar note this issue carried is moot for the reason it always was: nothing depends on AWS being the registrar, and `app.freezehub.io` is delegated to a Route 53 zone |
 | **Whether `FZ-123` was superseded by the one box** — two readings of the same story were live at once, and it still claimed `OI-15` and `OI-21` | `FZ-160` | `FZ-162` — it is the beta apply, now pointing at `shared/` then `singlebox/`. `FZ-159` had already rewritten it to say so; a conflict resolution had split the entry, leaving the old body under the heading and the new one orphaned inside Milestone 14 |
 | **The connector image was not published, so nothing was installable** — every guideline in `connectors/README.md` named an image that did not exist, and the entry was wrong twice before settling on publishing one artifact rather than extracting a second repository | `FZ-090` | `FZ-099` — `ghcr.io/freezehubio/freeze-check:v1` is public, `linux/amd64` and `linux/arm64`, and verified by pulling it anonymously and watching it exit 2 when FreezeHub is unreachable |
