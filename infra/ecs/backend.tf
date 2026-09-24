@@ -166,9 +166,12 @@ resource "aws_iam_role" "task" {
 }
 
 data "aws_iam_policy_document" "task" {
+  # The identities the backend manages. Same list as ../singlebox/iam.tf, and the reason
+  # delete is now granted is written there (FZ-211). Kept in step by
+  # .github/test/check-cognito-permissions.js.
   statement {
-    sid       = "InviteUsers"
-    actions   = ["cognito-idp:AdminCreateUser", "cognito-idp:AdminGetUser"]
+    sid       = "ManageUserIdentities"
+    actions   = ["cognito-idp:AdminCreateUser", "cognito-idp:AdminGetUser", "cognito-idp:AdminDeleteUser"]
     resources = [var.cognito_user_pool_arn]
   }
 

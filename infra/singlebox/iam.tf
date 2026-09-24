@@ -78,14 +78,25 @@ resource "aws_iam_role_policy" "instance" {
         Resource = "${aws_s3_bucket.backups.arn}/*"
       },
       {
-        # Inviting a user creates a Cognito identity (FZ-046). Scoped to the one pool and
-        # to the two calls that adapter makes: it can create an identity and read one back,
-        # and it cannot delete, disable or list the pool -- so a foothold on this box cannot
-        # quietly remove an administrator or enumerate every customer. ../ecs grants exactly
-        # this pair; OI-44 was that this posture did not.
-        Sid      = "InviteUsers"
+        # The identities the backend manages (FZ-046, FZ-082, FZ-211). Scoped to the one
+        # pool and to the calls CognitoIdentityProvider makes; it still cannot disable or
+        # list the pool, so a foothold here cannot enumerate every customer.
+        #
+        # DELETE WAS DENIED ON PURPOSE UNTIL FZ-211, and the reason was that a foothold
+        # could "quietly remove an administrator". It is granted now because that
+        # protection was not real: this box holds the database password, and a foothold
+        # that can delete a users row has already locked that person out -- the identity
+        # without its row answers 401. Denying the call protected nothing and cost
+        # something: FZ-082's compensating delete and its seven-day purge of unverified
+        # signups both failed silently, so every abandoned signup held its email address
+        # against anyone ever signing up with it again.
+        #
+        # ../ecs must grant the same list. .github/test/check-cognito-permissions.js fails
+        # the build when the backend calls a Cognito operation either posture refuses --
+        # which is how FZ-082 shipped a call this file denied.
+        Sid      = "ManageUserIdentities"
         Effect   = "Allow"
-        Action   = ["cognito-idp:AdminCreateUser", "cognito-idp:AdminGetUser"]
+        Action   = ["cognito-idp:AdminCreateUser", "cognito-idp:AdminGetUser", "cognito-idp:AdminDeleteUser"]
         Resource = var.cognito_user_pool_arn
       },
     ]

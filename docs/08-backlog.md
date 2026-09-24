@@ -5497,6 +5497,37 @@ Acceptance:
 - The ids are variables with the command to re-derive them after a rename or transfer.
 - The runbook's first move on an AssumeRole refusal is to print both strings.
 
+### FZ-211 — The Backend Called What Its Role Refused
+**Status:** DONE in code · **Apply is a human step** · **Corrects** `FZ-082`
+
+`FZ-082` gave `CognitoIdentityProvider` an `adminDeleteUser`, for two jobs: undoing a signup
+that failed half-way, and purging signups nobody verified within seven days. Both roles the
+backend runs as — `infra/singlebox/iam.tf` and `infra/ecs/backend.tf` — granted only create
+and get. **In production every delete was refused**, the adapter logged it and carried on (it
+must: both callers are cleaning up after something else), and every abandoned signup kept its
+email address in the pool for good. Nobody could ever sign up with it again.
+
+**No test could have seen it.** The suite runs against `LocalIdentityProvider`, which needs no
+permissions. The code and the policy were each correct on their own terms and nothing
+compared them — the two-halves pattern, found this time by answering a question about roles.
+
+**The denial was deliberate, so this reverses a decision rather than fixing an omission.** The
+comment on the grant said delete was withheld so that *"a foothold on this box cannot quietly
+remove an administrator"*. That protection was not real: the box holds the database password,
+and a foothold that can delete a `users` row has already locked that person out — an identity
+without its row answers `401`. Denying the call protected nothing and cost the address of
+every abandoned signup. Neither narrower option works: Cognito cannot scope a delete to
+unverified users, and *disabling* instead of deleting does not free the address.
+
+**`.github/test/check-cognito-permissions.js`**, run by `verify.yml`, reads every
+`cognito.adminXxx(` call out of the adapter and fails the build if either posture does not
+grant it. Proved against `master`'s policies: it exits `1` there — it would have failed the
+day `FZ-082` merged — and `0` with this change.
+
+**Not done here:** `terraform apply` on `infra/singlebox`. It changes one inline policy on the
+instance role and nothing else; `terraform plan` will show exactly that. Until it is applied,
+signups since 23 September that are abandoned will still keep their address.
+
 ### FZ-208 — The Deploy Command Nobody Could Read
 **Status:** DONE · **Fixes** `FZ-178` · **Found by** the first deploy that reached the box
 
