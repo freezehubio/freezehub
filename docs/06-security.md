@@ -129,7 +129,7 @@ Integrations created before `FZ-048` have no secret and are delivered unsigned, 
 
 MVP does not implement advanced RBAC (`00-product.md`, Out of Scope). Role checks are deliberately few, and each one guards something that decides what the organization itself can do rather than a resource within it. `role = ADMINISTRATOR` is required to:
 
-- invite a user (`FZ-016`);
+- invite a user (`FZ-016`), and change a member's role, remove or reinstate them (`FZ-212`);
 - configure a notification destination (`FZ-045`) — it decides who hears about a freeze, and its configuration can hold a credential;
 - issue or revoke an API key (`FZ-052`) — a key authenticates as the whole organization.
 
@@ -143,6 +143,18 @@ Every other authenticated action — **every read** — is available to any user
 **The consequence, stated because it is the part that is easy to get wrong:** the Release/Engineering Manager that `00-product.md` names must hold `ADMINISTRATOR`, since creating a freeze is now an administrator action. Two roles still, not three — a third would be the advanced RBAC `00-product.md` excludes. If the Manager should be distinguishable from the Administrator, that is a new role and a new decision.
 
 **Enforcement is `@PreAuthorize` on the write endpoints**, so it holds regardless of what any client shows. The frontend hides affordances a member cannot use, which is a courtesy rather than a control (`CLAUDE.md` §5).
+
+### Membership (`FZ-212`)
+
+**Removal is deactivation.** `users.deactivated_at` is set; the row stays. The audit trail keeps naming the person for what they did, a mistaken removal can be undone, and it is what SCIM means by removal (`active: false`), so single sign-on can arrive later without changing what this means. The Cognito identity is left alone for the same reason.
+
+**It takes effect on the next request, not at token expiry.** `UserResolvingJwtAuthenticationConverter` refuses a deactivated user with `401` on every call. A Cognito access token lives up to an hour; "removed" has to mean removed now.
+
+**An organization always keeps an active administrator.** Demoting or removing the last one is refused with `409`. Nothing in the product could recover from it — only an administrator can promote anyone. Every membership change locks the organization row before it counts administrators, so two administrators demoting each other at the same moment cannot both succeed.
+
+**A person belongs to one organization.** `external_subject` is unique across the table, so inviting an address that already has an account elsewhere is a `409` that says so, rather than the `500` it was. Belonging to several organizations is a product decision nobody has made.
+
+**Role changes reach the frontend within a minute.** `useCurrentUser` re-reads `/api/me` after a minute rather than once per session, and at once when an administrator changes their own role. The backend enforces the new role from the next request regardless.
 
 `/actuator/health` and its probes stay unauthenticated, because the load balancer reads them.
 

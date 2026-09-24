@@ -30,6 +30,15 @@ public class UserResolvingJwtAuthenticationConverter implements Converter<Jwt, A
                 .orElseThrow(() -> new InvalidBearerTokenException(
                         new OAuth2Error("invalid_token", "No user provisioned for this identity", null).toString()));
 
+        // Deactivated (FZ-212). Checked here, on every request, rather than at sign-in only:
+        // a Cognito access token stays valid for up to an hour, and "removed" has to mean
+        // removed now, not when their token happens to expire. The identity itself is left
+        // alone — deactivation is reversible, and the person may be reinstated.
+        if (!user.isActive()) {
+            throw new InvalidBearerTokenException(
+                    new OAuth2Error("invalid_token", "This account has been deactivated", null).toString());
+        }
+
         AuthenticatedUser authenticatedUser =
                 new AuthenticatedUser(user.getId(), user.getOrganizationId(), user.getEmail(), user.getRole());
 

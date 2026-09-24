@@ -1,0 +1,29 @@
+databaseChangeLog:
+  # FZ-212: an administrator can remove someone from their organization, and removal is
+  # deactivation rather than deletion -- the operator's decision, 23 September 2026.
+  #
+  # A timestamp rather than a boolean because "when was this person's access withdrawn" is
+  # the first question anyone asks about a removal, and the audit trail should not be the
+  # only place that can answer it.
+  #
+  # Nullable, and null means active. Every existing row is an active user, so no backfill:
+  # the column arriving empty is the correct state for all of them.
+  #
+  # Deactivation, not deletion, for three reasons recorded in 06-security.md: the audit
+  # trail keeps naming the person for what they did (deleting them would orphan it -- OI-36),
+  # it is reversible, and it is exactly what SCIM does when a person leaves a company
+  # (`active: false`), so SSO can arrive later without changing what "removed" means.
+  - changeSet:
+      id: 027-users-deactivated-at
+      author: freezehub
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: deactivated_at
+                  type: timestamptz
+      rollback:
+        - dropColumn:
+            tableName: users
+            columnName: deactivated_at

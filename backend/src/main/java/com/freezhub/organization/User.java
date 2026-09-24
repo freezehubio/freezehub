@@ -39,6 +39,18 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /**
+     * When this person's access was withdrawn, or null while they have it (FZ-212).
+     *
+     * <p>Deactivation, not deletion: the row stays so the audit trail keeps naming the
+     * person for what they did, and so a mistaken removal can be undone. It is enforced at
+     * sign-in — {@code UserResolvingJwtAuthenticationConverter} refuses a deactivated user on
+     * every request, so withdrawal takes effect on the next call rather than when a token
+     * expires.
+     */
+    @Column(name = "deactivated_at")
+    private Instant deactivatedAt;
+
     protected User() {
     }
 
@@ -87,6 +99,34 @@ public class User {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Instant getDeactivatedAt() {
+        return deactivatedAt;
+    }
+
+    public boolean isActive() {
+        return deactivatedAt == null;
+    }
+
+    /**
+     * Changes what this person may do. The rule about the last administrator is not here but
+     * in {@code MemberService}, because it is a rule about the organization, not the person,
+     * and only the service can see the other members.
+     */
+    public void changeRole(UserRole role) {
+        this.role = role;
+    }
+
+    /** Withdraws access. Idempotent: deactivating twice keeps the first time. */
+    public void deactivate(Instant now) {
+        if (deactivatedAt == null) {
+            deactivatedAt = now;
+        }
+    }
+
+    public void reactivate() {
+        deactivatedAt = null;
     }
 
 }

@@ -85,6 +85,26 @@ export interface CurrentUser {
   role: 'ADMINISTRATOR' | 'MEMBER'
 }
 
+/** Someone in the organization, as an administrator sees them (`FZ-212`). */
+export interface Member {
+  id: number
+  email: string
+  role: 'ADMINISTRATOR' | 'MEMBER'
+  /** False once an administrator has removed them. Removal is deactivation, not deletion. */
+  active: boolean
+  deactivatedAt: string | null
+  createdAt: string
+}
+
+/** One page of `GET /api/members`. `page` counts from 0. */
+export interface MemberPage {
+  items: Member[]
+  page: number
+  size: number
+  totalItems: number
+  totalPages: number
+}
+
 export type IntegrationType = 'SLACK' | 'EMAIL' | 'WEBHOOK'
 
 /**

@@ -47,7 +47,13 @@ export function describeAction(event: AuditEvent): string {
     case 'API_KEY_REVOKED':
       return 'Revoked an API key'
     case 'USER_INVITED':
-      return 'Invited a user'
+      return 'Invited a member'
+    case 'USER_ROLE_CHANGED':
+      return "Changed a member's role"
+    case 'USER_DEACTIVATED':
+      return 'Removed a member'
+    case 'USER_REACTIVATED':
+      return 'Reinstated a member'
     case 'ORGANIZATION_SETTINGS_CHANGED':
       return 'Changed organization settings'
     case 'POLICY_BLOCKED_UNREGISTERED':

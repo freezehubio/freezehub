@@ -44,7 +44,14 @@ public enum AuditAction {
     API_KEY_ISSUED,
     API_KEY_REVOKED,
 
+    /**
+     * Membership (FZ-212). {@code USER_INVITED} existed from the start and nothing recorded it
+     * until this story, so the trail could not answer "who let this person in".
+     */
     USER_INVITED,
+    USER_ROLE_CHANGED,
+    USER_DEACTIVATED,
+    USER_REACTIVATED,
 
     ORGANIZATION_SETTINGS_CHANGED,
 

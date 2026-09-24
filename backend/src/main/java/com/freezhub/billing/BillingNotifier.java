@@ -42,7 +42,7 @@ public class BillingNotifier {
     }
 
     public void paymentFailed(Long organizationId) {
-        List<String> administrators = users.findAllByOrganizationIdAndRole(
+        List<String> administrators = users.findAllByOrganizationIdAndRoleAndDeactivatedAtIsNull(
                         organizationId, UserRole.ADMINISTRATOR).stream()
                 .map(user -> user.getEmail())
                 .toList();
