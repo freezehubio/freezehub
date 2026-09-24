@@ -98,6 +98,12 @@ jobs:
       - name: Check the deploy command the box would receive
         run: node .github/test/check-deploy-command.js
 
+      # Every Cognito call the backend makes must be granted by both postures (FZ-211).
+      # FZ-082 shipped a call the box's role refused, and no test could see it: the suite
+      # runs against a fake provider that needs no permissions.
+      - name: Check the backend's Cognito calls are permitted
+        run: node .github/test/check-cognito-permissions.js
+
       - name: Check formatting
         working-directory: infra
         run: terraform fmt -check -recursive
