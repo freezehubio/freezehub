@@ -5603,3 +5603,53 @@ Acceptance:
 - Every entry under `## Open` is open.
 - No issue names an owner that has already finished.
 - No resolved entry's content is lost; each is a row in the table.
+
+### FZ-210 — The Four Documents `OI-41` Named
+**Status:** DONE · **Resolves** `OI-41` · **Raises** `OI-51` · **Blocked on** `OI-36` *for the DPA only*
+
+`legal/` — a Política de Tratamiento, an Aviso de Privacidad, a Data Processing Agreement and
+a subprocessor list, drafted against `17-data-protection.md` rather than against a template.
+
+**Why the substance could be written and the wording could not.** `17-data-protection.md`
+already holds the map, the retention rules, the procedures, the statutory clocks and the
+transmisión analysis, all written against the schema and the deployment. That is the part a
+lawyer would otherwise have to extract from a codebase. What a repository cannot supply is the
+company's identifying details, the review, and the RNBD threshold — so those are marked and
+listed rather than invented.
+
+**Ten placeholders, and a guard that names them.** `node legal/check-placeholders.js` prints
+every unfilled fact and which document wants it; `--strict` refuses to treat them as
+publishable. The same shape as every other guard added this week, for the same reason: the
+failure being prevented is a document that **looks finished and is not**. A Política missing
+Art. 13(a)'s identifying details is not a deficient Política, it is not one.
+
+It found two defects in its own README on first run — a prose example that matched its own
+pattern, and a placeholder missing from the table that was supposed to explain every
+placeholder.
+
+**The DPA says, in its own §12, that it is not signable.** `OI-36` records that nothing can be
+forgotten: no user deletion, no organization deletion, no export. §9 promises export and
+deletion on termination. Signing it as drafted would be a contractual promise the product
+cannot keep, so the draft carries that in the body rather than in a covering note, where it
+cannot be skipped, and names the three ways forward. **That section is deleted before the
+document is sent**, and deleting it is meant to require deciding first.
+
+**Nothing claims what is not true.** No SOC 2, no ISO 27001, no certification — stated inside
+the audit clause, where a customer's procurement team will look, rather than omitted and
+discovered. Annex B lists the measures that are implemented and then names two limits: the
+outbound address check does not close a DNS rebind (`OI-23`), and the backup restore has never
+been drilled (`FZ-155`).
+
+**`OI-41` is closed and `OI-51` is raised rather than the two being merged.** "The documents do
+not exist" and "the documents exist and nobody can read them" are different problems with
+different owners — the second is not engineering work at all — and folding them together is
+how the second would go unnoticed behind the first one's tick. `app.freezehub.io` is collecting
+personal data today against an autorización that is not yet informed by anything.
+
+Acceptance:
+
+- All four documents exist and take their substance from `17-data-protection.md`.
+- Every fact that only the company knows is marked, listed, and checkable by a command.
+- No document asserts a capability the product does not have, or a certification it does not
+  hold.
+- What remains before publishing is written down as an issue with an owner, not as a footnote.

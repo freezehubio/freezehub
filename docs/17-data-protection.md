@@ -137,7 +137,7 @@ first version wrong, and the IDs it invented were claimed within a day by unrela
 | 3 | Encrypted values carry `fzenc1:` — a *format* version, not a **key identifier** — so two keys cannot be live at once and rotation cannot be staged | `OI-38` |
 | 4 | `provision-organization.sh` writes tenant rows and no audit event | `OI-39` |
 | 5 | `notification.last_error` is unbounded `TEXT` | `OI-40` |
-| 6 | No DPA, subprocessor list, privacy notice or Política de Tratamiento | `OI-41` |
+| 6 | ~~No DPA, subprocessor list, privacy notice or Política de Tratamiento~~ — all four drafted in `legal/` by `FZ-210`. **None is published** | `OI-41` closed; `OI-51` open |
 | 7 | No breach register | `OI-42` |
 
 ## 8. What this does not cover
@@ -149,6 +149,8 @@ first version wrong, and the IDs it invented were claimed within a day by unrela
   drilled (`FZ-155`).
 - **No risk register, business continuity plan or vendor management policy.** Those describe a
   company, not a codebase.
-- **Legal wording is not drafted here.** The Política de Tratamiento, the DPA and the privacy
-  notice take their structure from this document and their language from a lawyer (`OI-41`).
+- **Legal wording is drafted in `legal/`, not here** (`FZ-210`). Those four documents take
+  their structure and substance from this one. What they still need is Colombian counsel, the
+  company's own identifying details, and the RNBD threshold checked against the current UVT —
+  none of which a repository can supply. Until they are published, `OI-51`.
 - **No SOC 2 report exists**, and nothing has run long enough to produce evidence for one.
