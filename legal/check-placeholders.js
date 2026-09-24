@@ -22,6 +22,9 @@ let files = 0;
 
 for (const name of fs.readdirSync(dir).sort()) {
   if (!name.endsWith('.md')) continue;
+  // The README lists every placeholder on purpose, to say what each one is. Counting it would
+  // make --strict fail forever, however complete the documents themselves were.
+  if (name === 'README.md') continue;
   files += 1;
   const text = fs.readFileSync(path.join(dir, name), 'utf8');
   for (const [, token] of text.matchAll(PLACEHOLDER)) {
