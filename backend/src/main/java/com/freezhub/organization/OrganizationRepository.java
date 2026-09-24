@@ -1,8 +1,11 @@
 package com.freezhub.organization;
 
 import java.time.Instant;
+import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -52,5 +55,17 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
              order by o.createdAt
             """)
     List<Organization> findUnverifiedCreatedBefore(@Param("cutoff") Instant cutoff);
+
+    /**
+     * The organization row, locked until the transaction ends (FZ-212).
+     *
+     * <p>Every change to who may administer an organization takes this first, so two of them
+     * cannot interleave. Without it, two administrators demoting each other at the same
+     * moment would each count two administrators, each succeed, and leave none — the one
+     * state the product has no way back from except editing the database.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from Organization o where o.id = :organizationId")
+    Optional<Organization> lockById(@Param("organizationId") Long organizationId);
 
 }

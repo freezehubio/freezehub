@@ -75,12 +75,15 @@ email            VARCHAR(320) NOT NULL
 role             VARCHAR(20) NOT NULL DEFAULT 'MEMBER'
 created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+deactivated_at   TIMESTAMPTZ NULL                  -- FZ-212: removed from the organization
 
 UNIQUE (organization_id, email)
 CHECK (role IN ('ADMINISTRATOR', 'MEMBER'))
 ```
 
 `role` per `06-security.md`'s minimal role model — gates exactly one action (inviting a user), not general RBAC. Provisioning: an org's first (`ADMINISTRATOR`) user is admin-provisioned out-of-band; subsequent users are added via in-product invite — see `06-security.md`.
+
+`deactivated_at` (`FZ-212`, migration `027`): null while the person has access. Removal sets it rather than deleting the row, so `created_by` references and the audit trail keep resolving to who did what. A deactivated user is refused on every request; see `06-security.md` § Membership.
 
 ### `team`
 

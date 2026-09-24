@@ -75,6 +75,11 @@ Four capabilities, one issue, because they are the same request arriving from di
 directions: a departing employee, a cancelled customer, an access request, an erasure demand.
 Building any one of them alone leaves the others answered by hand against the database.
 
+**Narrowed by `FZ-212`:** a user can now be removed — deactivated, so they cannot sign in
+from their next request — from Settings → Members. That withdraws access; it erases nothing.
+The row, the email and the Cognito identity all remain, by design, so everything above still
+stands.
+
 **Deletion closes SOC 2 CC6.3 and ISO A.5.18**, and pseudonymization is what lets erasure
 coexist with the unlimited audit retention `11-commercial.md` sells — one random token per
 erasure, applied to every row naming the person, mapping stored nowhere. The event survives,

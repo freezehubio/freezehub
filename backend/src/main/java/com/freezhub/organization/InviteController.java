@@ -1,5 +1,6 @@
 package com.freezhub.organization;
 
+import com.freezhub.audit.AuditActor;
 import com.freezhub.shared.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -24,7 +25,8 @@ public class InviteController {
     @ResponseStatus(HttpStatus.CREATED)
     public InviteUserResponse invite(@AuthenticationPrincipal AuthenticatedUser caller,
                                       @Valid @RequestBody InviteUserRequest request) {
-        User invited = inviteService.invite(caller.organizationId(), request.email(), request.role());
+        User invited = inviteService.invite(caller.organizationId(), AuditActor.of(caller),
+                request.email(), request.role());
         return InviteUserResponse.from(invited);
     }
 

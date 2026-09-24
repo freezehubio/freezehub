@@ -5112,6 +5112,53 @@ Acceptance:
 - No export is named for a property it does not have.
 - `README.md` no longer argues against what the directory contains.
 
+### FZ-212 — Who Can Sign In, Managed in the Product
+**Status:** DONE · **Found by** the operator, asking how an administrator hands out roles · **Pairs with** `FZ-211`
+
+`FZ-190` made roles matter — a member sees everything and changes nothing — and left the
+only way to use them as `POST /api/invites` with `curl`. There was no screen to invite from,
+no endpoint to list who belongs, and no way to change a role or take access away short of
+editing the database. The operator asked how a company's administrator would delegate
+developer and viewer access; the honest answer was "they can't".
+
+**Settings → Members.** Everyone in the organization with their role, an invitation form
+with a role picker, a role change per row, and *Remove* / *Reinstate*. Administrator only —
+backend `@PreAuthorize`, and the section says so to a member who reaches it.
+
+**Removal is deactivation — the operator's decision.** `users.deactivated_at`, migration
+`027`. The row stays, so the audit trail keeps naming the person for what they did, a
+mistaken removal is one click to undo, and it is what SCIM means by removal, so single sign-on can come later without changing
+the meaning of the button. **It takes effect on the next request**, not when the person's
+token expires: the JWT converter refuses a deactivated user every time.
+
+**An organization always keeps an active administrator.** Demoting or removing the last one
+is a `409` that says what to do instead. Only an administrator can promote anyone, so there is
+no way back from zero inside the product. **Changes lock the organization row** before
+counting: without it, two administrators demoting each other at once each count two and both
+succeed. A test races two threads at it; without the lock it failed three runs out of three,
+with it passed three out of three.
+
+**Found in passing, and fixed because this screen would have exposed them:**
+- **Invites were never audited.** `USER_INVITED` existed in the enum and nothing recorded it.
+- **An address with an account in another organization was a `500`.** Now a `409`: a person
+  belongs to one organization (`external_subject` is unique). Belonging to several is a
+  product decision nobody has made.
+- **Inviting someone already in the organization** said nothing useful; now it is a `409`
+  that says whether they are active or removed, and to reinstate the removed.
+- **A failed database insert left a Cognito identity behind**; the invite now deletes it.
+  That call needs `cognito-idp:AdminDeleteUser`, which the box's role refused — `FZ-211`.
+- **Billing emails would have gone to removed administrators.** They now go to active ones.
+- **The frontend cached the role for the whole session.** Harmless while roles never
+  changed; now a demoted administrator would keep seeing buttons that fail. It re-reads after
+  a minute, and at once when an administrator changes their own role.
+
+**Not erasure.** A departing employee now loses access, which is half of what `OI-36` asks
+for; they are still named everywhere, and `OI-36` stays open for the other half.
+
+**Not done, deliberately.** Single sign-on — the operator's call: later, on demand, per
+`00-product.md`. A person in more than one organization. Transferring what a removed person
+owns: nothing in the product is owned in a way that stops working when its creator leaves.
+
 ### FZ-202 — Asking in the Product, Not Through the Browser
 **Status:** DONE · **Corrects** `FZ-188` · **Found by** the operator, cancelling a freeze
 

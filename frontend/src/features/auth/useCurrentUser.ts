@@ -13,8 +13,10 @@ export interface CurrentUser {
 /**
  * Who is signed in, and what they are allowed to do (`FZ-190`).
  *
- * <p>Cached for the session: a role does not change while somebody is looking at a page, and
- * re-fetching it per screen would put a request in front of every navigation.
+ * <p>Cached for a minute, not for the session. Roles change since `FZ-212`: an administrator
+ * demoted by a colleague must stop being offered administrator buttons without having to
+ * reload, and a change to one's own role invalidates `['me']` at once. A minute keeps a
+ * request from sitting in front of every navigation.
  */
 export function useCurrentUser() {
   const { token } = useAuth()
@@ -22,7 +24,7 @@ export function useCurrentUser() {
   return useQuery<CurrentUser>({
     queryKey: ['me'],
     queryFn: ({ signal }) => apiRequest<CurrentUser>('/api/me', { token, signal }),
-    staleTime: Infinity,
+    staleTime: 60_000,
   })
 }
 

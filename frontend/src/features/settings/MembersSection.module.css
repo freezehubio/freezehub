@@ -1,0 +1,58 @@
+/* Members (FZ-212). Everything else comes from SettingsPage.module.css. */
+
+.inviteRow {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.inviteRow > input {
+  flex: 1 1 16rem;
+  width: auto;
+}
+
+.roleSelect {
+  padding: 8px 10px;
+  border: 1px solid var(--color-neutral-400);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.roleSelect:disabled {
+  opacity: 0.6;
+}
+
+/* Email over role, so the controls keep to the row's own line instead of wrapping under a
+   long address. */
+.memberMain {
+  flex: 1 1 18rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* A removed member stays listed — they are on the record — but reads as no longer here. */
+.removed .itemName,
+.removed [data-name] {
+  color: var(--color-neutral-800);
+  text-decoration: line-through;
+}
+
+.you {
+  font-weight: normal;
+  color: var(--color-neutral-800);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

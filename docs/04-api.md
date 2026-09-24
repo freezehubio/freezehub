@@ -125,7 +125,11 @@ Authenticated with a JWT; all tenant-scoped.
 | `GET` | `/api/me` | resolved user and organization |
 | `GET` | `/api/organization` | the caller's own organization and its settings |
 | `PATCH` | `/api/organization/settings` | **ADMINISTRATOR only**; `startingSoonLeadTimeMinutes`, 1–43200 |
-| `POST` | `/api/invites` | **ADMINISTRATOR only** |
+| `POST` | `/api/invites` | **ADMINISTRATOR only**; `{email, role}`, role defaults to `MEMBER`. `409` if the address is already in the organization (active or removed — reinstate instead), or already has a FreezeHub account in another organization |
+| `GET` | `/api/members` | **ADMINISTRATOR only** (`FZ-212`); everyone in the organization, removed members included, oldest first |
+| `PATCH` | `/api/members/{id}` | **ADMINISTRATOR only**; `{role}`. `409` if it would leave no active administrator |
+| `POST` | `/api/members/{id}/deactivate` | **ADMINISTRATOR only**; removal. The person gets `401` on their next request; the row stays. Idempotent. `409` for the last active administrator |
+| `POST` | `/api/members/{id}/reactivate` | **ADMINISTRATOR only**; undoes a removal. Idempotent |
 | `GET POST PATCH DELETE` | `/api/teams`, `/api/applications`, `/api/environments` | catalog; duplicate name → `409` |
 | `PUT DELETE` | `/api/applications/{id}/teams/{teamId}` | team assignment, idempotent |
 | `POST GET` | `/api/restrictions` | create; list with repeatable `?status=` |

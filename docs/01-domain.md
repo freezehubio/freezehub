@@ -16,7 +16,7 @@ An organization owns its teams, applications, environments, restrictions, integr
 
 ### User
 
-A human authenticated within an organization.
+A human authenticated within an organization. An `ADMINISTRATOR` or a `MEMBER`; active, or removed (deactivated) and able to be reinstated.
 
 ### Team
 
@@ -217,6 +217,12 @@ An immutable record describing an important action or lifecycle change.
 2. A resource from Organization A must never be visible or usable by Organization B.
 3. A restriction scope cannot reference a resource belonging to another organization.
 4. Organization identity is derived from authenticated context, not trusted from arbitrary request input.
+
+### Membership
+
+1. An organization always has at least one active `ADMINISTRATOR`. The last one cannot be demoted or removed.
+2. Removing a user deactivates them; it does not delete them. What they did stays attributed to them.
+3. A user belongs to exactly one organization.
 
 ### ChangeRestriction
 

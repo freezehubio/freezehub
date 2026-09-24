@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router'
 import { ApiKeysSection } from './ApiKeysSection'
 import { BillingSection } from './BillingSection'
 import { IntegrationsSection } from './IntegrationsSection'
+import { MembersSection } from './MembersSection'
 import { OrganizationSection } from './OrganizationSection'
 import styles from './SettingsPage.module.css'
 
@@ -19,6 +20,7 @@ import styles from './SettingsPage.module.css'
  */
 const SECTIONS = [
   { id: 'organization', label: 'Organization', render: () => <OrganizationSection /> },
+  { id: 'members', label: 'Members', render: () => <MembersSection /> },
   { id: 'integrations', label: 'Integrations', render: () => <IntegrationsSection /> },
   { id: 'api-keys', label: 'API keys', render: () => <ApiKeysSection /> },
   { id: 'billing', label: 'Billing', render: () => <BillingSection /> },

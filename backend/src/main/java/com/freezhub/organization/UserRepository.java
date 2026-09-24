@@ -15,8 +15,23 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     List<User> findAllByEmail(String email);
 
-    /** Who to tell when something commercial happens to the organization (FZ-084). */
-    List<User> findAllByOrganizationIdAndRole(Long organizationId, UserRole role);
+    /**
+     * Who to tell when something commercial happens to the organization (FZ-084).
+     *
+     * <p>Active administrators only (FZ-212). Someone whose access was withdrawn is no longer
+     * the person a failed payment should be explained to, and emailing them would tell a
+     * former employee about their old employer's billing.
+     */
+    List<User> findAllByOrganizationIdAndRoleAndDeactivatedAtIsNull(Long organizationId, UserRole role);
+
+    /** One member, only if they belong to this organization — cross-tenant is a 404 (FZ-212). */
+    Optional<User> findByIdAndOrganizationId(Long id, Long organizationId);
+
+    /** Everyone in the organization, longest-standing first (FZ-212). */
+    List<User> findAllByOrganizationIdOrderByCreatedAtAscIdAsc(Long organizationId);
+
+    /** How many people can still administer the organization (FZ-212). */
+    long countByOrganizationIdAndRoleAndDeactivatedAtIsNull(Long organizationId, UserRole role);
 
     boolean existsByOrganizationIdAndEmail(Long organizationId, String email);
 
