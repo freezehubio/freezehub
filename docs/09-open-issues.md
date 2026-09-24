@@ -22,6 +22,34 @@ Severity is about consequence if it reaches beta, not effort:
 
 ## Open
 
+### OI-51 — The notices exist and none of them is published
+**Severity:** Blocker (legal) · **Owner:** the operator — this is not engineering work · **Raised:** 2026-09-23, `FZ-210`
+
+`legal/` now holds a Política de Tratamiento, an Aviso de Privacidad, a DPA and a subprocessor
+list. **Nothing serves them, and `app.freezehub.io` is collecting personal data today.**
+
+Under Ley 1581 Art. 9 the autorización must be *previa, expresa e informada*. Informed means
+the Aviso has to be in front of the person **at the moment of collection** — so the gap is not
+that a page is missing from the website, it is that every signup and demo submission since the
+site went live was authorised against nothing.
+
+**Four things block publishing, and only one of them is ours:**
+
+1. **Ten company facts** — legal name, NIT, address, telephone, a monitored privacy mailbox,
+   the area answerable for requests, the effective date, the database validity period.
+   `legal/README.md` lists each and where it comes from; `node legal/check-placeholders.js`
+   prints what is still missing.
+2. **Colombian counsel.** These are drafts written by a non-lawyer.
+3. **The RNBD threshold**, which turns on total assets in UVT and must be checked against the
+   current DIAN resolution rather than against anything written in this repository.
+4. **`OI-36`.** The DPA's §9 promises export and deletion on termination. There is no
+   organization deletion anywhere in the product, so signing it as drafted would be a
+   contractual promise the system cannot keep. The draft says so in its own §12 rather than in
+   a covering note, so it cannot be sent by accident.
+
+**The first three are unblocked today.** The fourth decides whether the DPA ships as written,
+ships weakened, or waits.
+
 ### OI-50 — Catalog sync would invert the trust direction
 **Severity:** Decision · **Owner:** needs a story · **Raised:** 2026-09-22, `FZ-187`
 
@@ -124,7 +152,18 @@ path that creates identities and leaves no trace is the first finding an access 
 produces, and there is no way to answer "who created this organization, and when" without it.
 
 ### OI-41 — No contract or notice documents exist
-**Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
+**Severity:** Gap · **RESOLVED by** `FZ-210` · **Found in:** `FZ-161`
+
+**Closed as stated.** All four exist in `legal/`: the Política de Tratamiento, the Aviso de
+Privacidad, the DPA and the subprocessor list. Drafted against `17-data-protection.md`, so
+their substance is the system as it is rather than as a template imagines it.
+
+**What that does not mean.** None is published, none has been through counsel, ten
+company-specific facts are unfilled, and the DPA's deletion clause describes something the
+product cannot do. That is **`OI-51`**, raised rather than folded in here: "the documents do
+not exist" and "the documents exist and nobody can read them" are different problems with
+different owners, and merging them is how the second one would go unnoticed behind the first
+one's tick.
 
 No DPA, no published subprocessor list, no privacy notice, and no Política de Tratamiento de
 Datos Personales — the last of which is a **statutory** instrument under Decreto 1377 Art. 13

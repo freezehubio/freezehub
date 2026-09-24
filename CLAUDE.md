@@ -119,6 +119,7 @@ freezhub/
 ├── infra/
 ├── scripts/
 ├── connectors/        # shipped CI/CD connectors (FZ-091+)
+├── legal/             # Política, Aviso, DPA, subprocessors (FZ-210) — drafts, unpublished
 └── examples/          # hand-rolled CI/CD integration walkthrough (FZ-053)
 ```
 
@@ -224,6 +225,17 @@ sh connectors/test/image-smoke.sh freeze-check:test
 The image is the connector (`D-26`): every CI system in `connectors/README.md` runs it.
 It is published: `ghcr.io/freezehubio/freeze-check:v1`, public, `linux/amd64` and
 `linux/arm64`. Build locally only to test a change before publishing it.
+
+### Legal (`legal/`)
+
+Drafts, **not published and not reviewed by counsel** (`OI-51`). Nothing here may go out while
+a guillemet placeholder remains — they mark facts only the company knows, several of which
+Decreto 1377 Art. 13 requires by statute.
+
+```bash
+node legal/check-placeholders.js            # what is still unfilled, and in which document
+node legal/check-placeholders.js --strict   # non-zero while any remain
+```
 
 ### Scripts (`scripts/`)
 
