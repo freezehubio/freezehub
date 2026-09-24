@@ -123,18 +123,6 @@ operator with production database credentials is a standing part of the design. 
 path that creates identities and leaves no trace is the first finding an access review
 produces, and there is no way to answer "who created this organization, and when" without it.
 
-### OI-40 — `notification.last_error` is unbounded
-**Severity:** Gap · **RESOLVED by** `FZ-194` · **Found in:** `FZ-161`
-
-**Closed.** `varchar(500)`, truncated in the entity so every writer goes through one door, with the rule stated in `03-data-model.md`. The senders turned out to be careful already — none passes a response body through — and the unbounded path was `NotificationDelivery` catching every `RuntimeException` and storing `getMessage()` verbatim. That catch is deliberately not narrowed: it is what stops one bad destination killing the dispatch pass for everything else.
-
-An unbounded `TEXT` column holding a failed delivery's error, with no retention rule and no
-classification.
-
-If that error ever carries a response body from a customer's webhook endpoint, arbitrary
-third-party content lands in a column nobody classified and nothing purges. Needs a length cap
-and a stated rule about what may go in it.
-
 ### OI-41 — No contract or notice documents exist
 **Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-161`
 
@@ -182,106 +170,6 @@ guide's step applies and should be done. If it does not, `16-accounts.md` §2 ne
 sentence saying so — leaving an instruction that cannot be followed is how a reader learns
 to skip the ones that can.
 
-### OI-46 — The nightly backup is not installed on the box, and never was
-**Severity:** Blocker · **RESOLVED by** `FZ-155` · **Found in:** `FZ-178`
-
-**Closed.** The deploy now ships `backup.sh`, the service and the timer, writes `backup.env`, and enables the timer. Verified on the instance: `freezehub-backup.timer` armed for 03:17 UTC, a backup run on demand, 55 715 bytes uploaded, and the dump restored into a scratch database with 0 errors — 21 tables, 28 changesets, 185 constraints. `14-operations.md` records the numbers.
-
-`deploy/backup.sh`, `freezehub-backup.service` and `freezehub-backup.timer` exist in the
-repository. **Nothing puts them on the box.** `deploy-singlebox.yml` sends `compose.yaml`
-and `Caddyfile` and nothing else; `user-data.sh` installs Docker and stops. Checked on the
-running instance: no timer, no unit, no `/opt/freezehub/backup.sh`, and an empty bucket.
-
-**`FZ-155` describes itself as "script written; the restore drill is what completes it".
-That premise is wrong** — there is nothing to drill. The script has never run and could not
-have, and even once installed it would have failed until `FZ-178`, because it calls
-`docker compose exec`.
-
-**Why this matters more here than it would elsewhere.** `D-35` puts PostgreSQL on the
-instance's root volume with `delete_on_termination = true`. The nightly `pg_dump` to S3 is
-the *only* thing between an instance replacement and total data loss. There is no RDS
-snapshot, no second volume, nothing else.
-
-**Free to fix today, expensive the moment it is not.** There is no data yet. The first
-provisioned organization changes that, and the interval between "first customer" and "first
-backup" is the one window in this product's life where losing the box loses everything.
-
-Two things, and the second is what `FZ-155` was always about: ship the three files and
-enable the timer as part of the deploy, then run a restore and prove the dump is readable.
-A backup nobody has restored is a file of unknown contents.
-
-### OI-47 — The frontend suite fails locally and passes in CI
-**Severity:** Gap · **RESOLVED by** `FZ-193` · **Found in:** `FZ-179`
-
-`npm run test` fails three to six tests on a developer machine, and the same commit passes
-`frontend` in CI every time. Verified on `master` with no changes applied — six failures
-there, three on a branch, and a different set between consecutive runs.
-
-**Every failing file passes in isolation.** `CreateRestrictionPage`, `DeployCheck` and
-`DeploymentChecksPage` each pass alone and fail under full-suite parallelism, which points
-at shared state or timing rather than at any assertion being wrong.
-
-**Closed by `FZ-193`: the suite was starving itself.** Vitest defaults to one worker per
-core, and `npm run test` on this 16-core machine took the load average from 16 to 77 while
-a backend build and two other agent sessions were already running. A worker with a
-fraction of a core turns a one-second test into a five-second one, and five seconds was
-the default timeout. CI passed because a runner has the machine to itself — which is
-precisely why CI could never reproduce it, and why "CI is green" was never the defence it
-looked like.
-
-Fixed with a 15-second timeout, a 50% worker cap, and removing `userEvent`'s
-inter-keystroke delay in the three files named above. Verified by three consecutive full
-runs at load averages of 89, 141 and 256, all passing, against a baseline that failed at
-77.
-
-**The cost is not the failures, it is what they teach.** A suite that cries wolf locally is
-a suite developers stop reading, and the next real regression arrives in a run that already
-had three red lines in it. CI being green is not a defence — it means the machine that
-notices is the one nobody watches.
-
-### OI-49 — One address can own two organizations, if one of them skipped Cognito
-**Severity:** Gap (narrow) · **RESOLVED by** `FZ-195` for the local profile · **Found in:** `FZ-185` testing
-
-Signup's only duplicate check is the identity provider refusing the address: `users.email`
-is unique *per organization* (`uq_users_organization_email`), while the Cognito pool is
-shared, so the pool is what knows an address has been seen. That is the right design and
-it is written up in `06-security.md`.
-
-It has one hole. **Two paths create a `users` row without a Cognito identity**, and an
-address they used stays claimable by self-serve signup:
-
-- `scripts/seed-demo.sh`, which writes rows in SQL and calls Cognito nowhere;
-- `scripts/provision-organization.sh` run **without** `--user-pool-id`.
-
-**Observed, not theorised.** Signing up as `dana@northwind.test` against a local database
-that already held a seeded organization for that address produced a *second* organization.
-The in-memory `LocalIdentityProvider` had no record of the seeded user, so nothing refused
-it.
-
-**Mostly a local-profile artefact, and not entirely.** In a deployed environment the pool
-persists, so the seeded case cannot arise. The provisioning case can: the script makes
-`--user-pool-id` optional and, without it, writes a local-only subject. It already warns
-loudly that the Administrator *cannot sign in*, which bounds the harm — the duplicate
-organization belongs to somebody who could never reach it anyway.
-
-**`FZ-195` closed the half that was reachable.** `LocalIdentityProvider` now consults the
-database as well as its own memory, so an address held by a row any earlier process wrote
-is refused exactly as a persistent Cognito pool would refuse it. The observed case — a
-seeded organization's address accepted by signup after a restart — no longer happens.
-
-**The deployed half was never open.** Cognito persists, so `provision-organization.sh`
-run *with* `--user-pool-id` and `seed-demo.sh` (local only) were the entire exposure. What
-remains is the script run *without* `--user-pool-id` against a real environment, which
-already warns loudly that the Administrator cannot sign in — so the duplicate belongs to
-somebody who could never reach it. Left as it is; the warning is the right size for the
-risk.
-
-**Why record it rather than fix it.** "One address, one organization" reads like an
-invariant and is not one; the next person to rely on it should find this first. The
-cheapest real fix is making `LocalIdentityProvider` load existing `users.email` values at
-startup, which would have made the local behaviour match production and surfaced this
-before it was written. Neither belongs in a story about a signup form.
-
 ### OI-48 — The dashboard and the gate disagree about what is in force
 **Severity:** Defect (cosmetic today) · **Owner:** deferred by the operator, 2026-09-21 · **Found in:** `FZ-183` testing
 
@@ -324,22 +212,6 @@ write and puts a domain rule in the frontend, which `CLAUDE.md` §5 forbids.
 **Tenth instance of the two-halves pattern**: the hazard is documented in the repository
 and the dashboard walked into it anyway.
 
-### OI-2 — No real Cognito identity provider
-
-**Severity:** Gap · **RESOLVED by** `FZ-046` · **Found in:** `FZ-016`
-
-**Closed.** `CognitoIdentityProvider` implements the port outside the `local` profile, calling `AdminCreateUser` and returning the `sub` Cognito issues. The fail-fast moved rather than disappeared: `freezehub.cognito.user-pool-id` and `freezehub.cognito.region` have no defaults, so an environment that forgets them still refuses to start — at boot, not at the first invitation.
-
-**One consequence is not closed.** The single-box posture passes neither property and its instance role cannot call `AdminCreateUser`, so the backend will not start there. See `OI-44`.
-
-`IdentityProvider` has only `LocalIdentityProvider`, a `@Profile("local")` fake that invents a subject. Inviting a user in any deployed environment requires a real `AdminCreateUser` implementation.
-
-Not silently broken: without the `local` profile the application refuses to start, because no `IdentityProvider` bean exists. That is deliberate fail-fast, but it does mean **the backend cannot run outside `local` at all today**, which `FZ-063` will hit the moment infrastructure work begins.
-
-**Decided (`D-4`): sequenced with `FZ-063`, not built ahead of it.** Writing the adapter now means writing it against a service nothing can reach — it could not be run once, and its first real execution would happen during infrastructure work anyway. An adapter verified only against a mock and left unexercised is a liability rather than a head start.
-
-The "cannot start outside `local`" consequence bites exactly when the first deployed environment appears, which is `FZ-063` itself. Stays open until the pair ships.
-
 ### OI-12 — Colleagues signing up separately create unrelated organizations
 **Severity:** Gap · **Owner:** `FZ-088` (deferred) · **Found in:** `FZ-080`
 
@@ -350,7 +222,17 @@ The MVP answer is that support fixes it by hand, which is honest at this volume 
 `FZ-088` is deliberately deferred rather than scheduled: the right fix depends on whether the common case is *join the existing organization automatically* — fast, and wrong for a contractor signing up under a client's domain — or *request access from an administrator*, which is correct and more machinery. One real occurrence answers that. Guessing first does not.
 
 ### OI-15 — The deployed cost posture, and which AWS services are actually needed
-**Severity:** Decision · **Owner:** `FZ-123` · **Raised:** 2026-09-05 · **Platform decided:** `D-28`
+**Severity:** Decision · **Owner:** needs a story · **Raised:** 2026-09-05 · **Platform decided:** `D-28` · **Owner corrected 2026-09-23 (`FZ-209`)**
+
+**`FZ-123` is DONE and this is not**, though `FZ-123` claims to resolve it. It deployed the
+beta; it did not answer the question below. Two further things have changed since this was
+written and neither is reflected in it:
+
+- **Its closing condition has been met.** "It becomes urgent the day someone outside the team
+  needs a URL" — `app.freezehub.io` is live.
+- **The cost table below is the ECS posture**, which `D-35` superseded with one box. The
+  figures are kept because the reasoning about redundancy-for-zero-customers still holds, but
+  they are not what the estate costs today.
 
 **Update, 2026-09-08 (`FZ-122`).** The platform half of this is closed. **AWS has closed App Runner to new customers**, so the comparison this issue framed cannot be made: the existing ECS Fargate Terraform stays. Sizing is now measured rather than assumed — `0.5 vCPU` and `1 GB`, which is Fargate's smallest legal pairing and not a guess — and the NAT gateway is removable by putting tasks in public subnets. What remains open is the money: every figure below is list-price arithmetic, and `FZ-123` records the first real invoice against it.
 
@@ -380,14 +262,26 @@ The MVP answer is that support fixes it by hand, which is honest at this volume 
 Nothing is urgent while nothing is deployed. It becomes urgent the day someone outside the team needs a URL.
 
 ### OI-21 — Actuator is on the application's own port, reachable by any administrator of any tenant
-**Severity:** Gap · **Owner:** `FZ-123` · **Raised:** 2026-09-09
+**Severity:** Gap · **Owner:** needs a story · **Raised:** 2026-09-09 · **Owner corrected 2026-09-23 (`FZ-209`)**
+
+**`FZ-123` claims to resolve this and did not.** `application.yml` still carries the comment
+*"A separate management port the internet cannot reach is the real answer, and it is
+deployment work: OI-21"*, and no profile or `compose.yaml` sets `management.server.port`. The
+code points at this entry as outstanding, so the entry is right and the story's claim is not.
 
 `/actuator/metrics` and `/actuator/info` are aggregate across every organization — `freezehub.policy.evaluations` counts every customer's deployment checks, and `jvm.*` describes the process. `FZ-065` narrowed them from "any authenticated member" (verified live: a member of one tenant could read them) to ADMINISTRATOR, which shrinks the audience but does not change what they are: figures no customer should see at all.
 
 The real fix is `management.server.port` on a port the load balancer does not publish, so nothing outside the VPC can reach anything but `/actuator/health`. That is a Terraform change — a second container port, a security-group rule, and the health check pointed at it — which is why it belongs to the story that applies the deployment rather than to the review that found it.
 
 ### OI-23 — Outbound webhooks reach any host the network can reach
-**Severity:** Defect · **Owner:** `FZ-126` · **Found in:** `FZ-125`
+**Severity:** Defect · **Owner:** needs a story, for the network half only · **Found in:** `FZ-125` · **Owner corrected 2026-09-23 (`FZ-209`)**
+
+**The application half is closed.** `OutboundAddressPolicy` (`FZ-126`) resolves the name and
+checks every address it returns, on every request rather than when the integration is saved.
+
+**The network half is not, and has no owner.** That class names its own limit — a DNS rebind
+between its resolution and the client's — and says the durable answer is egress control in
+the network, *"which is `FZ-123`'s to decide"*. `FZ-123` is DONE and did not decide it.
 
 `WebhookNotificationSender` posts to a customer-supplied URL, and the only validation is `IntegrationConfigs.requireHttpsUrl` — `startsWith("https://")` plus a `URI.create`. There is no host check anywhere in the codebase: no `InetAddress` resolution, no loopback or link-local test, no allowlist.
 
@@ -420,64 +314,6 @@ durable one and left to `FZ-123`: a security group or an egress proxy, so that t
 does not depend on the application resolving a name correctly. The residual gap in the
 meantime is a DNS rebind between FreezeHub's resolution and the client's own.
 
-### OI-44 — The single box cannot reach Cognito
-**Severity:** Blocker · **RESOLVED by** `FZ-176` · **Found in:** `FZ-046`
-
-**Closed.** The instance role gained an `InviteUsers` statement scoped to the pool ARN and to the two calls the adapter makes; `compose.yaml` gained the issuer URI, the pool id and the region; the deploy workflow exports all three. `FZ-176` also found the API hostname still being derived in the deploy path and fixed that.
-
-`FZ-046` made `CognitoIdentityProvider` the `IdentityProvider` outside the `local` profile, and
-`infra/ecs/backend.tf` already wires it: `cognito-idp:AdminCreateUser` and `AdminGetUser` on the
-pool ARN, `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI`, and
-`FREEZEHUB_COGNITO_USER_POOL_ID`. **The single box — the posture `D-35` actually deploys — has
-none of it.**
-
-- `deploy/compose.yaml` passes the profile, the datasource, the encryption key and the CORS
-  origin. No issuer URI and no pool id, so the context will not start.
-- `infra/singlebox/iam.tf` grants ECR login, ECR pull, SSM parameter reads, KMS decrypt and
-  backup writes. No Cognito, so even configured it could not create a user.
-
-**The same shape as `FZ-159` and `FZ-166`, a third time:** two halves built in different
-stories, each assuming the other. The ECS estate was wired for an adapter that did not exist;
-the adapter now exists for a posture that is not wired. Found by reading what has to be true
-for the box to boot, not by anything failing — nothing is deployed yet.
-
-Three additions, none of them large: two environment variables in `compose.yaml` (plumbed from
-Terraform like `ROOT_DOMAIN` already is), one IAM statement scoped to the pool ARN, and
-`FREEZEHUB_COGNITO_REGION` alongside them. Belongs with applying the beta deployment rather
-than with the adapter, which is why it is an issue and not a silent addition to `FZ-046`.
-
-### OI-25 — Token validation for a deployed environment is unspecified
-
-**Severity:** Decision · **RESOLVED by** `FZ-128` · **Found in:** `FZ-125`
-
-**Closed.** `CognitoJwtConfig` replaces the resource server's default decoder outside `local`, carrying `CognitoTokenValidators.forPool` — issuer, `token_use=access`, and the app client read from `client_id` rather than `aud`. Thirteen tests, eleven of them negative; five present a correctly signed token to the real filter chain and assert a validator stopped it.
-
-There is no `issuer-uri` and no `JwtDecoder` outside the `local` profile, consistent with `OI-2`. So the rules a deployed environment will validate against have never been written, and `FZ-046` would otherwise choose them while implementing them.
-
-The specific hazard is that **Cognito issues ID tokens and access tokens from the same issuer, signed by the same keys**, so signature validation accepts both — and its access token carries the app client in `client_id` rather than `aud`, so an audience validator configured the ordinary way passes everything while appearing to check something.
-
-`FZ-125` wrote the rules into `06-security.md` § Token validation rules. This entry stays open until something enforces them, with a test that watches each rejected shape fail.
-
-### OI-32 — Production would run in a personal AWS account
-**Severity:** Gap · **RESOLVED by** `FZ-138` · **Raised:** 2026-09-15
-
-**Closed.** The estate runs in a standalone account of its own, with no root access keys, no
-usable IAM user, no long-lived credential, and `allowed_account_ids` refusing an apply into
-any other account. The personal account holds nothing of this product. Verified by reading
-the account rather than by asserting it — see `FZ-138`.
-
-The target account is the operator's personal one, dating from 2022-10-23 (`OI-15`). `infra/README.md` already says Terraform must use an IAM role and not account root — advice a personal account cannot take, because there the operator *is* root.
-
-**The infrastructure itself is account-portable and costs nothing to redirect.** There is no account id anywhere in `infra/`; `locals.tf` reads `aws_caller_identity` and the only use is making the frontend bucket name unique. Pointing the whole stack at another account is a credentials change plus re-running `bootstrap/`.
-
-**What is not portable is identity, and it is the same argument `FZ-135` makes about region.** A Cognito user pool cannot be moved between accounts, and `users.external_subject` stores the `sub` it issues. Before `FZ-046` creates that pool this move is free; after the first real user it is a new pool, new subjects, and a forced password reset for every customer.
-
-What it costs to leave alone: a security questionnaire asks whether production is isolated, who holds root, and whether MFA is enforced, and the honest answers are no, the operator, and maybe. An unrelated suspension of the personal account takes production with it. And `D-23` already requires "an operator with production access", which here can only ever be one person.
-
-**The fix is a fresh account, and it is no longer the Organization this issue proposed.** `FZ-168` established that a personal identity in permanent control of production is the whole of the objection, and that an account owned by `freezehubio@gmail.com` answers it. The Organization on top was refused by AWS's own terms: joining one expires a new account's free credits immediately — about $200, or eleven months at `D-35`'s $18 a month — so it is deferred to a named trigger (`D-36`, `16-accounts.md` §7).
-
-**What stays open until `FZ-138` runs.** The account does not exist yet, and one consequence of the single-account shape is new: with no Organization there is no Identity Center path into the account, so a long-lived IAM access key exists on one laptop. It is scoped to `sts:AssumeRole` on one role and refused without MFA, and no key reaches CI (`FZ-064` uses OIDC) — but it is a real residual, and removing it is step 5 of the migration.
-
 ### OI-34 — Free organizations never expire, and nothing bounds them
 **Severity:** Gap · **Owner:** needs a story · **Found in:** `FZ-142`
 
@@ -493,6 +329,14 @@ Recorded now because the repository's own rule is that "no owner" is not a statu
 
 | Issue | Found in | Resolved by |
 |---|---|---|
+| **No real identity provider** — `IdentityProvider` had only a `@Profile("local")` fake that invented a subject, so inviting a user in any deployed environment would have created a row nobody could sign in as | `FZ-016` | `FZ-046` — `CognitoIdentityProvider` outside the `local` profile. The consequence this entry recorded as still open, that the single box could not reach Cognito, became `OI-44` and was closed by `FZ-176` |
+| **Token validation for a deployed environment was unspecified** — and the specific hazard is not obvious: Cognito issues ID tokens and access tokens from the same issuer signed by the same keys, so signature validation alone accepts the wrong one | `FZ-125` | `FZ-128` — `CognitoJwtConfig` replaces the default decoder outside `local`, carrying issuer, `token_use` and audience checks. The rules were written into `06-security.md` § Token validation rules by `FZ-125` |
+| **Production would have run in a personal AWS account** | `FZ-138` raised | `FZ-138` — a standalone account with no root access keys, no usable IAM user, no long-lived credential, and `allowed_account_ids` refusing an apply into any other account |
+| **`notification.last_error` was unbounded** — a `TEXT` column holding a failed delivery's error, with no retention rule and no classification, so a provider that echoes a request body could put customer data in it indefinitely | `FZ-161` | `FZ-194` — `varchar(500)`, truncated in the entity so every writer goes through one door, with the rule stated in `03-data-model.md` |
+| **The single box could not reach Cognito** — `FZ-046` made `CognitoIdentityProvider` the provider outside `local`, and only the ECS module wired the permissions; the box had neither the properties nor the instance-role statement | `FZ-046` | `FZ-176` — an `InviteUsers` statement scoped to the pool ARN and to the two calls the adapter makes, and the properties in `compose.yaml` |
+| **The nightly backup was never installed on the box** — the script, unit and timer existed in the repository, the deploy shipped neither, and the bucket was empty, while `FZ-155` described itself as waiting only on a restore drill. With PostgreSQL on a volume marked `delete_on_termination`, that dump was the only thing between an instance replacement and losing everything | `FZ-178` | `FZ-155` — the deploy ships all three files, writes `backup.env` and enables the timer; verified running on the instance |
+| **The frontend suite failed locally and passed in CI** — three to eight tests, a different set each run, every failing file passing in isolation. Not flaky tests: Vitest defaults to one worker per core, and the suite was taking a 16-core machine to a load average of 77. CI passed because a runner has the machine to itself, which is exactly why CI could never reproduce it | `FZ-179` | `FZ-193` — `maxWorkers: 50%`, a 15s timeout that catches a hang rather than measuring the machine, and a `userEvent` helper that stops typing seventy characters through seventy scheduler round-trips |
+| **One address could own two organizations**, where one of them skipped Cognito — `users.email` is unique per organization while the pool is shared, so the pool is what knows an address has been seen, and two scripts wrote rows without ever calling it | `FZ-185` testing | `FZ-195` — `LocalIdentityProvider` now consults the database as well as its own memory. The deployed half was never open, and the one remaining sliver, `provision-organization.sh` run without `--user-pool-id`, is **accepted**: it already warns that the Administrator cannot sign in, so the duplicate belongs to somebody who could never reach it |
 | **GitHub Actions could not authenticate to AWS at all** — AWS’s new sign-up experience denied `iam:*Provider*` through a service control policy that "cannot be modified", so `terraform apply` on `infra/shared/` failed and `build-image.yml`, `deploy-frontend.yml` and `deploy-singlebox.yml` lost the only credential path they had. Deploys were by hand, which is what produced four divergences from what the workflows would have done | `FZ-170` | `FZ-205` — advanced features activated 2026-09-23, lifting the policy; `github_oidc_enabled = true` then applied clean, `3 to add, 0 to change, 0 to destroy`, creating the provider, the role and its inline policy. `AWS_DEPLOY_ROLE_ARN` and `SINGLEBOX_INSTANCE_ID` are set, and every variable and secret the four workflows read is present — checked by diffing the `vars.`/`secrets.` references against `gh variable list`. **The price is real and `D-37` records it:** activation cannot be undone and removed the enforced spend limit, so `FZ-204`’s budget — which only alerts — is now the only guard on spend. The registrar note this issue carried is moot for the reason it always was: nothing depends on AWS being the registrar, and `app.freezehub.io` is delegated to a Route 53 zone |
 | **Whether `FZ-123` was superseded by the one box** — two readings of the same story were live at once, and it still claimed `OI-15` and `OI-21` | `FZ-160` | `FZ-162` — it is the beta apply, now pointing at `shared/` then `singlebox/`. `FZ-159` had already rewritten it to say so; a conflict resolution had split the entry, leaving the old body under the heading and the new one orphaned inside Milestone 14 |
 | **The connector image was not published, so nothing was installable** — every guideline in `connectors/README.md` named an image that did not exist, and the entry was wrong twice before settling on publishing one artifact rather than extracting a second repository | `FZ-090` | `FZ-099` — `ghcr.io/freezehubio/freeze-check:v1` is public, `linux/amd64` and `linux/arm64`, and verified by pulling it anonymously and watching it exit 2 when FreezeHub is unreachable |
