@@ -5121,8 +5121,10 @@ no endpoint to list who belongs, and no way to change a role or take access away
 editing the database. The operator asked how a company's administrator would delegate
 developer and viewer access; the honest answer was "they can't".
 
-**Settings → Members.** Everyone in the organization with their role, an invitation form
-with a role picker, a role change per row, and *Remove* / *Reinstate*. Administrator only —
+**Settings → Members.** An invitation form with a role picker first, then the organization
+**a page at a time, newest first** — customers are companies, and a roster of hundreds is
+not one screen — with a role change per row and *Remove* / *Reinstate*. Newest first so
+whoever was just invited appears right under the form; an invitation returns to page one. Administrator only —
 backend `@PreAuthorize`, and the section says so to a member who reaches it.
 
 **Removal is deactivation — the operator's decision.** `users.deactivated_at`, migration

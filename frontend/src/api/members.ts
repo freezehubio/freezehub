@@ -1,11 +1,14 @@
 import { apiRequest } from './client'
-import type { Member } from '../types/api'
+import type { Member, MemberPage } from '../types/api'
 
 type Role = Member['role']
 
-/** Administrator only (`FZ-212`). Everyone in the organization, removed members included. */
-export function listMembers(token: string | null, signal?: AbortSignal): Promise<Member[]> {
-  return apiRequest<Member[]>('/api/members', { token, signal })
+/**
+ * Administrator only (`FZ-212`). One page of the organization, newest first, removed members
+ * included. `page` counts from 0; the page size is the server's.
+ */
+export function listMembers(token: string | null, page: number, signal?: AbortSignal): Promise<MemberPage> {
+  return apiRequest<MemberPage>(`/api/members?page=${page}`, { token, signal })
 }
 
 /** What `/api/invites` answers — its own shape, older than the members list (`FZ-016`). */

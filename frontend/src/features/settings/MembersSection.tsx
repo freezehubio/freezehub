@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import {
   changeMemberRole,
@@ -11,7 +11,7 @@ import {
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useAuth } from '../auth/authContext'
 import { useCurrentUser } from '../auth/useCurrentUser'
-import type { Member } from '../../types/api'
+import type { Member, MemberPage } from '../../types/api'
 import { formatInstant } from '../../utils/datetime'
 import settings from './SettingsPage.module.css'
 import styles from './MembersSection.module.css'
@@ -34,6 +34,10 @@ const ROLE_LABEL: Record<Role, string> = {
  * but stays on the record for what they did, and can be reinstated. The confirmation says so
  * rather than leaving the reader to assume a deletion.
  *
+ * <b>Invite first, then the list, a page at a time.</b> Customers are companies, and a roster
+ * of hundreds does not fit one screen or one response. The list is newest first, so whoever
+ * was just invited appears right under the form; an invitation returns to page one to show it.
+ *
  * <b>The rule about the last administrator is the backend's, not this screen's.</b> Nothing
  * here disables a control to anticipate it — `CLAUDE.md` §5 — the server refuses with a
  * message that says what to do instead, and that message is shown.
@@ -46,14 +50,33 @@ export function MembersSection() {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<Role>('MEMBER')
   const [notice, setNotice] = useState<string | null>(null)
+  /**
+   * Two error slots, because the form and the list are apart on the page: a refusal to remove
+   * someone shown under "Send invitation" reads as the invitation having failed.
+   */
+  const [inviteError, setInviteError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [removing, setRemoving] = useState<Member | null>(null)
   /** Set only when an administrator is about to demote themselves. */
   const [demotingSelf, setDemotingSelf] = useState<Member | null>(null)
+  const [page, setPage] = useState(0)
+  const listHeading = useRef<HTMLHeadingElement>(null)
 
-  const members = useQuery<Member[]>({
-    queryKey: ['members'],
-    queryFn: ({ signal }) => listMembers(token, signal),
+  /**
+   * The pager sits under the list, so without this the next page opens at its end and the
+   * reader scrolls back up for every page.
+   */
+  function goToPage(next: number) {
+    setPage(next)
+    listHeading.current?.scrollIntoView?.({ block: 'start' })
+  }
+
+  const members = useQuery<MemberPage>({
+    queryKey: ['members', page],
+    queryFn: ({ signal }) => listMembers(token, page, signal),
+    // Keeps the current page on screen while the next one loads, rather than flashing
+    // "Loading…" between pages.
+    placeholderData: keepPreviousData,
   })
 
   /**
@@ -65,8 +88,12 @@ export function MembersSection() {
     void queryClient.invalidateQueries({ queryKey: ['me'] })
   }
 
+  function messageOf(caught: unknown) {
+    return caught instanceof ApiError ? caught.message : 'Something went wrong. Please try again.'
+  }
+
   function report(caught: unknown) {
-    setActionError(caught instanceof ApiError ? caught.message : 'Something went wrong. Please try again.')
+    setActionError(messageOf(caught))
   }
 
   const invite = useMutation({
@@ -88,16 +115,17 @@ export function MembersSection() {
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    setActionError(null)
+    setInviteError(null)
     setNotice(null)
     const invited = email.trim()
     try {
       await invite.mutateAsync()
       setEmail('')
       setRole('MEMBER')
+      setPage(0)
       setNotice(`${invited} will receive an email with a temporary password.`)
     } catch (caught) {
-      report(caught)
+      setInviteError(messageOf(caught))
     }
   }
 
@@ -162,6 +190,58 @@ export function MembersSection() {
         </p>
       )}
 
+      {!forbidden && (
+        <form className={settings.createForm} onSubmit={submit}>
+          <label className={settings.label} htmlFor="invite-email">
+            Invite someone
+          </label>
+          <div className={styles.inviteRow}>
+            <input
+              id="invite-email"
+              className={settings.input}
+              type="email"
+              placeholder="colleague@yourcompany.com"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+            <label className={styles.srOnly} htmlFor="invite-role">
+              Role for the invitation
+            </label>
+            <select
+              id="invite-role"
+              className={styles.roleSelect}
+              value={role}
+              onChange={(event) => setRole(event.target.value as Role)}
+            >
+              <option value="MEMBER">Member</option>
+              <option value="ADMINISTRATOR">Administrator</option>
+            </select>
+          </div>
+          <p className={settings.hint}>
+            They receive a temporary password by email and choose their own at first sign-in. An
+            address can belong to one organization.
+          </p>
+          <button
+            className={settings.primary}
+            type="submit"
+            disabled={!email.trim() || invite.isPending}
+          >
+            {invite.isPending ? 'Inviting…' : 'Send invitation'}
+          </button>
+          {inviteError && (
+            <p className={settings.actionError} role="alert">
+              {inviteError}
+            </p>
+          )}
+          {notice && (
+            <p className={settings.state} role="status">
+              {notice}
+            </p>
+          )}
+        </form>
+      )}
+
       {!forbidden && members.isPending && (
         <p className={settings.state} role="status">
           Loading members…
@@ -174,21 +254,21 @@ export function MembersSection() {
         </p>
       )}
 
+      {members.data && (
+        <h3 className={`${settings.label} ${styles.count}`} id="members-list-heading" ref={listHeading}>
+          Current members · {members.data.totalItems}
+        </h3>
+      )}
+
       {actionError && (
         <p className={settings.actionError} role="alert">
           {actionError}
         </p>
       )}
 
-      {notice && (
-        <p className={settings.state} role="status">
-          {notice}
-        </p>
-      )}
-
       {members.data && (
-        <ul className={settings.list} aria-label="Members">
-          {members.data.map((member) => {
+        <ul className={settings.list} aria-labelledby="members-list-heading">
+          {members.data.items.map((member) => {
             const isMe = member.id === me.data?.userId
             return (
               <li key={member.id} className={`${settings.row} ${member.active ? '' : styles.removed}`}>
@@ -250,47 +330,30 @@ export function MembersSection() {
         </ul>
       )}
 
-      {!forbidden && (
-        <form className={settings.createForm} onSubmit={submit}>
-          <label className={settings.label} htmlFor="invite-email">
-            Invite someone
-          </label>
-          <div className={styles.inviteRow}>
-            <input
-              id="invite-email"
-              className={settings.input}
-              type="email"
-              placeholder="colleague@yourcompany.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-            <label className={styles.srOnly} htmlFor="invite-role">
-              Role for the invitation
-            </label>
-            <select
-              id="invite-role"
-              className={styles.roleSelect}
-              value={role}
-              onChange={(event) => setRole(event.target.value as Role)}
-            >
-              <option value="MEMBER">Member</option>
-              <option value="ADMINISTRATOR">Administrator</option>
-            </select>
-          </div>
-          <p className={settings.hint}>
-            They receive a temporary password by email and choose their own at first sign-in. An
-            address can belong to one organization.
-          </p>
+      {members.data && members.data.totalPages > 1 && (
+        <nav className={styles.pager} aria-label="Members pages">
           <button
-            className={settings.primary}
-            type="submit"
-            disabled={!email.trim() || invite.isPending}
+            type="button"
+            className={settings.secondary}
+            disabled={page === 0 || members.isPlaceholderData}
+            onClick={() => goToPage(Math.max(page - 1, 0))}
           >
-            {invite.isPending ? 'Inviting…' : 'Send invitation'}
+            Previous
           </button>
-        </form>
+          <span className={styles.pageStatus} aria-live="polite">
+            Page {page + 1} of {members.data.totalPages}
+          </span>
+          <button
+            type="button"
+            className={settings.secondary}
+            disabled={page + 1 >= members.data.totalPages || members.isPlaceholderData}
+            onClick={() => goToPage(page + 1)}
+          >
+            Next
+          </button>
+        </nav>
       )}
+
 
       <ConfirmDialog
         open={removing !== null}

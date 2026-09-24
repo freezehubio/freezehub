@@ -105,11 +105,61 @@ class MemberControllerTest {
 
         as(admin, get("/api/members"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[*].email").value(org.hamcrest.Matchers.containsInAnyOrder(
+                .andExpect(jsonPath("$.totalItems").value(2))
+                .andExpect(jsonPath("$.items[*].email").value(org.hamcrest.Matchers.containsInAnyOrder(
                         admin.user().getEmail(), member.user().getEmail())))
-                .andExpect(jsonPath("$[*].email").value(
+                .andExpect(jsonPath("$.items[*].email").value(
                         org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(elsewhere.user().getEmail()))));
+    }
+
+    /**
+     * Customers are companies; a roster of hundreds is paged. Newest first, so whoever was
+     * just invited is at the top of page one, under the form they were invited from.
+     */
+    @Test
+    void theListIsPagedNewestFirstWithTheTotal() throws Exception {
+        Organization acme = organization();
+        Person admin = person(acme, UserRole.ADMINISTRATOR);
+        List<User> joined = new java.util.ArrayList<>();
+        joined.add(admin.user());
+        for (int i = 0; i < 4; i++) {
+            joined.add(person(acme, UserRole.MEMBER).user());
+        }
+        List<String> newestFirst = joined.reversed().stream().map(User::getEmail).toList();
+
+        as(admin, get("/api/members").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].email").value(org.hamcrest.Matchers.contains(
+                        newestFirst.get(0), newestFirst.get(1))))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalItems").value(5))
+                .andExpect(jsonPath("$.totalPages").value(3));
+
+        as(admin, get("/api/members").param("size", "2").param("page", "2"))
+                .andExpect(jsonPath("$.items[*].email").value(org.hamcrest.Matchers.contains(newestFirst.get(4))));
+
+        // Past the end is an empty page, not an error.
+        as(admin, get("/api/members").param("size", "2").param("page", "9"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0))
+                .andExpect(jsonPath("$.totalItems").value(5));
+    }
+
+    /** Clamped like the audit trail's limit: no page size that returns the whole table. */
+    @Test
+    void pageAndSizeAreClampedRatherThanRefused() throws Exception {
+        Organization acme = organization();
+        Person admin = person(acme, UserRole.ADMINISTRATOR);
+
+        as(admin, get("/api/members"))
+                .andExpect(jsonPath("$.size").value(MemberController.DEFAULT_PAGE_SIZE));
+        as(admin, get("/api/members").param("size", "100000"))
+                .andExpect(jsonPath("$.size").value(MemberController.MAX_PAGE_SIZE));
+        as(admin, get("/api/members").param("size", "0").param("page", "-3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(1))
+                .andExpect(jsonPath("$.page").value(0));
     }
 
     /** The list is personal data and nothing a member does needs it. */
@@ -226,7 +276,7 @@ class MemberControllerTest {
         User kept = users.findById(member.user().getId()).orElseThrow();
         assertThat(kept.isActive()).isFalse();
         assertThat(kept.getDeactivatedAt()).isNotNull();
-        as(admin, get("/api/members")).andExpect(jsonPath("$.length()").value(2));
+        as(admin, get("/api/members")).andExpect(jsonPath("$.totalItems").value(2));
     }
 
     @Test

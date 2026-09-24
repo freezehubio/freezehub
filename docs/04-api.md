@@ -126,7 +126,7 @@ Authenticated with a JWT; all tenant-scoped.
 | `GET` | `/api/organization` | the caller's own organization and its settings |
 | `PATCH` | `/api/organization/settings` | **ADMINISTRATOR only**; `startingSoonLeadTimeMinutes`, 1–43200 |
 | `POST` | `/api/invites` | **ADMINISTRATOR only**; `{email, role}`, role defaults to `MEMBER`. `409` if the address is already in the organization (active or removed — reinstate instead), or already has a FreezeHub account in another organization |
-| `GET` | `/api/members` | **ADMINISTRATOR only** (`FZ-212`); everyone in the organization, removed members included, oldest first |
+| `GET` | `/api/members` | **ADMINISTRATOR only** (`FZ-212`); the organization a page at a time, removed members included, **newest first**. `?page=` from 0, `?size=` default 25, clamped to 1–100. Answers `{items, page, size, totalItems, totalPages}`; a page past the end is empty, not an error. An offset rather than the audit trail's cursor: a roster read as numbered pages, where an invitation between two loads shows one person twice at worst |
 | `PATCH` | `/api/members/{id}` | **ADMINISTRATOR only**; `{role}`. `409` if it would leave no active administrator |
 | `POST` | `/api/members/{id}/deactivate` | **ADMINISTRATOR only**; removal. The person gets `401` on their next request; the row stays. Idempotent. `409` for the last active administrator |
 | `POST` | `/api/members/{id}/reactivate` | **ADMINISTRATOR only**; undoes a removal. Idempotent |

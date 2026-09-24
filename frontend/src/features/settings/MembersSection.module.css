@@ -56,3 +56,20 @@
   white-space: nowrap;
   border: 0;
 }
+
+.count {
+  margin: var(--space-6) 0 var(--space-3);
+  /* Where the pager scrolls to; a little room above so the heading is not against the edge. */
+  scroll-margin-top: var(--space-6);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pageStatus {
+  font-size: 14px;
+  color: var(--color-neutral-800);
+}

@@ -96,6 +96,15 @@ export interface Member {
   createdAt: string
 }
 
+/** One page of `GET /api/members`. `page` counts from 0. */
+export interface MemberPage {
+  items: Member[]
+  page: number
+  size: number
+  totalItems: number
+  totalPages: number
+}
+
 export type IntegrationType = 'SLACK' | 'EMAIL' | 'WEBHOOK'
 
 /**

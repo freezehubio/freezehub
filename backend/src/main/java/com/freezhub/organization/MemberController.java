@@ -5,7 +5,7 @@ import com.freezhub.shared.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
-import java.util.List;
+import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -37,9 +38,20 @@ public class MemberController {
         this.members = members;
     }
 
+    static final int DEFAULT_PAGE_SIZE = 25;
+    static final int MAX_PAGE_SIZE = 100;
+
+    /**
+     * {@code page} counts from 0. Out-of-range values are clamped rather than refused, as the
+     * audit trail's {@code limit} is: a page past the end is an empty page, not an error.
+     */
     @GetMapping
-    public List<MemberResponse> list(@AuthenticationPrincipal AuthenticatedUser caller) {
-        return members.list(caller.organizationId()).stream().map(MemberResponse::from).toList();
+    public MemberPage list(@AuthenticationPrincipal AuthenticatedUser caller,
+                           @RequestParam(required = false) Integer page,
+                           @RequestParam(required = false) Integer size) {
+        int pageIndex = page == null ? 0 : Math.max(page, 0);
+        int pageSize = size == null ? DEFAULT_PAGE_SIZE : Math.clamp(size, 1, MAX_PAGE_SIZE);
+        return MemberPage.from(members.list(caller.organizationId(), pageIndex, pageSize));
     }
 
     /** A partial update with one field, matching how integrations are changed. */

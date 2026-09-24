@@ -2,6 +2,8 @@ package com.freezhub.organization;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -27,8 +29,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** One member, only if they belong to this organization — cross-tenant is a 404 (FZ-212). */
     Optional<User> findByIdAndOrganizationId(Long id, Long organizationId);
 
-    /** Everyone in the organization, longest-standing first (FZ-212). */
-    List<User> findAllByOrganizationIdOrderByCreatedAtAscIdAsc(Long organizationId);
+    /** One page of the organization's members, in whatever order {@code pageable} sorts (FZ-212). */
+    Page<User> findAllByOrganizationId(Long organizationId, Pageable pageable);
 
     /** How many people can still administer the organization (FZ-212). */
     long countByOrganizationIdAndRoleAndDeactivatedAtIsNull(Long organizationId, UserRole role);

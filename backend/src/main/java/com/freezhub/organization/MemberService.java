@@ -6,7 +6,9 @@ import com.freezhub.audit.AuditDetails;
 import com.freezhub.audit.AuditResourceType;
 import com.freezhub.audit.AuditTrail;
 import java.time.Instant;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,9 +46,20 @@ public class MemberService {
         this.auditTrail = auditTrail;
     }
 
+    /**
+     * Newest first, one page at a time: customers are companies, and a roster of hundreds is
+     * not one response.
+     *
+     * <p><b>An offset, not a cursor</b> like the audit trail's. That one is a feed read as a
+     * stream, where a skipped entry is a lost fact. This is a roster read as pages — the
+     * screen says "page 2 of 7" — and if someone is invited between two page loads, one
+     * person shows twice or once late, and nothing is lost. Newest first because the screen
+     * puts the invitation above the list: whoever was just invited is right under it.
+     */
     @Transactional(readOnly = true)
-    public List<User> list(Long organizationId) {
-        return users.findAllByOrganizationIdOrderByCreatedAtAscIdAsc(organizationId);
+    public Page<User> list(Long organizationId, int page, int size) {
+        return users.findAllByOrganizationId(organizationId, PageRequest.of(page, size,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
     }
 
     @Transactional
