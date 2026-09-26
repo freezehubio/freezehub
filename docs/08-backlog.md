@@ -5733,3 +5733,57 @@ Acceptance:
 - No document asserts a capability the product does not have, or a certification it does not
   hold.
 - What remains before publishing is written down as an issue with an owner, not as a footnote.
+
+### FZ-213 — Book A Demo Did Nothing
+**Status:** DONE · **Completes** `FZ-083` · **Found by** the operator
+
+The landing page's primary call to action scrolled to three paragraphs of prose whose only
+link was *start a free trial*. No form, no address, no way to ask for a demo.
+
+**`FZ-083` built the other half and nothing ever called it.** `POST /api/demo-requests`, the
+`demo_request` table and the Slack notification have existed, tested, since that story — dead
+code reachable only by `curl`. No story ever built the form and none claimed it, so this was
+not a deferred item; it was a gap between two stories that each read as though the other had
+it.
+
+**Capture, then offer a time**, rather than pointing the button straight at a scheduler,
+which was the cheaper build and the first suggestion. A bare calendar link gives a name and a
+time and loses three things: the `demo_request` row, the only record of a prospect who never
+signs up; `converted_organization_id`, which is what later shows a demo became a customer;
+and the answers `gtm/03-discovery.md` wants before the call. One extra click keeps all three.
+
+**The scheduler is a build variable whose absence is a valid state**, and that is what
+separates `VITE_DEMO_BOOKING_URL` from the three variables beside it in
+`deploy-frontend.yml`. Those are *wrong* when empty — the site ships pointing at localhost,
+or offering a sign-in nobody can use — and each carries a `test -n` guard that fails the
+build. This one is *correct* when empty: there is no time to offer until a calendar exists,
+so the success panel simply does not show the button. Guarding it would refuse to deploy over
+a feature nobody has configured.
+
+A "Pick a time" button that goes nowhere is worse than no button — it reads as an offer, and
+whoever clicks it has already decided to meet. Two tests cover it: unset, and whitespace.
+
+**The subprocessor obligation is recorded where the variable is set.** Whoever owns that
+calendar receives a prospect's name, email and meeting time, which makes them an encargado: a
+row in `legal/subprocessors.md`, a line in the Política's transmisión table, and the DPA's
+30-day notice. **Nothing is owed while the variable is empty**, so this is a comment at the
+point of configuration rather than an edit to `legal/` that would claim a subprocessor which
+does not yet exist.
+
+**Verified against the real backend, not only a stub.** Submitting on a local stack wrote the
+row — `source=landing`, `status=NEW`, team size captured — which is what proves the endpoint
+`FZ-083` built is finally reachable from the product.
+
+**A process failure worth recording.** This was built first in `../freezehub-FZ-211`, another
+session's worktree, on another session's branch. The claim step printed `CLAIMED` and the
+next command carried on regardless, so `session-sync`'s check ran and its answer was ignored.
+Nothing was lost — the diff was 23 insertions and 0 deletions across two files that their
+commit did not touch, and their tree was restored exactly — but the guard only works if the
+next step stops. A check whose failure does not halt the thing it guards is decoration.
+
+Acceptance:
+
+- The primary call to action reaches something a prospect can act on.
+- A submitted request is a row before it is a notification.
+- No "Pick a time" is offered unless a scheduler is configured.
+- A failed submission keeps what was typed.

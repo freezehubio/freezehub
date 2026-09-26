@@ -95,6 +95,21 @@ jobs:
           # nobody can sign in (FZ-179). Checked, not hoped.
           VITE_COGNITO_DOMAIN: ${{ vars.COGNITO_HOSTED_UI_DOMAIN }}
           VITE_COGNITO_CLIENT_ID: ${{ vars.COGNITO_CLIENT_ID }}
+          # **No `test -n` guard on this one, and that is the difference** (`FZ-213`).
+          # The three above are wrong when absent — the site ships pointing at localhost or
+          # offering a sign-in nobody can use. This one is *correct* when absent: until a
+          # scheduler exists there is no time to offer, and the form simply does not show a
+          # "Pick a time" button. Guarding it would refuse to deploy over a feature that has
+          # not been set up yet.
+          #
+          # **Setting this adds a subprocessor.** Whoever the calendar belongs to receives a
+          # prospect's name, email and meeting time, which makes them an encargado: they need
+          # a row in `legal/subprocessors.md` and a line in the Política's transmisión table,
+          # and the DPA commits to 30 days' notice before that list changes. Nothing is owed
+          # while this variable is empty, which is why the obligation is recorded here — at
+          # the point where somebody fills it in — rather than in a document they would have
+          # to already be reading.
+          VITE_DEMO_BOOKING_URL: ${{ vars.DEMO_BOOKING_URL }}
         run: |
           test -n "$VITE_API_BASE_URL" || { echo "API_BASE_URL is not set; the build would ship pointing at localhost"; exit 1; }
           test -n "$VITE_COGNITO_DOMAIN" || { echo "COGNITO_HOSTED_UI_DOMAIN is not set; the build would ship the development sign-in"; exit 1; }
