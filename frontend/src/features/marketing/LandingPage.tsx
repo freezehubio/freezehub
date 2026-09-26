@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import { useAuth } from '../auth/authContext'
 import { Wordmark } from '../../components/Wordmark'
+import { DemoRequestForm } from './DemoRequestForm'
 import styles from './LandingPage.module.css'
 
 /**
@@ -198,6 +199,13 @@ export function LandingPage() {
           What it does not do: FreezeHub cannot stop your deployment and does not try to.
           Enforcement stays in your pipeline, which asks and then decides.
         </p>
+
+        {/*
+          * The thing "Book a demo" was always supposed to reach (`FZ-213`). Until now this
+          * section was the end of the journey rather than the point of it: the button
+          * scrolled here, and the only link in it was the trial.
+          */}
+        <DemoRequestForm />
       </section>
 
       <footer className={styles.footer}>

@@ -1,0 +1,103 @@
+/*
+ * The demo form (`FZ-213`), in the landing page's own furniture rather than the
+ * application's: a hairline box on the page background, labels in the caps-and-tracking the
+ * deck sets, and no card shadow. The marketing page is set on `--color-neutral-200` and a
+ * raised card would read as a dialog.
+ */
+
+.form,
+.done {
+  border: 1px solid var(--fh-border-strong);
+  background: var(--color-bg);
+  padding: 22px 24px 24px;
+  max-width: 34rem;
+}
+
+.heading,
+.doneTitle {
+  font: 600 17px var(--font-heading);
+  margin: 0 0 16px;
+}
+
+/* Two to a row where there is room, stacked where there is not. */
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+.field {
+  min-width: 0;
+}
+
+.label {
+  composes: fieldLabel from global;
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* Quiet, because the label is already small caps and two emphases cancel out. */
+.optional {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-neutral-700);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 14px;
+  padding: 8px 10px;
+  font: 400 15px var(--font-body);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--fh-border);
+}
+
+.textarea {
+  resize: vertical;
+  font-family: var(--font-body);
+}
+
+.input:focus-visible,
+.textarea:focus-visible {
+  outline: 2px solid var(--fh-accent);
+  outline-offset: 1px;
+}
+
+.error {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--fh-danger);
+}
+
+.submit {
+  width: 100%;
+}
+
+/* — after it has been sent — */
+
+.doneText {
+  margin: 0 0 18px;
+  font-size: 15px;
+  color: var(--color-neutral-800);
+}
+
+.book {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.doneNote {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--color-neutral-700);
+}
+
+@media (max-width: 34rem) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
