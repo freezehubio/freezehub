@@ -183,10 +183,57 @@ in this codebase ever includes it.
 into `/opt/freezehub/.env` by the SSM command. A missing parameter is tolerated
 (`|| true`), so setting some and not others is a valid intermediate state.
 
-#### Two things about SES that are easy to get wrong
+#### Verifying the domain in SES
+
+Mail for `freezehub.io` is hosted elsewhere — the MX records point at `secureserver.net` —
+while **DNS is Route 53**, zone `Z05328562QOD2HA2DHF83`. SES needs verifying regardless: the
+mailboxes receive, SES sends, and they share only the domain name.
+
+**This does not touch the mailboxes.** Verification adds three CNAMEs on `_domainkey`
+subdomains. No MX record changes, and SES is not being asked to receive anything.
+
+```bash
+aws sesv2 create-email-identity --email-identity freezehub.io --region us-east-2
+
+aws sesv2 get-email-identity --email-identity freezehub.io --region us-east-2 \
+  --query 'DkimAttributes.Tokens' --output json \
+| jq '{Changes: [ .[] | {Action:"UPSERT", ResourceRecordSet:{
+      Name: (. + "._domainkey.freezehub.io"),
+      Type: "CNAME", TTL: 1800,
+      ResourceRecords: [{Value: (. + ".dkim.amazonses.com")}]}} ]}' \
+> /tmp/dkim-batch.json
+
+# Read it before sending it.
+jq -r '.Changes[].ResourceRecordSet | "\(.Name) -> \(.ResourceRecords[0].Value)"' /tmp/dkim-batch.json
+
+aws route53 change-resource-record-sets \
+  --hosted-zone-id Z05328562QOD2HA2DHF83 --change-batch file:///tmp/dkim-batch.json
+
+aws sesv2 get-email-identity --email-identity freezehub.io --region us-east-2 \
+  --query '{Sending:VerifiedForSendingStatus, Dkim:DkimAttributes.Status}'
+```
+
+Wanted: `Sending: true`, `Dkim: SUCCESS`. `UPSERT` makes re-running safe.
+
+**`jq` builds the batch, and `file://` hands it over — deliberately.** The first version of
+this looped over `--output text` and concatenated JSON in the shell. It failed, because
+`--output text` separates the three tokens with tabs and **zsh does not word-split unquoted
+expansions**, so the loop ran once with all three tokens and their tabs inside one string:
+`Invalid control character`. That is the fourth time this repository has been bitten by JSON
+assembled from shell string concatenation (`FZ-201`, `FZ-205`, `FZ-208`). Build it with a
+JSON tool, look at it, then send it from a file.
+
+#### Three things about SES that are easy to get wrong
 
 **SES SMTP credentials are not your AWS access keys.** They are generated in the SES console
 under *SMTP settings*, and the username looks like an access key id without being one.
+
+**Do not add `include:amazonses.com` to the domain's SPF record.** It is the obvious move
+and it achieves nothing here: SES sends with its own envelope sender (`*.amazonses.com`), so
+SPF is evaluated against that domain and `freezehub.io`'s `-all` is never consulted. What
+makes the mail authenticate is **DKIM alignment**, which the verification above provides.
+DMARC passes if either SPF or DKIM aligns. If SPF ever does need editing, edit the one
+record — **two SPF TXT records is a `permerror`**, which is worse than none.
 
 **SES starts in sandbox**, which restricts *recipients* to verified identities.
 
