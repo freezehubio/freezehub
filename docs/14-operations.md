@@ -150,11 +150,18 @@ row and not the message.
 Non-secret, as **repository variables**:
 
 ```bash
-gh variable set NOTIFICATIONS_EMAIL_FROM --body "no-reply@freezehub.io"
-gh variable set DEMO_EMAIL_TO            --body "freezehubio@gmail.com"
+gh variable set NOTIFICATIONS_EMAIL_FROM --body "hola@freezehub.io"
+gh variable set DEMO_EMAIL_TO            --body "hola@freezehub.io"
 gh variable set MAIL_HOST                --body "email-smtp.us-east-2.amazonaws.com"
 gh variable set MAIL_PORT                --body "587"
 ```
+
+**A shared mailbox rather than a personal one**, for both. `camilo@freezehub.io` exists and
+would work, and a lead that arrives while one person is on holiday is a lead nobody answers.
+The same argument applies to the from-address: `hola@freezehub.io` is monitored, so a
+customer who replies to a freeze notification reaches somebody — which `no-reply@` is
+designed to prevent, and which is the wrong trade for a product with design partners. Swap it
+for a `no-reply@` when replies become noise rather than contact.
 
 Credentials, as **SSM SecureStrings** — read on the box by the instance role, which already
 covers `/freezehub-<env>/*`, so this needs no Terraform change:
@@ -181,11 +188,17 @@ into `/opt/freezehub/.env` by the SSM command. A missing parameter is tolerated
 **SES SMTP credentials are not your AWS access keys.** They are generated in the SES console
 under *SMTP settings*, and the username looks like an access key id without being one.
 
-**SES starts in sandbox**, which restricts *recipients* to verified identities. That is
-enough for demo notifications — verify `freezehubio@gmail.com` and mail to it works
-immediately, with no production-access request. It is **not** enough for freeze
-notifications to customers, whose addresses cannot be verified in advance. Request
-production access before that matters; approval is not instant.
+**SES starts in sandbox**, which restricts *recipients* to verified identities.
+
+**Verify the domain, not the two addresses.** A verified `freezehub.io` identity covers every
+address on it **in both directions** — as a sender, and as a recipient for the sandbox
+restriction — so one verification makes `hola@` and `camilo@` work as From and as To without
+a production-access request. It also gives DKIM, which is most of deliverability, and the
+records go in the Route 53 zone that already exists.
+
+It is **not** enough for freeze notifications to customers, whose addresses are on domains
+you do not own and cannot verify in advance. Request production access before that matters;
+approval is not instant.
 
 ---
 
