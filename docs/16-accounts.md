@@ -125,6 +125,37 @@ sounds.
 
 ---
 
+
+### The laptop still has root keys for a different account
+
+**"There are no access keys" is true of the project account and not of the machine.** The
+CLI's `[default]` profile holds **root access keys for the 2022 personal account**
+(`548429664182`), which has no hosted zones, no estate and nothing to do with FreezeHub:
+
+```text
+default    548429664182   arn:aws:iam::548429664182:root      ← wrong account, root keys
+admin      668471252983   assumed-role/AccountFullAccessRole  ← the project
+admin-tf   668471252983   assumed-role/AccountFullAccessRole  ← the project, for Terraform
+```
+
+So **any command run without `AWS_PROFILE` goes to the wrong account**, and the failure mode
+is silence rather than an error: `aws route53 list-hosted-zones` there returns an empty list
+and exits 0. That is `FZ-175` in miniature — the same shape as the apply that created a state
+bucket in the personal account and reported success.
+
+`FZ-175` fixed it for Terraform by asserting `allowed_account_ids` in every provider. **The
+CLI has no equivalent**, so for anything run by hand — Route 53, SES, SSM — name the profile
+explicitly:
+
+```bash
+AWS_PROFILE=admin aws route53 change-resource-record-sets --hosted-zone-id Z05328562QOD2HA2DHF83 ...
+```
+
+Worth doing when convenient: **delete the root access keys on `548429664182`.** Root keys
+that exist can be used, `infra/README.md` already requires Terraform to assume a role rather
+than use root, and nothing on this machine needs them.
+---
+
 ## 2. What it takes away, and the one that stops the deploy
 
 Three restrictions, from SCPs marked **"cannot be modified"** that apply on the Free Tier

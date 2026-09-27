@@ -138,6 +138,7 @@ Additional documentation is created just-in-time when implementation requires it
 - `docs/15-migration.md`   — created by FZ-157
 - `docs/16-accounts.md`    — created by FZ-164
 - `docs/17-data-protection.md` — created by FZ-161
+- `docs/18-mail.md`        — created by FZ-215
 - `backend/CLAUDE.md`
 - `frontend/CLAUDE.md`
 
