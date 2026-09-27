@@ -55,6 +55,28 @@ services:
       FREEZEHUB_COGNITO_REGION: ${AWS_REGION:?}
       # The app client an access token must name in client_id, not aud (FZ-128).
       FREEZEHUB_COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:?}
+      #
+      # Telling somebody a demo was requested (FZ-214). **`:-` and not `:?`, unlike every
+      # value above**: those are wrong when absent and the context should refuse to start,
+      # but a deployment with no Slack and no mail server is a legitimate one — the request
+      # is still recorded, and the lead is the row rather than the message. An empty value
+      # is what each channel's `isConfigured()` reads as "not configured".
+      #
+      # Until FZ-214 none of these reached the box at all, so the first real demo request on
+      # the live site was announced to nothing.
+      FREEZEHUB_DEMO_REQUESTS_SLACK_WEBHOOK: ${DEMO_SLACK_WEBHOOK:-}
+      FREEZEHUB_DEMO_REQUESTS_EMAIL_TO: ${DEMO_EMAIL_TO:-}
+      # The address the product sends *from*, which also switches on the freeze
+      # notification emails and the billing notices -- both `@ConditionalOnProperty` on it,
+      # and both silently absent on this box until now.
+      FREEZEHUB_NOTIFICATIONS_EMAIL_FROM: ${NOTIFICATIONS_EMAIL_FROM:-}
+      SPRING_MAIL_HOST: ${MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      # SES requires STARTTLS on 587. Harmless when no mail server is configured.
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
       # server.forward-headers-strategy is already `framework` in the default document of
       # application.yml, and `none` only under `local`. Not repeated here: the rate limiter
       # (FZ-087) depends on it and config that matters should live in one place.

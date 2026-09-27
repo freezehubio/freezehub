@@ -135,6 +135,58 @@ nothing errors and nothing arrives.
 docker compose exec backend env | grep -i "FREEZEHUB_NOTIFICATIONS_EMAIL\|SPRING_MAIL"
 ```
 
+### Configuring them on the box (`FZ-214`)
+
+**Until `FZ-214` none of this reached the box at all.** The deploy wrote eight values into
+`.env` and no mail or Slack setting was among them, so `EmailNotificationSender`,
+`BillingNotifier` and `DemoRequestNotifier` were all unregistered in the deployed
+environment — and the first real demo request from the live site was announced to nothing.
+The section above diagnosed that correctly and never said how to fix it.
+
+**Everything here is optional.** An empty value is what each channel reads as "not
+configured"; nothing fails, and a demo request is still recorded, because the lead is the
+row and not the message.
+
+Non-secret, as **repository variables**:
+
+```bash
+gh variable set NOTIFICATIONS_EMAIL_FROM --body "no-reply@freezehub.io"
+gh variable set DEMO_EMAIL_TO            --body "freezehubio@gmail.com"
+gh variable set MAIL_HOST                --body "email-smtp.us-east-2.amazonaws.com"
+gh variable set MAIL_PORT                --body "587"
+```
+
+Credentials, as **SSM SecureStrings** — read on the box by the instance role, which already
+covers `/freezehub-<env>/*`, so this needs no Terraform change:
+
+```bash
+aws ssm put-parameter --type SecureString --region us-east-2 \
+  --name /freezehub-beta/demo-slack-webhook --value 'https://hooks.slack.com/services/...'
+aws ssm put-parameter --type SecureString --region us-east-2 \
+  --name /freezehub-beta/mail-username --value '<SES SMTP username>'
+aws ssm put-parameter --type SecureString --region us-east-2 \
+  --name /freezehub-beta/mail-password --value '<SES SMTP password>'
+```
+
+The Slack webhook URL **is** the credential — anyone holding it can post to the channel —
+which is why it is a SecureString and not a repository variable, and why no error message
+in this codebase ever includes it.
+
+**These take effect on the next *backend* deploy**, not a frontend one: they are written
+into `/opt/freezehub/.env` by the SSM command. A missing parameter is tolerated
+(`|| true`), so setting some and not others is a valid intermediate state.
+
+#### Two things about SES that are easy to get wrong
+
+**SES SMTP credentials are not your AWS access keys.** They are generated in the SES console
+under *SMTP settings*, and the username looks like an access key id without being one.
+
+**SES starts in sandbox**, which restricts *recipients* to verified identities. That is
+enough for demo notifications — verify `freezehubio@gmail.com` and mail to it works
+immediately, with no production-access request. It is **not** enough for freeze
+notifications to customers, whose addresses cannot be verified in advance. Request
+production access before that matters; approval is not instant.
+
 ---
 
 ## Verifying Slack and email end to end

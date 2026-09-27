@@ -1,67 +1,77 @@
 package com.freezhub.demo;
 
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.node.ObjectNode;
 import com.freezhub.notification.RetryPolicy;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
 
 /**
- * Tells FreezeHub's own Slack that a demo was requested (FZ-083).
+ * Tells somebody a demo was requested (FZ-083, given a second channel by FZ-214).
  *
- * <p><strong>Why this is not the notification module.</strong> The backlog assumed it
- * could be. It cannot: a {@code Notification} requires a non-null {@code organizationId}
- * and {@code restrictionId}, and {@code NotificationSender.send} takes a
- * {@code ChangeRestriction}. A demo request has none of the three, and bending the port to
- * fit would ripple through the email and webhook senders and their tests to serve one
- * message that goes to us rather than to a customer.
+ * <p><strong>Why this is not the notification module.</strong> The backlog assumed it could
+ * be. It cannot: a {@code Notification} requires a non-null {@code organizationId} <em>and</em>
+ * {@code restrictionId}, and a demo request has neither. What <em>is</em> reused is the part
+ * worth reusing — {@link RetryPolicy}, a pure function of attempt count with no coupling at
+ * all. Same backoff, same give-up point, no duplicated schedule to drift.
  *
- * <p>What <em>is</em> reused is the part worth reusing: {@link RetryPolicy}, which is a
- * pure function of attempt count and carries no coupling at all. Same backoff, same
- * give-up point, no duplicated schedule to drift.
+ * <p>This class is now only the loop. Where a request goes is a {@link DemoRequestChannel},
+ * of which there are two, and it asks every one that is configured.
  *
- * <p>Only registered when a webhook is configured. Without one there is nowhere to send,
- * and requests are still recorded — the lead is the row, not the message.
+ * <p><strong>One request, one set of columns, two channels.</strong> {@code demo_request}
+ * has a single {@code notified_at}, so "notified" has to mean something definite:
+ *
+ * <ul>
+ *   <li><em>every</em> configured channel succeeded — notified, no error recorded;
+ *   <li><em>some</em> succeeded — <strong>still notified</strong>, with the failures written
+ *       to {@code notify_error} so they are findable by query rather than only in a log;
+ *   <li><em>none</em> succeeded — not notified, retried on the usual backoff.
+ * </ul>
+ *
+ * <p>Partial success counts as notified deliberately. The alternative is retrying every
+ * channel until all of them work, which sends the channel that already succeeded the same
+ * lead five more times. A duplicate in Slack is noise; the purpose — somebody learned about
+ * this lead — was met on the first pass. The cost is that a permanently broken second
+ * channel keeps working as a warning rather than a failure, which is why it lands in a
+ * column and not only in the log.
+ *
+ * <p>With no channel configured nothing is sent and nothing is retried — the request is
+ * still recorded, because <strong>the lead is the row, not the message</strong>.
  */
 @Service
 public class DemoRequestNotifier {
 
     private static final Logger log = LoggerFactory.getLogger(DemoRequestNotifier.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final int BATCH_SIZE = 50;
 
     private final DemoRequestRepository requests;
-    private final RestClient restClient;
-    private final String webhookUrl;
+    private final List<DemoRequestChannel> channels;
 
-    public DemoRequestNotifier(DemoRequestRepository requests,
-                               RestClient.Builder restClientBuilder,
-                               @Value("${freezehub.demo-requests.slack-webhook:}") String webhookUrl) {
+    public DemoRequestNotifier(DemoRequestRepository requests, List<DemoRequestChannel> channels) {
         this.requests = requests;
-        this.restClient = restClientBuilder.build();
-        this.webhookUrl = webhookUrl;
+        this.channels = channels;
     }
 
+    /** Whether anything at all can be told. */
     public boolean isConfigured() {
-        return webhookUrl != null && !webhookUrl.isBlank();
+        return channels.stream().anyMatch(DemoRequestChannel::isConfigured);
     }
 
     /**
      * Sends whatever is due.
      *
-     * @return how many were announced on this pass
+     * @return how many were announced on this pass, counting a partial success as announced
      */
     @Transactional
     public int notifyPending(Instant now) {
-        if (!isConfigured()) {
+        List<DemoRequestChannel> configured = channels.stream()
+                .filter(DemoRequestChannel::isConfigured)
+                .toList();
+        if (configured.isEmpty()) {
             return 0;
         }
 
@@ -70,58 +80,36 @@ public class DemoRequestNotifier {
 
         int sent = 0;
         for (DemoRequest request : pending) {
-            try {
-                post(request);
-                request.markNotified(now);
+            List<String> failures = new ArrayList<>();
+            int delivered = 0;
+
+            for (DemoRequestChannel channel : configured) {
+                try {
+                    channel.announce(request);
+                    delivered += 1;
+                } catch (DemoRequestChannelException failed) {
+                    failures.add(channel.name() + ": " + failed.getMessage());
+                }
+            }
+
+            if (delivered > 0) {
+                if (failures.isEmpty()) {
+                    request.markNotified(now);
+                } else {
+                    request.markNotifiedWithFailures(now, String.join("; ", failures));
+                    log.warn("Demo request {} announced on {} of {} channels: {}",
+                            request.getId(), delivered, configured.size(),
+                            String.join("; ", failures));
+                }
                 sent += 1;
-            } catch (RestClientException failed) {
-                // The class name only. Spring puts the request URI in the message, and
-                // that URI is the webhook — a bearer credential.
-                String error = "Slack rejected or could not be reached: "
-                        + failed.getClass().getSimpleName();
+            } else {
+                String error = String.join("; ", failures);
                 request.markNotificationFailed(error,
                         RetryPolicy.nextAttemptAfter(request.getNotifyAttempts(), now));
-                log.warn("Demo request {} could not be announced (attempt {}): {}",
+                log.warn("Demo request {} could not be announced anywhere (attempt {}): {}",
                         request.getId(), request.getNotifyAttempts() + 1, error);
             }
         }
         return sent;
-    }
-
-    private void post(DemoRequest request) {
-        ObjectNode payload = MAPPER.createObjectNode();
-        payload.put("text", messageFor(request));
-
-        restClient.post()
-                .uri(webhookUrl)
-                .header("Content-Type", "application/json")
-                .body(payload.toString())
-                .retrieve()
-                .toBodilessEntity();
-    }
-
-    /**
-     * Built with Jackson rather than by concatenation.
-     *
-     * <p>A company called {@code O"Brien "Ltd"} is not hypothetical, and the same mistake
-     * in the audit trail produced an unparseable row once already ({@code FZ-060}).
-     */
-    private String messageFor(DemoRequest request) {
-        StringBuilder text = new StringBuilder("*Demo requested* — ")
-                .append(request.getCompany())
-                .append("\n")
-                .append(request.getName())
-                .append(" · ")
-                .append(request.getEmail());
-        if (request.getTeamSize() != null && !request.getTeamSize().isBlank()) {
-            text.append(" · ").append(request.getTeamSize()).append(" engineers");
-        }
-        if (request.getSource() != null && !request.getSource().isBlank()) {
-            text.append("\nFrom: ").append(request.getSource());
-        }
-        if (request.getMessage() != null && !request.getMessage().isBlank()) {
-            text.append("\n> ").append(request.getMessage());
-        }
-        return text.toString();
     }
 }
