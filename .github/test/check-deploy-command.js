@@ -47,6 +47,7 @@ const ENV = {
   // production has today, and the one most likely to break the quoting.
   NOTIFICATIONS_EMAIL_FROM: '',
   DEMO_EMAIL_TO: '',
+  DEMO_ACKNOWLEDGE_FROM: '',
   MAIL_HOST: '',
   MAIL_PORT: '',
 };

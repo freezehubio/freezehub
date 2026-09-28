@@ -72,6 +72,23 @@ public class DemoRequest {
     @Column(name = "notify_error")
     private String notifyError;
 
+    /*
+     * Telling the prospect we have their request (FZ-217) — a second outbound message with
+     * its own outcome, not a second attempt at the first. One may succeed while the other
+     * fails, and each has to say so on its own.
+     */
+    @Column(name = "acknowledged_at")
+    private Instant acknowledgedAt;
+
+    @Column(name = "acknowledge_attempts", nullable = false)
+    private int acknowledgeAttempts;
+
+    @Column(name = "next_acknowledge_at", nullable = false)
+    private Instant nextAcknowledgeAt;
+
+    @Column(name = "acknowledge_error")
+    private String acknowledgeError;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -91,6 +108,10 @@ public class DemoRequest {
         this.source = source;
         this.status = DemoRequestStatus.NEW;
         this.nextNotifyAt = now.truncatedTo(ChronoUnit.MICROS);
+        // Both are NOT NULL, and JPA inserts what the object holds rather than letting the
+        // column default apply — so a row created without this would fail on insert, not
+        // quietly take now() (FZ-217).
+        this.nextAcknowledgeAt = this.nextNotifyAt;
     }
 
     public Long getId() {
@@ -141,6 +162,18 @@ public class DemoRequest {
         return nextNotifyAt;
     }
 
+    public Instant getAcknowledgedAt() {
+        return acknowledgedAt;
+    }
+
+    public int getAcknowledgeAttempts() {
+        return acknowledgeAttempts;
+    }
+
+    public String getAcknowledgeError() {
+        return acknowledgeError;
+    }
+
     public String getNotifyError() {
         return notifyError;
     }
@@ -163,6 +196,25 @@ public class DemoRequest {
      * on one would look identical in the table, and a permanently broken channel would be
      * visible only in whatever logs had not yet rotated.
      */
+    void markAcknowledged(Instant now) {
+        this.acknowledgedAt = now.truncatedTo(ChronoUnit.MICROS);
+        this.acknowledgeError = null;
+    }
+
+    /**
+     * Records a failed acknowledgement and when to try again (`FZ-217`).
+     *
+     * <p>Retry matters more here than it looks. While SES is in the sandbox <b>every</b>
+     * acknowledgement to a real prospect is rejected, because their address is not a
+     * verified identity. Without a schedule those rows would stay permanently unanswered
+     * once production access arrives.
+     */
+    void markAcknowledgementFailed(String error, Instant nextAttemptAt) {
+        this.acknowledgeAttempts += 1;
+        this.acknowledgeError = truncate(error);
+        this.nextAcknowledgeAt = nextAttemptAt.truncatedTo(ChronoUnit.MICROS);
+    }
+
     void markNotifiedWithFailures(Instant now, String error) {
         this.notifiedAt = now.truncatedTo(ChronoUnit.MICROS);
         this.notifyError = truncate(error);

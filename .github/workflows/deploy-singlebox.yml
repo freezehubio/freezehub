@@ -100,6 +100,7 @@ jobs:
           # The credentials are not here — they come from SSM on the box, below.
           NOTIFICATIONS_EMAIL_FROM: ${{ vars.NOTIFICATIONS_EMAIL_FROM }}
           DEMO_EMAIL_TO: ${{ vars.DEMO_EMAIL_TO }}
+          DEMO_ACKNOWLEDGE_FROM: ${{ vars.DEMO_ACKNOWLEDGE_FROM }}
           MAIL_HOST: ${{ vars.MAIL_HOST }}
           MAIL_PORT: ${{ vars.MAIL_PORT }}
         run: |
@@ -155,6 +156,7 @@ jobs:
           \"echo ENCRYPTION_KEY=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/encryption-key --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
           \"echo NOTIFICATIONS_EMAIL_FROM=${NOTIFICATIONS_EMAIL_FROM} >> .env\",\
           \"echo DEMO_EMAIL_TO=${DEMO_EMAIL_TO} >> .env\",\
+          \"echo DEMO_ACKNOWLEDGE_FROM=${DEMO_ACKNOWLEDGE_FROM} >> .env\",\
           \"echo MAIL_HOST=${MAIL_HOST} >> .env\",\
           \"echo MAIL_PORT=${MAIL_PORT} >> .env\",\
           \"echo DEMO_SLACK_WEBHOOK=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/demo-slack-webhook --with-decryption --query Parameter.Value --output text --region $AWS_REGION 2>/dev/null || true) >> .env\",\

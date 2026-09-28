@@ -66,6 +66,10 @@ services:
       # the live site was announced to nothing.
       FREEZEHUB_DEMO_REQUESTS_SLACK_WEBHOOK: ${DEMO_SLACK_WEBHOOK:-}
       FREEZEHUB_DEMO_REQUESTS_EMAIL_TO: ${DEMO_EMAIL_TO:-}
+      # The address a demo request is acknowledged *from* (FZ-217). Deliberately not the
+      # notification sender: that one is send-only, this one is answered. Empty disables
+      # acknowledgements entirely, and the request is still recorded and still announced.
+      FREEZEHUB_DEMO_REQUESTS_ACKNOWLEDGE_FROM: ${DEMO_ACKNOWLEDGE_FROM:-}
       # The address the product sends *from*, which also switches on the freeze
       # notification emails and the billing notices -- both `@ConditionalOnProperty` on it,
       # and both silently absent on this box until now.
