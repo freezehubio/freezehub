@@ -95,6 +95,13 @@ jobs:
           COGNITO_USER_POOL_ID: ${{ vars.COGNITO_USER_POOL_ID }}
           COGNITO_CLIENT_ID: ${{ vars.COGNITO_CLIENT_ID }}
           BACKUP_BUCKET: ${{ vars.BACKUP_BUCKET }}
+          # Telling somebody a demo was requested (`FZ-214`). All optional: a deployment
+          # with neither Slack nor mail is legitimate, so none of these carries a guard.
+          # The credentials are not here — they come from SSM on the box, below.
+          NOTIFICATIONS_EMAIL_FROM: ${{ vars.NOTIFICATIONS_EMAIL_FROM }}
+          DEMO_EMAIL_TO: ${{ vars.DEMO_EMAIL_TO }}
+          MAIL_HOST: ${{ vars.MAIL_HOST }}
+          MAIL_PORT: ${{ vars.MAIL_PORT }}
         run: |
           set -euo pipefail
 
@@ -146,6 +153,13 @@ jobs:
           \"echo COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID} >> .env\",\
           \"echo DATABASE_PASSWORD=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/database-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
           \"echo ENCRYPTION_KEY=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/encryption-key --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
+          \"echo NOTIFICATIONS_EMAIL_FROM=${NOTIFICATIONS_EMAIL_FROM} >> .env\",\
+          \"echo DEMO_EMAIL_TO=${DEMO_EMAIL_TO} >> .env\",\
+          \"echo MAIL_HOST=${MAIL_HOST} >> .env\",\
+          \"echo MAIL_PORT=${MAIL_PORT} >> .env\",\
+          \"echo DEMO_SLACK_WEBHOOK=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/demo-slack-webhook --with-decryption --query Parameter.Value --output text --region $AWS_REGION 2>/dev/null || true) >> .env\",\
+          \"echo MAIL_USERNAME=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/mail-username --with-decryption --query Parameter.Value --output text --region $AWS_REGION 2>/dev/null || true) >> .env\",\
+          \"echo MAIL_PASSWORD=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/mail-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION 2>/dev/null || true) >> .env\",\
           \"grep -q '^DATABASE_PASSWORD=.' .env || { echo 'DATABASE_PASSWORD is empty - is /freezehub-${ENVIRONMENT}/database-password set?' >&2; exit 1; }\",\
           \"grep -q '^ENCRYPTION_KEY=.' .env || { echo 'ENCRYPTION_KEY is empty - is /freezehub-${ENVIRONMENT}/encryption-key set?' >&2; exit 1; }\",\
           \"chmod 600 .env\",\

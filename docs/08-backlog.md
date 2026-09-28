@@ -5788,6 +5788,74 @@ Acceptance:
 - No "Pick a time" is offered unless a scheduler is configured.
 - A failed submission keeps what was typed.
 
+### FZ-214 — Nobody Was Told Anything
+**Status:** DONE · **Completes** `FZ-083` · **Found by** the operator, submitting the form
+
+The first real demo request from the live site reached nobody, and the address that filled
+the form got nothing either. Two separate causes, and the second is much wider than the
+first.
+
+**Nothing ever emails the person who submits, by design.** `FZ-083` built one channel: a
+Slack webhook to FreezeHub's own workspace, so a human learns and replies. The form's
+"we'll be in touch shortly" means a person. Worth stating plainly because it looks like a
+defect and is not.
+
+**Nothing was configured to notify anyone, about anything.** The deploy wrote eight values
+into `.env` and none of them was a mail or Slack setting, so on the box:
+
+| | |
+|---|---|
+| `DemoRequestNotifier` | no `slack-webhook` → not registered |
+| `EmailNotificationSender` | no `notifications.email.from` → not registered |
+| `BillingNotifier` | `@ConditionalOnProperty` on the same → not registered |
+| `spring.mail.host` | unset → nowhere to send even if they were |
+
+So freeze notification emails and billing notices were silently off too, on a live
+deployment, and had been since the box existed. `14-operations.md` already diagnosed this
+shape correctly — *"email that silently does nothing is usually configuration"* — and never
+said how to configure it. It does now.
+
+**A second channel, because Slack tells whoever is looking at Slack.** A lead that arrives
+while nobody is is the one still unanswered on Monday. `DemoRequestNotifier` was the retry
+loop and the Slack call in one class, so the two were separated: `DemoRequestChannel`, with
+`SlackDemoRequestChannel` (unchanged behaviour) and `EmailDemoRequestChannel` beside it.
+
+**One request, one set of columns, two channels — so "notified" had to be defined.** All
+succeed → notified. **Some succeed → still notified**, with the failures written to
+`notify_error`. None → retried on the usual backoff. Partial success counts deliberately:
+retrying until every channel works sends the channel that already worked the same lead five
+more times, and the purpose — somebody learned about this lead — was met on the first pass.
+The cost is that a permanently broken second channel is a warning rather than a failure,
+which is exactly why it lands in a column and not only in a log.
+
+**Channels throw where `BillingNotifier` swallows**, and the difference is who owns the
+retry. Stripe redelivers a webhook it gets no 2xx for, so throwing there would replay a
+payment event; here this codebase owns the retry, so a failure the loop cannot see is a
+failure that never gets retried.
+
+**Configuration is optional everywhere, and that is load-bearing.** `compose.yaml` uses
+`:-` for all of it rather than the `:?` every other value takes: a deployment with neither
+Slack nor mail is legitimate. The SSM lookups end in `|| true` so a parameter that does not
+exist cannot fail a deploy. No Terraform change was needed — the instance role already
+covers `/freezehub-<env>/*`.
+
+**`FZ-208`'s guard earned itself.** Adding four variables to the deploy failed
+`check-deploy-command.js` on the first run, before anything reached a box. Its `ENV` map now
+carries them as **empty strings**, because an unset repository variable still arrives as an
+empty string rather than as unset — which is the shape production has today and the one most
+likely to break the quoting.
+
+**Found while writing it:** the error string read `Slack: Slack rejected or could not be
+reached`, because the channel repeated a name the loop already prefixes. It goes into
+`notify_error`, where an operator reads it.
+
+Acceptance:
+
+- A demo request reaches Slack, email, or both, wherever each is configured.
+- A request announced on one channel of two is not announced twice on the one that worked.
+- A missing SSM parameter does not fail a deploy.
+- The runbook says what to set, where, and what SES sandbox does and does not allow.
+
 ### FZ-216 — The Clock It Accepted And Ignored
 **Status:** DONE · **Fixes** `FZ-191` · **Found by** CI, five days after the fact
 
@@ -5824,3 +5892,4 @@ Acceptance:
 - No real-clock read remains in the component; the only `new Date()` are parameter defaults.
 - The suite passes on any date, proven by a fixed instant years in the past.
 - The regression fails when the defect is reintroduced.
+

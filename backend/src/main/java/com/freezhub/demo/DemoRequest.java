@@ -155,6 +155,20 @@ public class DemoRequest {
     }
 
     /**
+     * Announced somewhere, but not everywhere (`FZ-214`).
+     *
+     * <p>Notified — so it is not retried and the channel that worked is not sent the same
+     * lead again — while keeping what failed. Without this the two outcomes are
+     * indistinguishable afterwards: a request announced on both channels and one announced
+     * on one would look identical in the table, and a permanently broken channel would be
+     * visible only in whatever logs had not yet rotated.
+     */
+    void markNotifiedWithFailures(Instant now, String error) {
+        this.notifiedAt = now.truncatedTo(ChronoUnit.MICROS);
+        this.notifyError = truncate(error);
+    }
+
+    /**
      * Records a failed attempt and when to try again.
      *
      * <p>The lead is not at risk either way — it was stored before anything was sent, so
