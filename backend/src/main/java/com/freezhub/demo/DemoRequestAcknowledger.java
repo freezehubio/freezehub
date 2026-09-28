@@ -8,9 +8,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Limit;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import java.nio.charset.StandardCharsets;
 import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.MailPreparationException;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,13 +48,22 @@ public class DemoRequestAcknowledger {
 
     private final DemoRequestRepository requests;
     private final JavaMailSender mailSender;
+    private final DemoAcknowledgementMessage message;
     private final String fromAddress;
+    private final String bookingUrl;
+    private final String policyUrl;
 
     public DemoRequestAcknowledger(DemoRequestRepository requests, JavaMailSender mailSender,
-                                   @Value("${freezehub.demo-requests.acknowledge-from}") String fromAddress) {
+                                   DemoAcknowledgementMessage message,
+                                   @Value("${freezehub.demo-requests.acknowledge-from}") String fromAddress,
+                                   @Value("${freezehub.demo-requests.booking-url:}") String bookingUrl,
+                                   @Value("${freezehub.demo-requests.policy-url:}") String policyUrl) {
         this.requests = requests;
         this.mailSender = mailSender;
+        this.message = message;
         this.fromAddress = fromAddress;
+        this.bookingUrl = bookingUrl;
+        this.policyUrl = policyUrl;
     }
 
     /**
@@ -82,57 +95,34 @@ public class DemoRequestAcknowledger {
         return sent;
     }
 
-    private void send(DemoRequest request) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromAddress);
-        message.setTo(request.getEmail());
-        // Replying to this reaches the same mailbox it came from, which is the point.
-        message.setReplyTo(fromAddress);
-        message.setSubject("Thanks for asking about FreezeHub");
-        message.setText(bodyFor(request));
-
-        mailSender.send(message);
-    }
-
     /**
-     * Plain text, short, and it promises only what is true.
+     * Multipart: HTML, with the plain text as its alternative.
      *
-     * <p>No delivery estimate the product cannot keep — a human answers these, and
-     * "within one business day" written here becomes a commitment nobody agreed to. It says
-     * a person will reply, and that replying to this message reaches one.
-     *
-     * <p>Their own words are quoted back. It costs a line and it is the difference between
-     * a receipt and a form letter: they can see the request arrived intact.
+     * <p>Both parts, not one. A multipart message with no text part is a spam signal to some
+     * filters, and some readers show only that part — so the two have to say the same things
+     * or they become different promises to the same person.
      */
-    private String bodyFor(DemoRequest request) {
-        StringBuilder body = new StringBuilder()
-                .append("Hi ").append(firstNameOf(request.getName())).append(",\n\n")
-                .append("Thanks for asking about FreezeHub — we have your request and a person ")
-                .append("will get back to you.\n\n")
-                .append("FreezeHub is one authoritative place to declare a deployment freeze, ")
-                .append("tell everyone, and let your pipelines ask before they deploy. If that ")
-                .append("is not what you were expecting, say so in a reply and we will not ")
-                .append("waste your time.\n\n");
-
-        if (request.getMessage() != null && !request.getMessage().isBlank()) {
-            body.append("You told us:\n\n  ").append(request.getMessage()).append("\n\n");
+    private void send(DemoRequest request) {
+        MimeMessage mime = mailSender.createMimeMessage();
+        try {
+            MimeMessageHelper helper =
+                    new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
+            helper.setFrom(fromAddress);
+            helper.setTo(request.getEmail());
+            // Replying reaches the founder's own mailbox, which is the point of sending it
+            // from there rather than from a company alias.
+            helper.setReplyTo(fromAddress);
+            helper.setSubject(message.subject(request));
+            helper.setText(message.text(request, bookingUrl),
+                    message.html(request, bookingUrl, policyUrl));
+        } catch (MessagingException malformed) {
+            // Not a delivery failure: the message could not be built. Wrapped so the caller
+            // records and retries it the same way, because the outcome for the prospect is
+            // identical — nobody wrote to them.
+            throw new MailPreparationException(malformed);
         }
 
-        body.append("Just reply to this email if you want to add anything.\n\n")
-                .append("— The FreezeHub team\n");
-        return body.toString();
+        mailSender.send(mime);
     }
 
-    /**
-     * The first word of whatever they typed.
-     *
-     * <p>Greeting somebody by the whole of "Dana Okafor" reads like a database, and the
-     * database is exactly what it is. A single word, or the whole string when there is only
-     * one — never empty, because the field is required.
-     */
-    private String firstNameOf(String name) {
-        String trimmed = name.trim();
-        int space = trimmed.indexOf(' ');
-        return space > 0 ? trimmed.substring(0, space) : trimmed;
-    }
 }

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Recibimos tu solicitud de demo — FreezeHub</title>
+<!--
+  FreezeHub · Email de confirmación de solicitud de demo
+  Sistema visual: Broadsheet (frontend/src/index.css)
+    Papel      #f3f2f2  (--color-bg)
+    Superficie #eae9e9  (--color-surface)
+    Tinta      #201e1d  (--color-text)
+    Tinta 700  #605d5d  (--color-neutral-700, texto secundario)
+    Cian       #0088b0  (--color-accent, solo lo que se puede pulsar)
+    Cian 700   #006786  (--color-accent-700, enlaces a tamaño de párrafo)
+    Magenta    #aa0b56  (--color-accent-2-700, solo el punto del wordmark)
+  Tipografía: Source Serif 4 con respaldo Georgia (muchos clientes de correo no cargan webfonts).
+  Rendered by DemoRequestAcknowledger (FZ-217), not by a sending tool. Tokens are wrapped
+    in double underscores; they are named here without them so this comment cannot itself
+    be mistaken for one.
+
+    FIRST_NAME, COMPANY   from the request
+    BOOKING_URL           freezehub.demo-requests.booking-url — the whole button and the
+                          sentence introducing it are removed when it is empty
+    POLICY_URL            freezehub.demo-requests.policy-url — the sentence between
+                          POLICY_START and POLICY_END is removed when empty, because a link
+                          to an unpublished policy is worse than no claim (OI-51)
+-->
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  a { color: #006786; }
+  @media only screen and (max-width: 620px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 24px !important; padding-right: 24px !important; }
+    .h1 { font-size: 28px !important; line-height: 34px !important; }
+    .mast { font-size: 34px !important; }
+  }
+</style>
+</head>
+<body style="margin:0; padding:0; background-color:#eae9e9;">
+
+<!-- Texto de vista previa -->
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">
+  Elige el horario que mejor te funcione y conectemos pronto.
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#eae9e9;">
+  <tr>
+    <td align="center" style="padding:32px 12px;">
+
+      <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background-color:#f3f2f2; border-radius:2px;">
+
+        <!-- Wordmark 2c: filete de 5px arriba, 1px abajo, punto en magenta -->
+        <tr>
+          <td class="px" style="padding:48px 48px 0 48px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td class="mast" style="border-top:5px solid #201e1d; border-bottom:1px solid #201e1d; padding:10px 0; font-family:'Source Serif 4', Georgia, 'Times New Roman', serif; font-size:44px; line-height:1.05; font-weight:600; letter-spacing:-0.01em; color:#201e1d;">
+                  FreezeHub<span style="color:#aa0b56;">.</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Mensaje principal -->
+        <tr>
+          <td class="px" style="padding:56px 48px 0 48px;">
+            <h1 class="h1" style="margin:0 0 24px 0; font-family:'Source Serif 4', Georgia, 'Times New Roman', serif; font-size:34px; line-height:40px; font-weight:600; color:#201e1d;">
+              Hola __FIRST_NAME__, recibimos tu solicitud de demo
+            </h1>
+            <p style="margin:0 0 16px 0; font-family:'Source Serif 4', Georgia, 'Times New Roman', serif; font-size:17px; line-height:28px; color:#201e1d;">
+              Gracias por tu interés en FreezeHub. Nos encantaría conectar contigo lo más pronto posible.
+            </p>
+            <!--BOOKING_START--><p style="margin:0; font-family:'Source Serif 4', Georgia, 'Times New Roman', serif; font-size:17px; line-height:28px; color:#201e1d;">
+              Para que no tengas que esperar, elige directamente el horario que mejor te funcione:
+            </p><!--BOOKING_END-->
+          </td>
+        </tr>
+
+        <!-- Botón primario (cian = se puede pulsar) -->
+        <!--BOOKING_START--><tr>
+          <td class="px" align="left" style="padding:32px 48px 48px 48px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="center" bgcolor="#0088b0" style="border-radius:2px;">
+                  <a href="__BOOKING_URL__" target="_blank" style="display:inline-block; padding:14px 30px; font-family:'Source Serif 4', Georgia, 'Times New Roman', serif; font-size:17px; font-weight:600; line-height:1.2; color:#f3f2f2; text-decoration:none; border-radius:2px;">
+                    Agendar mi demo
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr><!--BOOKING_END-->
+
+        <!-- Qué esperar: sin caja, la estructura la da la escala tipográfica -->
+        <tr>
+          <td class="px" style="padding:0 48px;">
+            <h2 style="margin:0 0 10px 0; font-family:'Source Serif 4', Georgia, 'Times New Roman', serif; font-size:21px; line-height:28px; font-weight:600; color:#201e1d;">
+              Qué puedes esperar
+            </h2>
+            <p style="margin:0 0 20px 0; font-family:'Source Serif 4', Georgia, 'Times New Roman', serif; font-size:17px; line-height:28px; color:#201e1d;">
+              Una conversación de unos 30 minutos en la que veremos cómo tu equipo maneja hoy las ventanas en las que no se debe desplegar, te mostraremos cómo FreezeHub puede ayudar a __COMPANY__ y resolveremos todas tus preguntas.
+            </p>
+            <p style="margin:0; font-family:'Source Serif 4', Georgia, 'Times New Roman', serif; font-size:17px; line-height:28px; color:#201e1d;">
+              ¿Prefieres que te contactemos nosotros? Responde a este correo y con gusto coordinamos.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Firma -->
+        <tr>
+          <td class="px" style="padding:40px 48px 48px 48px;">
+            <p style="margin:0 0 16px 0; font-family:'Source Serif 4', Georgia, 'Times New Roman', serif; font-size:17px; line-height:28px; color:#201e1d;">
+              ¡Hablamos pronto!
+            </p>
+            <p style="margin:0; font-family:'Source Serif 4', Georgia, 'Times New Roman', serif; font-size:16px; line-height:24px; color:#201e1d;">
+              <span style="font-weight:600;">Camilo Hurtado</span><br>
+              <span style="color:#605d5d;">Fundador, FreezeHub</span><br>
+              <span style="color:#605d5d;">+57 311 773 7625</span>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Pie: filete fino (.hr) y texto secundario -->
+        <tr>
+          <td class="px" style="padding:0 48px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr><td style="height:1px; line-height:1px; font-size:0; background-color:#d2d0d0;">&nbsp;</td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td class="px" style="padding:20px 48px 36px 48px;">
+            <p style="margin:0; font-family:'Source Serif 4', Georgia, 'Times New Roman', serif; font-size:13px; line-height:20px; color:#605d5d;">
+              Recibes este correo porque solicitaste una demo en app.freezehub.io. <!--POLICY_START-->Tratamos tus datos según nuestra <a href="__POLICY_URL__" target="_blank" style="color:#006786;">Política de Tratamiento de Datos Personales</a>.<!--POLICY_END--><br>
+              Camilo Hurtado · Calle 50 # 99 - 74, Cali, Colombia
+            </p>
+          </td>
+        </tr>
+
+      </table>
+
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

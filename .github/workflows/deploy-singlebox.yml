@@ -101,6 +101,10 @@ jobs:
           NOTIFICATIONS_EMAIL_FROM: ${{ vars.NOTIFICATIONS_EMAIL_FROM }}
           DEMO_EMAIL_TO: ${{ vars.DEMO_EMAIL_TO }}
           DEMO_ACKNOWLEDGE_FROM: ${{ vars.DEMO_ACKNOWLEDGE_FROM }}
+          # The same repository variable the frontend build reads, so the email and the
+          # success panel cannot offer different calendars.
+          DEMO_BOOKING_URL: ${{ vars.DEMO_BOOKING_URL }}
+          DEMO_POLICY_URL: ${{ vars.DEMO_POLICY_URL }}
           MAIL_HOST: ${{ vars.MAIL_HOST }}
           MAIL_PORT: ${{ vars.MAIL_PORT }}
         run: |
@@ -157,6 +161,8 @@ jobs:
           \"echo NOTIFICATIONS_EMAIL_FROM=${NOTIFICATIONS_EMAIL_FROM} >> .env\",\
           \"echo DEMO_EMAIL_TO=${DEMO_EMAIL_TO} >> .env\",\
           \"echo DEMO_ACKNOWLEDGE_FROM=${DEMO_ACKNOWLEDGE_FROM} >> .env\",\
+          \"echo DEMO_BOOKING_URL=${DEMO_BOOKING_URL} >> .env\",\
+          \"echo DEMO_POLICY_URL=${DEMO_POLICY_URL} >> .env\",\
           \"echo MAIL_HOST=${MAIL_HOST} >> .env\",\
           \"echo MAIL_PORT=${MAIL_PORT} >> .env\",\
           \"echo DEMO_SLACK_WEBHOOK=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/demo-slack-webhook --with-decryption --query Parameter.Value --output text --region $AWS_REGION 2>/dev/null || true) >> .env\",\

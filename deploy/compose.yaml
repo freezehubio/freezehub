@@ -70,6 +70,11 @@ services:
       # notification sender: that one is send-only, this one is answered. Empty disables
       # acknowledgements entirely, and the request is still recorded and still announced.
       FREEZEHUB_DEMO_REQUESTS_ACKNOWLEDGE_FROM: ${DEMO_ACKNOWLEDGE_FROM:-}
+      # Both optional, and each removes part of the acknowledgement when absent rather than
+      # rendering a dead link (FZ-217). The booking URL is the same calendar the landing
+      # page offers; the policy URL stays empty until the Política is published (OI-51).
+      FREEZEHUB_DEMO_REQUESTS_BOOKING_URL: ${DEMO_BOOKING_URL:-}
+      FREEZEHUB_DEMO_REQUESTS_POLICY_URL: ${DEMO_POLICY_URL:-}
       # The address the product sends *from*, which also switches on the freeze
       # notification emails and the billing notices -- both `@ConditionalOnProperty` on it,
       # and both silently absent on this box until now.

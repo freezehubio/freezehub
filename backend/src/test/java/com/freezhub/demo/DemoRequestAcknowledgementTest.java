@@ -9,28 +9,28 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.mail.Session;
+import jakarta.mail.internet.MimeMessage;
 import java.time.Instant;
 import java.util.List;
+import java.util.Properties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Limit;
 import org.springframework.mail.MailSendException;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
 /**
- * Acknowledging the person who asked (`FZ-217`).
+ * The bookkeeping around acknowledging a demo request (`FZ-217`).
  *
- * <p>Unit rather than {@code @SpringBootTest}: what matters here is the message and the
- * failure bookkeeping, and neither needs a database. {@code DemoRequestNotificationTest}
- * already covers persistence and the retry schedule against a real PostgreSQL.
+ * <p>What the message *says* is {@code DemoAcknowledgementMessageTest}'s job; this covers
+ * what happens to the row, which is the part that decides whether anybody is left unanswered.
  */
 class DemoRequestAcknowledgementTest {
 
     private static final Instant NOW = Instant.parse("2026-09-28T10:00:00Z");
-    private static final String FROM = "hola@freezehub.io";
+    private static final String FROM = "camilo@freezehub.io";
 
     private DemoRequestRepository requests;
     private JavaMailSender mailSender;
@@ -40,62 +40,18 @@ class DemoRequestAcknowledgementTest {
     @BeforeEach
     void setUp() {
         request = new DemoRequest("Dana Okafor", "dana@northwind.test", "Northwind",
-                "35", "Freeze windows live in three Slack threads.", "landing", NOW);
+                "35", "tres hilos de Slack", "landing", NOW);
 
         requests = mock(DemoRequestRepository.class);
         when(requests.findPendingAcknowledgement(any(), anyInt(), any(Limit.class)))
                 .thenReturn(List.of(request));
 
         mailSender = mock(JavaMailSender.class);
-        acknowledger = new DemoRequestAcknowledger(requests, mailSender, FROM);
-    }
+        when(mailSender.createMimeMessage())
+                .thenReturn(new MimeMessage(Session.getInstance(new Properties())));
 
-    private SimpleMailMessage sentMessage() {
-        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
-        verify(mailSender).send(captor.capture());
-        return captor.getValue();
-    }
-
-    @Test
-    @DisplayName("writes to the person who asked, from an address that is answered")
-    void addressing() {
-        acknowledger.acknowledgePending(NOW);
-        SimpleMailMessage message = sentMessage();
-
-        assertThat(message.getTo()).containsExactly("dana@northwind.test");
-        assertThat(message.getFrom()).isEqualTo(FROM);
-        // Not the send-only notification sender: replying to this has to reach somebody.
-        assertThat(message.getReplyTo()).isEqualTo(FROM);
-        assertThat(message.getSubject()).contains("FreezeHub");
-    }
-
-    @Test
-    @DisplayName("greets by first name, not by the whole database field")
-    void greeting() {
-        acknowledger.acknowledgePending(NOW);
-
-        assertThat(sentMessage().getText()).startsWith("Hi Dana,");
-    }
-
-    @Test
-    @DisplayName("quotes their own words back, so they can see it arrived intact")
-    void quotesTheMessage() {
-        acknowledger.acknowledgePending(NOW);
-
-        assertThat(sentMessage().getText()).contains("three Slack threads");
-    }
-
-    @Test
-    @DisplayName("promises no delivery time the product cannot keep")
-    void promisesNothingUntrue() {
-        // A human answers these. "Within one business day" written here would be a
-        // commitment nobody agreed to.
-        acknowledger.acknowledgePending(NOW);
-        String text = sentMessage().getText();
-
-        assertThat(text).doesNotContainIgnoringCase("business day");
-        assertThat(text).doesNotContainIgnoringCase("24 hours");
-        assertThat(text).contains("will get back to you");
+        acknowledger = new DemoRequestAcknowledger(requests, mailSender,
+                new DemoAcknowledgementMessage(), FROM, "https://cal.example/freezehub", "");
     }
 
     @Test
@@ -106,6 +62,7 @@ class DemoRequestAcknowledgementTest {
         assertThat(sent).isEqualTo(1);
         assertThat(request.getAcknowledgedAt()).isEqualTo(NOW);
         assertThat(request.getAcknowledgeError()).isNull();
+        verify(mailSender).send(any(MimeMessage.class));
     }
 
     @Test
@@ -113,7 +70,8 @@ class DemoRequestAcknowledgementTest {
     void recordsFailure() {
         // This is every acknowledgement while SES is in the sandbox: the recipient is a
         // prospect, so their address is not a verified identity and SES refuses it.
-        doThrow(new MailSendException("554 Message rejected")).when(mailSender).send(any(SimpleMailMessage.class));
+        doThrow(new MailSendException("554 Message rejected"))
+                .when(mailSender).send(any(MimeMessage.class));
 
         int sent = acknowledger.acknowledgePending(NOW);
 
@@ -130,7 +88,7 @@ class DemoRequestAcknowledgementTest {
     void independentOfTheInternalAnnouncement() {
         // Separate promises to separate people. One failing must not mark the other done,
         // nor undo it.
-        doThrow(new MailSendException("rejected")).when(mailSender).send(any(SimpleMailMessage.class));
+        doThrow(new MailSendException("rejected")).when(mailSender).send(any(MimeMessage.class));
 
         acknowledger.acknowledgePending(NOW);
 
@@ -146,6 +104,6 @@ class DemoRequestAcknowledgementTest {
                 .thenReturn(List.of());
 
         assertThat(acknowledger.acknowledgePending(NOW)).isZero();
-        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+        verify(mailSender, never()).send(any(MimeMessage.class));
     }
 }
