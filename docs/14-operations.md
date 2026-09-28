@@ -135,6 +135,118 @@ nothing errors and nothing arrives.
 docker compose exec backend env | grep -i "FREEZEHUB_NOTIFICATIONS_EMAIL\|SPRING_MAIL"
 ```
 
+### Configuring them on the box (`FZ-214`)
+
+**Until `FZ-214` none of this reached the box at all.** The deploy wrote eight values into
+`.env` and no mail or Slack setting was among them, so `EmailNotificationSender`,
+`BillingNotifier` and `DemoRequestNotifier` were all unregistered in the deployed
+environment — and the first real demo request from the live site was announced to nothing.
+The section above diagnosed that correctly and never said how to fix it.
+
+**Everything here is optional.** An empty value is what each channel reads as "not
+configured"; nothing fails, and a demo request is still recorded, because the lead is the
+row and not the message.
+
+Non-secret, as **repository variables**:
+
+```bash
+gh variable set NOTIFICATIONS_EMAIL_FROM --body "hola@freezehub.io"
+gh variable set DEMO_EMAIL_TO            --body "hola@freezehub.io"
+gh variable set MAIL_HOST                --body "email-smtp.us-east-2.amazonaws.com"
+gh variable set MAIL_PORT                --body "587"
+```
+
+**A shared mailbox rather than a personal one**, for both. `camilo@freezehub.io` exists and
+would work, and a lead that arrives while one person is on holiday is a lead nobody answers.
+The same argument applies to the from-address: `hola@freezehub.io` is monitored, so a
+customer who replies to a freeze notification reaches somebody — which `no-reply@` is
+designed to prevent, and which is the wrong trade for a product with design partners. Swap it
+for a `no-reply@` when replies become noise rather than contact.
+
+Credentials, as **SSM SecureStrings** — read on the box by the instance role, which already
+covers `/freezehub-<env>/*`, so this needs no Terraform change:
+
+```bash
+aws ssm put-parameter --type SecureString --region us-east-2 \
+  --name /freezehub-beta/demo-slack-webhook --value 'https://hooks.slack.com/services/...'
+aws ssm put-parameter --type SecureString --region us-east-2 \
+  --name /freezehub-beta/mail-username --value '<SES SMTP username>'
+aws ssm put-parameter --type SecureString --region us-east-2 \
+  --name /freezehub-beta/mail-password --value '<SES SMTP password>'
+```
+
+The Slack webhook URL **is** the credential — anyone holding it can post to the channel —
+which is why it is a SecureString and not a repository variable, and why no error message
+in this codebase ever includes it.
+
+**These take effect on the next *backend* deploy**, not a frontend one: they are written
+into `/opt/freezehub/.env` by the SSM command. A missing parameter is tolerated
+(`|| true`), so setting some and not others is a valid intermediate state.
+
+#### Verifying the domain in SES
+
+Mail for `freezehub.io` is hosted elsewhere — the MX records point at `secureserver.net` —
+while **DNS is Route 53**, zone `Z05328562QOD2HA2DHF83`. SES needs verifying regardless: the
+mailboxes receive, SES sends, and they share only the domain name.
+
+**This does not touch the mailboxes.** Verification adds three CNAMEs on `_domainkey`
+subdomains. No MX record changes, and SES is not being asked to receive anything.
+
+```bash
+aws sesv2 create-email-identity --email-identity freezehub.io --region us-east-2
+
+aws sesv2 get-email-identity --email-identity freezehub.io --region us-east-2 \
+  --query 'DkimAttributes.Tokens' --output json \
+| jq '{Changes: [ .[] | {Action:"UPSERT", ResourceRecordSet:{
+      Name: (. + "._domainkey.freezehub.io"),
+      Type: "CNAME", TTL: 1800,
+      ResourceRecords: [{Value: (. + ".dkim.amazonses.com")}]}} ]}' \
+> /tmp/dkim-batch.json
+
+# Read it before sending it.
+jq -r '.Changes[].ResourceRecordSet | "\(.Name) -> \(.ResourceRecords[0].Value)"' /tmp/dkim-batch.json
+
+aws route53 change-resource-record-sets \
+  --hosted-zone-id Z05328562QOD2HA2DHF83 --change-batch file:///tmp/dkim-batch.json
+
+aws sesv2 get-email-identity --email-identity freezehub.io --region us-east-2 \
+  --query '{Sending:VerifiedForSendingStatus, Dkim:DkimAttributes.Status}'
+```
+
+Wanted: `Sending: true`, `Dkim: SUCCESS`. `UPSERT` makes re-running safe.
+
+**`jq` builds the batch, and `file://` hands it over — deliberately.** The first version of
+this looped over `--output text` and concatenated JSON in the shell. It failed, because
+`--output text` separates the three tokens with tabs and **zsh does not word-split unquoted
+expansions**, so the loop ran once with all three tokens and their tabs inside one string:
+`Invalid control character`. That is the fourth time this repository has been bitten by JSON
+assembled from shell string concatenation (`FZ-201`, `FZ-205`, `FZ-208`). Build it with a
+JSON tool, look at it, then send it from a file.
+
+#### Three things about SES that are easy to get wrong
+
+**SES SMTP credentials are not your AWS access keys.** They are generated in the SES console
+under *SMTP settings*, and the username looks like an access key id without being one.
+
+**Do not add `include:amazonses.com` to the domain's SPF record.** It is the obvious move
+and it achieves nothing here: SES sends with its own envelope sender (`*.amazonses.com`), so
+SPF is evaluated against that domain and `freezehub.io`'s `-all` is never consulted. What
+makes the mail authenticate is **DKIM alignment**, which the verification above provides.
+DMARC passes if either SPF or DKIM aligns. If SPF ever does need editing, edit the one
+record — **two SPF TXT records is a `permerror`**, which is worse than none.
+
+**SES starts in sandbox**, which restricts *recipients* to verified identities.
+
+**Verify the domain, not the two addresses.** A verified `freezehub.io` identity covers every
+address on it **in both directions** — as a sender, and as a recipient for the sandbox
+restriction — so one verification makes `hola@` and `camilo@` work as From and as To without
+a production-access request. It also gives DKIM, which is most of deliverability, and the
+records go in the Route 53 zone that already exists.
+
+It is **not** enough for freeze notifications to customers, whose addresses are on domains
+you do not own and cannot verify in advance. Request production access before that matters;
+approval is not instant.
+
 ---
 
 ## Verifying Slack and email end to end

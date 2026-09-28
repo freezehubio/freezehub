@@ -41,6 +41,14 @@ const ENV = {
   COGNITO_USER_POOL_ID: 'us-east-2_EXAMPLE00',
   COGNITO_CLIENT_ID: 'exampleclientid0000000000',
   BACKUP_BUCKET: 'freezehub-beta-backups-000000000000',
+  // Deliberately empty (`FZ-214`). A repository variable that has never been set still
+  // reaches the step as an empty string rather than as unset, and an empty value is what
+  // each notification channel reads as "not configured". Empty is therefore the shape
+  // production has today, and the one most likely to break the quoting.
+  NOTIFICATIONS_EMAIL_FROM: '',
+  DEMO_EMAIL_TO: '',
+  MAIL_HOST: '',
+  MAIL_PORT: '',
 };
 
 function fail(msg, detail) {
