@@ -152,9 +152,17 @@ Non-secret, as **repository variables**:
 ```bash
 gh variable set NOTIFICATIONS_EMAIL_FROM --body "hola@freezehub.io"
 gh variable set DEMO_EMAIL_TO            --body "hola@freezehub.io"
+gh variable set DEMO_ACKNOWLEDGE_FROM    --body "hola@freezehub.io"
 gh variable set MAIL_HOST                --body "email-smtp.us-east-2.amazonaws.com"
 gh variable set MAIL_PORT                --body "587"
 ```
+
+`DEMO_ACKNOWLEDGE_FROM` is the address the *prospect* is written back from (`FZ-217`), and
+it is deliberately **not** `NOTIFICATIONS_EMAIL_FROM`. That one is `notificaciones@`,
+send-only by design (`18-mail.md` §3) because an out-of-office answering a freeze
+announcement should die at the boundary. An acknowledgement is the opposite: it invites a
+reply, so it comes from a mailbox somebody reads. Leave it empty and no acknowledgement is
+sent — the request is still recorded and still announced.
 
 **A shared mailbox rather than a personal one**, for both. `camilo@freezehub.io` exists and
 would work, and a lead that arrives while one person is on holiday is a lead nobody answers.
@@ -243,9 +251,23 @@ restriction — so one verification makes `hola@` and `camilo@` work as From and
 a production-access request. It also gives DKIM, which is most of deliverability, and the
 records go in the Route 53 zone that already exists.
 
-It is **not** enough for freeze notifications to customers, whose addresses are on domains
-you do not own and cannot verify in advance. Request production access before that matters;
-approval is not instant.
+It is **not** enough for two things, and both now exist:
+
+- **freeze notifications to customers**, whose addresses are on domains you do not own;
+- **demo acknowledgements** (`FZ-217`), because a prospect's address is never verified.
+
+So while the account is in the sandbox **every acknowledgement is rejected**, recorded
+against its row and retried on the usual backoff. Nothing is lost and nobody is answered.
+Check which mode the account is in:
+
+```bash
+aws --no-cli-pager sesv2 get-account --region us-east-2 \
+  --query '{ProductionAccess:ProductionAccessEnabled, Quota:SendQuota.Max24HourSend}'
+```
+
+**Request production access before it matters; approval is not instant.** Once granted, the
+queued acknowledgements go out on the next sweep without anybody re-sending them — which is
+what the retry columns are for.
 
 ---
 

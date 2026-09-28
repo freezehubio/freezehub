@@ -1,0 +1,53 @@
+databaseChangeLog:
+  # FZ-217: the person who asks for a demo is told we received it.
+  #
+  # Four columns mirroring the `notify_*` set beside them, and the symmetry is the point:
+  # this is a second outbound message with its own outcome, not a second attempt at the
+  # first one. Telling ourselves a lead arrived and telling the prospect we have it are
+  # different promises to different people, and one failing must not mark the other done.
+  #
+  # **Retry is not optional here, and SES is why.** While the account is in the sandbox
+  # every acknowledgement to a real prospect is rejected -- their address is not a verified
+  # identity. Without a retry schedule those rows would stay permanently unacknowledged
+  # after production access is granted, which is the state that looks fine and is not.
+  #
+  # `next_acknowledge_at` defaults to `now()` so existing rows are eligible immediately: a
+  # demo request recorded before this column existed still deserves an answer.
+  - changeSet:
+      id: 028-demo-request-acknowledgement
+      author: freezehub
+      changes:
+        - addColumn:
+            tableName: demo_request
+            columns:
+              - column:
+                  name: acknowledged_at
+                  type: timestamptz
+              - column:
+                  name: acknowledge_attempts
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_acknowledge_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: acknowledge_error
+                  type: varchar(500)
+      rollback:
+        - dropColumn:
+            tableName: demo_request
+            columnName: acknowledged_at
+        - dropColumn:
+            tableName: demo_request
+            columnName: acknowledge_attempts
+        - dropColumn:
+            tableName: demo_request
+            columnName: next_acknowledge_at
+        - dropColumn:
+            tableName: demo_request
+            columnName: acknowledge_error

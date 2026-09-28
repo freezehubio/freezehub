@@ -80,6 +80,10 @@ freezehub:
     #
     # To enable email, set FREEZEHUB_NOTIFICATIONS_EMAIL_FROM plus spring.mail.* (SES
     # exposes an SMTP endpoint, so the same configuration works locally and deployed).
+    #
+    # freezehub.demo-requests.acknowledge-from is absent for the same reason and is a
+    # *different* address (FZ-217). The notification sender is send-only by design; an
+    # acknowledgement invites a reply, so it comes from a mailbox somebody reads.
 
 # Every log line carries the request id set by RequestIdFilter, so a report of "it failed
 # around three" becomes an exact lookup — and so two concurrent requests can be told apart
