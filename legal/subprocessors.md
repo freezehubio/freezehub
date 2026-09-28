@@ -4,7 +4,7 @@ Who else receives personal data from FreezeHub, and what each one receives. Refe
 `legal/data-processing-agreement.md` §5, which commits to **30 days' notice** before this list
 changes.
 
-**Last updated:** «FECHA DE ENTRADA EN VIGENCIA»
+**Last updated:** «FECHA DE ENTRADA EN VIGENCIA» · Google added 2026-09-28 (`FZ-218`)
 
 ## Current
 
@@ -12,6 +12,7 @@ changes.
 |---|---|---|---|
 | **Amazon Web Services, Inc.** | Hosting, storage, backups, identity directory, email delivery where used | Everything the service holds: accounts, audit records, deployment checks, catalog, integrations, notifications, and the nightly database dump | `us-east-2`, United States |
 | **GitHub, Inc.** | Container registry for the connector image | No personal data. Listed because the image is part of the delivered product, not because it receives data | United States |
+| **Google LLC** | The calendar a prospect is sent to after asking for a demo (`FZ-218`) | Whatever the visitor's browser sends Google when they open the page, and — if a booking page is used later — their name, email address and the time they choose. It receives nothing about a *customer's* data | United States |
 
 ## Decided, not yet in use
 
