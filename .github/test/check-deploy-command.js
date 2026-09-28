@@ -41,18 +41,30 @@ const ENV = {
   COGNITO_USER_POOL_ID: 'us-east-2_EXAMPLE00',
   COGNITO_CLIENT_ID: 'exampleclientid0000000000',
   BACKUP_BUCKET: 'freezehub-beta-backups-000000000000',
-  // Deliberately empty (`FZ-214`). A repository variable that has never been set still
-  // reaches the step as an empty string rather than as unset, and an empty value is what
-  // each notification channel reads as "not configured". Empty is therefore the shape
-  // production has today, and the one most likely to break the quoting.
-  NOTIFICATIONS_EMAIL_FROM: '',
-  DEMO_EMAIL_TO: '',
-  DEMO_ACKNOWLEDGE_FROM: '',
-  DEMO_BOOKING_URL: '',
-  DEMO_POLICY_URL: '',
-  MAIL_HOST: '',
-  MAIL_PORT: '',
+  // **Hostile on purpose** (`FZ-220`). These were empty strings, on the reasoning that an
+  // unset repository variable still arrives as one. True — and exactly why this check missed
+  // the defect it exists to prevent: an empty value cannot contain an `&`, so the one case
+  // that broke production was the one case never rendered.
+  //
+  // A real booking URL ending `&ctz=America%2FBogota` turned its `echo` into a backgrounded
+  // command plus a stray assignment. The line never reached `.env`, everything exited 0, and
+  // the deploy went green.
+  //
+  // Each value now carries something a shell would act on. Keep it that way: a fixture that
+  // cannot fail is not a fixture.
+  NOTIFICATIONS_EMAIL_FROM: 'no-reply@example.com',
+  DEMO_EMAIL_TO: 'hola@example.com',
+  DEMO_ACKNOWLEDGE_FROM: 'founder@example.com',
+  DEMO_BOOKING_URL: 'https://cal.example.com/book?src=a%40b.com&ctz=America%2FBogota&x=1',
+  DEMO_POLICY_URL: "https://example.com/p?q=a;b'c d`e",
+  MAIL_HOST: 'email-smtp.us-east-2.amazonaws.com',
+  MAIL_PORT: '587',
 };
+
+/** Single-quote for the harness itself; the fixture deliberately contains quotes. */
+function shellQuote(value) {
+  return "'" + String(value).split("'").join("'\\''") + "'";
+}
 
 function fail(msg, detail) {
   console.error(`FAIL  ${msg}`);
@@ -68,12 +80,27 @@ if (start < 0 || end < 0) {
        'If the send-command step was restructured, update this check with it — do not delete it.');
 }
 
-const block = lines.slice(start, end);
-block[0] = block[0].replace(/^\s*--parameters commands=/, 'COMMANDS=');
+// The ENV_B64 construction is now the thing most worth testing (`FZ-220`), so it is spliced
+// in ahead of the command array rather than faked. It is self-contained — it reads only
+// environment variables — unlike the other _B64 assignments, which read files and are
+// supplied by the fixture above.
+const envStart = lines.findIndex((l) => l.includes("ENV_B64=$(printf"));
+if (envStart < 0) {
+  fail('could not find the ENV_B64 construction in deploy-singlebox.yml',
+       'The .env is meant to be assembled on the runner and shipped as base64. If that\n' +
+       'changed, update this check with it — see FZ-220 for what it prevents.');
+}
+let envEnd = envStart;
+while (envEnd < lines.length && !lines[envEnd].includes("| base64 | tr -d")) envEnd += 1;
+const envBlock = lines.slice(envStart, envEnd + 1);
+
+const block = envBlock.concat(lines.slice(start, end));
+const cmdIndex = block.findIndex((l) => l.includes('--parameters commands='));
+block[cmdIndex] = block[cmdIndex].replace(/^\s*--parameters commands=/, 'COMMANDS=');
 block[block.length - 1] = block[block.length - 1].replace(/\s*\\$/, '');
 
 const header = ['#!/bin/bash', 'set -u']
-  .concat(Object.entries(ENV).map(([k, v]) => `${k}=${v}`))
+  .concat(Object.entries(ENV).map(([k, v]) => `${k}=${shellQuote(v)}`))
   .join('\n');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'freezehub-deploy-check-'));
@@ -119,5 +146,28 @@ for (const name of ['DATABASE_PASSWORD', 'ENCRYPTION_KEY']) {
   }
 }
 
+// **Parsing is not enough** (`FZ-220`). The defect this check failed to catch produced a
+// script that parsed perfectly and silently dropped a line, so the only useful question is
+// whether each value the runner supplies actually survives into the file.
+const shipped = fs.readFileSync(path.join(tmp, 'script.sh'), 'utf8');
+const b64 = (shipped.match(/echo ([A-Za-z0-9+/=]{40,}) \| base64 -d > \.env/) || [])[1];
+if (!b64) {
+  fail('the .env is no longer shipped as base64',
+       'Values assembled inside the remote script are re-parsed by its shell, which is how\n' +
+       'a URL containing an ampersand vanished without failing anything. See FZ-220.');
+}
+
+const envFile = Buffer.from(b64, 'base64').toString('utf8').split('\n');
+for (const [key, value] of Object.entries(ENV)) {
+  if (/_B64$|^INSTANCE_ID$|^IMAGE_TAG$|^REGISTRY$|^ENVIRONMENT$/.test(key)) continue;
+  const line = envFile.find((l) => l.startsWith(key + '='));
+  if (line === undefined) fail(key + ' never reaches .env', envFile.join('\n'));
+  if (line !== key + '=' + value) {
+    fail(key + ' is mangled on the way to .env',
+         'expected: ' + key + '=' + value + '\nactual:   ' + line);
+  }
+}
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`PASS  ${commands.length} commands: valid JSON, valid bash, secrets read on the box`);
+console.log(`      and every runner-supplied value survives into .env byte-for-byte`);

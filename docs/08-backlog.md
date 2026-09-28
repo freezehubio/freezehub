@@ -6110,3 +6110,56 @@ Acceptance:
 - The runbook answers "I changed a variable, now what" where somebody would look for it.
 - The reasons the immutability is kept are written down, so it is not relaxed later for
   convenience.
+
+### FZ-220 — The Ampersand That Deployed Green
+**Status:** DONE · **Fixes** `FZ-217` in production · **Found by** the operator, an email with no button
+
+`DEMO_BOOKING_URL` was set, the deploy went green in 44 seconds, and the line never reached
+`/opt/freezehub/.env`. `grep -c DEMO_BOOKING_URL .env` returned **0** — not an empty value,
+absent entirely — while `DEMO_POLICY_URL=` sitting beside it was written correctly.
+
+**The value is expanded by the runner, not by the box.** `${DEMO_BOOKING_URL}` is substituted
+into the SSM command before it is sent, so the box receives the URL as *literal command text*
+— and there `&` is a control operator, not a character:
+
+```text
+echo DEMO_BOOKING_URL=https://...embed?src=...&ctz=America%2FBogota >> .env
+└─ backgrounded echo, writing to stdout ──────────┘ └─ assignment + redirect, writes nothing ─┘
+```
+
+Both halves exit 0. Nothing failed. `FZ-154`'s wait-for-the-real-outcome step had nothing to
+catch, because the outcome **was** success.
+
+**My first diagnosis was wrong and the test that produced it was the wrong test.** Assigning
+the URL to a variable and expanding it unquoted is safe — expansion results are not re-parsed
+for operators — so a reproduction built that way passes. The real path is literal text, which
+is parsed. The lesson is not about ampersands: **a reproduction has to reproduce the path,
+not the shape.**
+
+**Fixed by removing the parsing, not by quoting.** Every runner-sourced value is assembled on
+the runner — where they *are* parameter expansions, and safe — and shipped as base64, decoded
+on the box into `.env`. Quoting would hold until a value contained the quote. This is the
+treatment `compose.yaml` and the Caddyfile already get, for the same reason.
+
+**The five SSM-sourced lines are unchanged and were never exposed.** Their `$(aws ssm ...)`
+runs on the box, and a command-substitution result is not re-parsed — which is also why they
+must stay where they are: only the instance role can read those parameters.
+
+**The guard existed and could not have caught this, which is the part worth keeping.**
+`check-deploy-command.js` (`FZ-208`) rendered the command and checked it parsed — and it
+*did* parse. Worse, its fixture set every one of these variables to the **empty string**, on
+the reasoning that an unset repository variable still arrives as one. True, and it meant the
+single case that breaks it was the single case never rendered. **A fixture that cannot fail
+is not a fixture.**
+
+So the fixture is now hostile — an `&`-bearing URL, a semicolon, a quote, a space — the
+harness quotes its own assignments so it can carry them, it splices in the `ENV_B64`
+construction rather than faking it, and it asserts every value arrives in `.env`
+**byte-for-byte** rather than merely that the script parses. Verified by restoring the old
+`echo` and watching it fail, then restoring the fix and watching it pass.
+
+Acceptance:
+
+- A value containing `&`, `;`, a quote or a space reaches `.env` intact.
+- The check fails if `.env` is ever again assembled inside the remote script.
+- The check's own fixture contains characters a shell would act on.
