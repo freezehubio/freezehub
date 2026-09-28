@@ -2763,6 +2763,46 @@ full path checked to emit the three dispatches in order with the right inputs. *
 verified: a real release.** Dispatching one publishes to the live beta, which is the
 operator's call and not a test.
 
+### FZ-215 — The Mail Estate, and the Profile That Points at the Wrong Account
+**Status:** DONE
+
+Documentation only. `docs/18-mail.md`, a section in `16-accounts.md`, and one line in
+`legal/README.md` that stops being a blocker.
+
+**Mail exists on `freezehub.io`.** Two mailboxes — `camilo@` for the human, `hola@` for the
+company — with every published address an alias into the second. The split is identity
+versus role, which is the one that survives a second person arriving and keeps `privacidad@`
+a monitored place rather than a filter in a sales inbox.
+
+`18-mail.md` records the two DNS values that look like mistakes and are not. The apex SPF
+ends in **`-all`**, so anything not GoDaddy hard-fails — which is why `include:amazonses.com`
+must never be bolted on when SES arrives for `notificaciones@`; the answer is a custom MAIL
+FROM subdomain. And DMARC is parked at **`p=none`**, which is *not* what GoDaddy generates:
+theirs is `p=reject` with the reports going only to their own address, which on a domain that
+had never sent mail discards anything misaligned before anybody can see it failing, and sends
+the evidence somewhere unreadable.
+
+**`privacidad@freezehub.io` now exists**, which was a gate rather than a nicety:
+`legal/README.md` required it to exist *and be monitored* before the privacy policy is
+published, because the statutory terms start when a request arrives. It was also the only one
+of that document's ten placeholders satisfiable without a company, so it is now the only one
+struck through.
+
+**The finding worth the story on its own.** `16-accounts.md` §1 says "there are no access
+keys", and that is true of the project account and false of the machine: the CLI's `[default]`
+profile holds **root access keys for the 2022 personal account** (`548429664182`). Anything
+run without `AWS_PROFILE` goes there, and the failure is silent —
+`aws route53 list-hosted-zones` returns an empty list and exits 0. That is `FZ-175` in
+miniature, which cost a state bucket created in the wrong account and reported as success.
+`FZ-175` fixed the Terraform half with `allowed_account_ids`; the CLI has no equivalent, so
+§2 now names the three profiles and says to pass the profile explicitly. It also recommends
+deleting those root keys, which nothing on the machine needs.
+
+Verified by running, before any of it was written: all seven mail records resolving, both
+DKIM CNAMEs followed through to a published `v=DKIM1` key, `app.` and `api.` untouched by the
+change batch, and each of the three profiles resolved to the account and zone it actually
+reaches.
+
 ## Going to Market
 
 Not a milestone: one story, and it is separate from `Milestone 15` because it is not security

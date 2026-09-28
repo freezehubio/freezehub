@@ -39,7 +39,7 @@ node legal/check-placeholders.js --strict # exits non-zero if any remain
 | `«DOMICILIO»` | Registered city | Same |
 | `«DIRECCIÓN FÍSICA»` | A physical address. Art. 13(a) requires one; a PO box or a registered-agent address is still an address | Same |
 | `«TELÉFONO»` | A telephone number. Also required by Art. 13(a) | The company |
-| `«CORREO DE PRIVACIDAD»` | The address petitions, consultas and reclamos arrive at. **It must exist and be monitored before this is published** — the statutory clocks below start when a request arrives, not when somebody notices it | The company. `privacidad@freezehub.io` is the obvious choice and is not currently a mailbox |
+| `«CORREO DE PRIVACIDAD»` | The address petitions, consultas and reclamos arrive at. **It must exist and be monitored before this is published** — the statutory clocks below start when a request arrives, not when somebody notices it | The company. **`privacidad@freezehub.io` exists** as an alias into `hola@` since `FZ-215` — see `docs/18-mail.md` |
 | `«ÁREA RESPONSABLE»` | The person or area answerable for those requests, per Art. 13(d) | The company |
 | `«FECHA DE ENTRADA EN VIGENCIA»` | The date the Política takes effect | The day it is published, after review |
 | `«VIGENCIA DE LAS BASES DE DATOS»` | How long the databases will be kept, per Art. 13(f) | Follows the retention table in `docs/17-data-protection.md` §3, but must be stated as a period |
