@@ -146,7 +146,8 @@ las finalidades, las obligaciones de seguridad y confidencialidad y las instrucc
 aplicables.
 
 Los Encargados que reciben datos personales, y lo que cada uno recibe, se publican y mantienen
-actualizados en `legal/subprocessors.md`.
+actualizados en `legal/subprocessors.md`. Entre ellos, **Google LLC** (Estados Unidos), cuyo
+calendario se ofrece a quien solicita una demostración.
 
 ## 7. Medidas de seguridad
 

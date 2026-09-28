@@ -6027,3 +6027,46 @@ Acceptance:
 - Acknowledgement state and internal-announcement state are independent in both directions.
 - Nothing in the message promises a time the product does not control.
 - No block renders a link that goes nowhere, and no internal note reaches a prospect.
+
+### FZ-218 — Google Becomes a Subprocessor
+**Status:** DONE · **Triggered by** setting `DEMO_BOOKING_URL` · **Follows** `FZ-213`, `FZ-217`
+
+`DEMO_BOOKING_URL` is set, so a prospect asking for a demo is now sent to a Google calendar
+— from the landing page's success panel (`FZ-213`) and from the acknowledgement email
+(`FZ-217`).
+
+**That makes Google an encargado, and the obligation lands the moment the variable is
+filled.** The comment in `deploy-frontend.yml` said exactly this and said why it was written
+there rather than in a document somebody would have to already be reading: *"Nothing is owed
+while this variable is empty."* It is no longer empty. A row in `legal/subprocessors.md`, a
+line in the Política's §6, and the DPA's 30-day notice now applies to that list.
+
+**What Google actually receives is stated narrowly**, because overstating it is as wrong as
+omitting it: whatever a visitor's browser sends when the page opens, and — if a booking page
+replaces the calendar later — their name, address and chosen time. **Nothing about a
+customer's data** reaches it, which is the distinction the DPA turns on.
+
+**The calendar is public and has no events.** It is `Demo Booking`, a secondary calendar,
+verified public by its ICS feed returning a real `VCALENDAR`. A visitor can therefore see it
+without a Google account.
+
+**The URL was corrected in one respect, and the operator's choice kept in every other.** The
+link given was `calendar.google.com/calendar/u/2?cid=…` — `/u/2` is the *second signed-in
+Google account in the browser that produced it*, so for anyone else it resolves to a
+different account or to an error. The same calendar is published as
+`calendar/embed?src=…`, which needs no account and no session. That is a defect in the link
+rather than a difference of opinion about which calendar to use.
+
+**Stated rather than fixed: this is a calendar, not a booking page.** The button says
+*"Agendar mi demo"* and the destination cannot take a booking — a visitor can read
+availability and must then email. A Google *appointment schedule*
+(`calendar.app.google/…`) is what takes bookings. The operator was told twice and chose
+this; the copy is the thing to revisit if the mismatch matters, not the variable.
+
+Acceptance:
+
+- Every party receiving personal data is on the published list before the path that sends
+  it to them is live.
+- The entry says what that party receives and what it does not.
+- The link works for somebody who is not signed in as the person who created it.
+
