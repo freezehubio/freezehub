@@ -5933,6 +5933,101 @@ Acceptance:
 - The suite passes on any date, proven by a fixed instant years in the past.
 - The regression fails when the defect is reintroduced.
 
+### FZ-217 — Telling the Person Who Asked
+**Status:** DONE · **Extends** `FZ-083`, `FZ-214` · **Blocked on** SES production access *to reach anybody*
+
+Someone who asks for a demo gets an email saying we have it. `FZ-214` told *us* a lead
+arrived; this tells *them*, which is a different promise to a different person.
+
+**A separate sender with its own columns, not a third `DemoRequestChannel`.** A channel
+announces the lead internally, and if one fails while another works the lead is still
+handled. This cannot be substituted for: nobody else can acknowledge the prospect. So
+`acknowledged_at`, `acknowledge_attempts`, `next_acknowledge_at` and `acknowledge_error`
+mirror the `notify_*` set beside them, and the two states never touch — a Slack outage must
+not leave somebody waiting for a reply that was never the same message.
+
+**From an address a human reads**, which is why it is its own property rather than reusing
+`freezehub.notifications.email.from`. That one is `notificaciones@`, send-only by design
+(`18-mail.md` §3, `FZ-215`) because an out-of-office answering a freeze announcement should
+die at the boundary. An acknowledgement is the opposite — it invites a reply, and a prospect
+who answers should reach somebody. `Reply-To` is the same address.
+
+**It promises nothing the product cannot keep.** No "within one business day": a human
+answers these, and a delivery estimate written into a template is a commitment nobody agreed
+to. It says a person will reply, says what FreezeHub is in one sentence so a mis-aimed
+enquiry can say so immediately, and quotes their own words back — which costs a line and is
+the difference between a receipt and a form letter. There is a test asserting the absence of
+the time promises, because the temptation to add one later is real.
+
+**Every one of these is rejected today, and that is why retry is not optional.** SES is in
+the sandbox (`ProductionAccess: false`), which restricts *recipients* to verified
+identities. A prospect's address never is. Without a retry schedule those rows would sit
+permanently unacknowledged after production access is granted — the state that looks fine
+and is not. With one, the queue goes out on the next sweep and nobody re-sends anything by
+hand.
+
+**`next_acknowledge_at` defaults to `now()`**, so requests recorded before this column
+existed are eligible immediately. The one already in the beta's database deserves an answer
+as much as the next one.
+
+**Found while writing it:** `nextAcknowledgeAt` is `NOT NULL` and JPA inserts what the
+object holds rather than letting the column default apply, so a row created without the
+constructor setting it fails on insert. The database default covers the migration's existing
+rows; the constructor covers every row after it. Both are needed and they do different jobs.
+
+**The message is the operator's own HTML template**, not prose in Java —
+`resources/email/demo-acknowledgement.html`, in Broadsheet's colours with the `2c` wordmark.
+It is a design artefact somebody will edit, so it lives as a file. The company's identity
+lives in it too: a phone number and a postal address change rarely, and six configuration
+properties nobody sets differently per environment would be worse than one file.
+
+**Substitution, not a template engine.** Three tokens and two optional blocks do not justify
+a dependency, and an engine running over HTML assembled from form input is a larger surface
+than this needs. What came from the form is escaped — `O'Brien & Sons <Ltd>` is not
+hypothetical, and it is the mistake `FZ-060` made in the audit trail.
+
+**Multipart, HTML with the plain text as its alternative.** Both, not one: a multipart with
+no text part is a spam signal to some filters, some readers show only that part, and the two
+have to say the same things or they become different promises to the same person.
+
+**Sent from the founder, which overrides the argument `FZ-214` made.** That story chose a
+shared mailbox so a lead arriving during a holiday still reaches somebody. This is the
+operator's call and the reasoning is different: at one customer a reply from a person is the
+product, and the trust it buys is worth more than the coverage. `Reply-To` is the same
+address, so answering reaches them.
+
+**Two blocks disappear rather than render a dead link.** No `DEMO_BOOKING_URL` and the
+button *and the sentence introducing it* are removed — a "choose a time" with nothing behind
+it is an offer to somebody who has already decided to meet. No `DEMO_POLICY_URL` and the
+sentence claiming a privacy policy goes, because the Política is drafted and unpublished
+(`OI-51`) and linking to a 404 while asserting the data is handled under it is worse than
+making no claim. The legal identification stays either way; it is required regardless.
+
+**The booking URL is the same repository variable the frontend build reads**, so the email
+and the success panel cannot offer different calendars.
+
+**Found while building it, both by tests:** the template's own developer comment — twenty
+lines about the colour ramp and which token comes from where — was being sent to prospects,
+and is now stripped, with a test that no Outlook conditional comment is ever added, since
+stripping is unconditional and `<!--[if mso]>` is markup rather than commentary. And the
+comment documenting the tokens contained the literal token names, so three tests failed
+reporting that placeholders "survived" substitution. The comment names them without their
+delimiters now.
+
+**The legal identification is a *persona natural*.** Ley 1581 Art. 3(e) defines the
+Responsable as "persona natural o jurídica", so a solo founder can hold it in their own name;
+`razón social` becomes that name. Recorded here because the same fact answers several of
+`legal/README.md`'s placeholders, and because the liability question it raises — unlimited,
+personal, for a product that fails closed — belongs to the operator and not to this story.
+
+Acceptance:
+
+- The person who asks is written to, from an address that is answered.
+- A rejected acknowledgement is recorded and retried, not lost.
+- Acknowledgement state and internal-announcement state are independent in both directions.
+- Nothing in the message promises a time the product does not control.
+- No block renders a link that goes nowhere, and no internal note reaches a prospect.
+
 ### FZ-218 — Google Becomes a Subprocessor
 **Status:** DONE · **Triggered by** setting `DEMO_BOOKING_URL` · **Follows** `FZ-213`, `FZ-217`
 
@@ -5974,3 +6069,4 @@ Acceptance:
   it to them is live.
 - The entry says what that party receives and what it does not.
 - The link works for somebody who is not signed in as the person who created it.
+
