@@ -6070,3 +6070,43 @@ Acceptance:
 - The entry says what that party receives and what it does not.
 - The link works for somebody who is not signed in as the person who created it.
 
+### FZ-219 — Release Cannot Deploy a Configuration Change
+**Status:** DONE · **Found by** trying it · **Documents** a property of `FZ-201` and `FZ-203`
+
+Setting `DEMO_ACKNOWLEDGE_FROM` and re-dispatching `Release` failed:
+
+```text
+The image tag '3074b92' already exists in the 'freezehub-beta' repository and cannot be
+overwritten because the tag is immutable.
+```
+
+**Everything in that sentence is correct behaviour**, which is what makes it confusing. The
+tag is the commit SHA (`FZ-201`); `Release` always builds; ECR's tags are immutable. A commit
+that has already shipped cannot be built again, and configuration is precisely the thing that
+changes *without* a commit — the values reach the box through `.env`, written by the SSM
+command at deploy time.
+
+So there was no documented route for a change that needs a deploy and has no new code, which
+is every new variable, every rotated credential and every address change.
+
+**The answer already existed and was filed under the wrong name.** `Deploy single-box` with
+the tag already in ECR does exactly this, and the runbook mentioned it only as *"how a
+rollback is done"*. Nobody reading it would find it by asking "I changed a variable, now
+what".
+
+**Not fixed by relaxing anything, deliberately.** Two tempting alternatives were rejected:
+mutable tags, which are what make a rollback untrustworthy — one tag has to mean one image;
+and teaching the build step to treat a tag collision as success, which would let a genuinely
+failed build report a successful deploy. The message is telling the truth and should keep
+telling it.
+
+**It also names the state this made visible.** For anything `@ConditionalOnProperty` — the
+notification channels, the demo acknowledgement — *deployed* and *switched on* are different,
+and only the second sends anything. `FZ-217` shipped, was reported ready, and sent nothing,
+because the variable that registers the bean had never been set.
+
+Acceptance:
+
+- The runbook answers "I changed a variable, now what" where somebody would look for it.
+- The reasons the immutability is kept are written down, so it is not relaxed later for
+  convenience.

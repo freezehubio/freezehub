@@ -619,6 +619,50 @@ spend limit it removed is not coming back — `FZ-204`'s budget only alerts.
    The three underlying workflows remain individually dispatchable, which is how a rollback
    is done: `Deploy single-box` with an earlier `image_tag`, no rebuild.
 
+### Changing configuration without changing code
+
+**`Release` cannot do this, and the failure is confusing the first time** (`FZ-219`).
+
+Repository variables and SSM parameters are written into `/opt/freezehub/.env` by the SSM
+command, so **a configuration change needs a deploy** — a new variable, a rotated credential,
+a changed address. But `Release` always builds, the image tag is `git rev-parse --short HEAD`,
+and ECR's tags are immutable. Re-dispatching it on a commit that has already shipped produces
+the same tag and is refused:
+
+```text
+failed to push …/freezehub-beta:3074b92: unknown: The image tag '3074b92' already exists
+in the 'freezehub-beta' repository and cannot be overwritten because the tag is immutable.
+```
+
+That message is **correct and worth keeping**. One tag meaning one image for ever is what
+makes a rollback trustworthy; the fix is not to relax it, and not to teach the build step to
+treat a collision as success — that would let a genuinely failed build look like a deploy.
+
+Deploy the image that is already there:
+
+```bash
+# the tag currently on master, which is also what is running
+git rev-parse --short origin/master
+
+gh workflow run deploy-singlebox.yml --ref master \
+  -f image_tag=<that tag> -f instance_id=i-0790b05b4c76a0039
+```
+
+No build. It sends the SSM command, rewrites `.env` from the current variables and
+parameters, and restarts the container. Confirm the image exists first if you are unsure:
+
+```bash
+AWS_PROFILE=admin aws --no-cli-pager ecr describe-images --region us-east-2 \
+  --repository-name freezehub-beta --image-ids imageTag=<that tag> \
+  --query 'imageDetails[0].imagePushedAt'
+```
+
+**This is the same path as a rollback**, which is why the line above mentions `Deploy
+single-box` only in those terms. It is also how you switch on anything that is
+`@ConditionalOnProperty` — the notification channels, the demo acknowledgement — because for
+those, *deployed* and *switched on* are two different states and only the second sends
+anything.
+
 6. **Verify the deploy the way § *Verifying a deploy actually landed* says**, not by the
    workflow going green. A green workflow proves the steps ran.
 
