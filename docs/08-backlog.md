@@ -5787,3 +5787,40 @@ Acceptance:
 - A submitted request is a row before it is a notification.
 - No "Pick a time" is offered unless a scheduler is configured.
 - A failed submission keeps what was typed.
+
+### FZ-216 — The Clock It Accepted And Ignored
+**Status:** DONE · **Fixes** `FZ-191` · **Found by** CI, five days after the fact
+
+`ScheduleTimeline` takes an injectable `now` so its tests are deterministic.
+`runwaySentence` read `Date.now()` instead.
+
+Every other calculation went through the injected value; that one line did not. Its test
+passed on the day it was written, because the fixed `now` and the real clock agreed to
+within a minute. It has been failing on `master` since the clock moved on, **blocking every
+pull request** — `FZ-214` was the one that surfaced it, having touched no frontend code at
+all.
+
+```
+× answers when it is safe to deploy
+  Unable to find an element with the text: /Next clear runway/
+```
+
+With `now` fixed in the past and the real clock elsewhere, the first runway looks as though
+it has already started, so the sentence reads *"Clear for 4 days from now"* instead of
+*"Next clear runway: …"*.
+
+**A component that accepts a clock and then ignores it is worse than one that never offered
+a seam.** The tests look deterministic. They are not, and nothing says which half is which —
+so the failure arrives detached from the change that caused it, on a day nobody touched the
+file.
+
+**The regression test uses a `now` far in the past — 2020 — rather than a plausible one.**
+That is the point: if anything reaches for the real clock, the window and the sentence
+disagree on *every* future day rather than on some of them. Verified by putting the bug back
+and watching both tests fail, then restoring the fix and watching all fourteen pass.
+
+Acceptance:
+
+- No real-clock read remains in the component; the only `new Date()` are parameter defaults.
+- The suite passes on any date, proven by a fixed instant years in the past.
+- The regression fails when the defect is reintroduced.

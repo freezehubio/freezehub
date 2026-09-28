@@ -117,6 +117,30 @@ describe('ScheduleTimeline', () => {
     expect(screen.getByText(/Next clear runway/)).toBeInTheDocument()
   })
 
+  test('does not consult the real clock, whatever day it is run on', () => {
+    // The regression (`FZ-216`). `runwaySentence` read `Date.now()` while every other
+    // calculation used the injected `now`, so the suite passed on the day it was written —
+    // the two agreed to within a minute — and started failing five days later on `master`,
+    // blocking every pull request.
+    //
+    // A fixed `now` far in the past is what makes that visible: if anything reaches for the
+    // real clock, the window and the sentence disagree and this fails on every future day
+    // rather than on one of them.
+    const longAgo = new Date('2020-03-01T09:00:00Z')
+    const midnight = new Date(longAgo)
+    midnight.setHours(0, 0, 0, 0)
+    const day = (n: number) => new Date(midnight.getTime() + n * 86_400_000).toISOString()
+
+    renderRoute(
+      <ScheduleTimeline
+        now={longAgo}
+        restrictions={[restriction('Freeze', day(0), day(4))]}
+      />,
+    )
+
+    expect(screen.getByText(/Next clear runway/)).toBeInTheDocument()
+  })
+
   test('says plainly when there is no runway at all', () => {
     renderRoute(
       <ScheduleTimeline now={NOW} restrictions={[restriction('Wall', at(-1), at(20))]} />,
