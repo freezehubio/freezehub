@@ -126,6 +126,40 @@ jobs:
           #
           # The stack files travel with the command rather than being baked into the AMI,
           # so what runs on the box is what is in this commit and can be diffed.
+          # Everything whose value comes from a repository variable, assembled here and
+          # shipped as base64 (FZ-220).
+          #
+          # These used to be `echo VAR=${VAR} >> .env` lines inside the remote script. The
+          # runner expands ${VAR} *before* the script reaches the box, so the value arrives
+          # as literal command text -- and an `&` in it is then a control operator, not a
+          # character. A booking URL ending `...&ctz=America%2FBogota` silently became a
+          # backgrounded echo plus a stray assignment: the line never reached `.env`, every
+          # command exited 0, and the deploy reported success.
+          #
+          # Quoting each value would work until a value contains the quote. Base64 removes
+          # the question: the box never parses these at all. It is the same treatment
+          # compose.yaml and the Caddyfile already get, for the same reason.
+          #
+          # The SSM-sourced lines below stay as they are. Their $(aws ssm ...) runs on the
+          # box, and a command-substitution result is not re-parsed for operators -- so they
+          # were never exposed to this.
+          ENV_B64=$(printf '%s\n' \
+            "BACKEND_IMAGE=${REGISTRY}:${IMAGE_TAG}" \
+            "API_DOMAIN=${API_DOMAIN}" \
+            "APP_DOMAIN=${APP_DOMAIN}" \
+            "AWS_REGION=${AWS_REGION}" \
+            "COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}" \
+            "COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID}" \
+            "NOTIFICATIONS_EMAIL_FROM=${NOTIFICATIONS_EMAIL_FROM}" \
+            "DEMO_EMAIL_TO=${DEMO_EMAIL_TO}" \
+            "DEMO_ACKNOWLEDGE_FROM=${DEMO_ACKNOWLEDGE_FROM}" \
+            "DEMO_BOOKING_URL=${DEMO_BOOKING_URL}" \
+            "DEMO_POLICY_URL=${DEMO_POLICY_URL}" \
+            "MAIL_HOST=${MAIL_HOST}" \
+            "MAIL_PORT=${MAIL_PORT}" \
+            "BACKUP_BUCKET=${BACKUP_BUCKET}" \
+            | base64 | tr -d '\n')
+
           COMPOSE_B64=$(base64 < deploy/compose.yaml | tr -d '\n')
           CADDY_B64=$(base64 < deploy/Caddyfile | tr -d '\n')
 
@@ -149,22 +183,9 @@ jobs:
           \"echo $CADDY_B64 | base64 -d > Caddyfile\",\
           \"aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${REGISTRY%%/*}\",\
           \"umask 077\",\
-          \"rm -f .env\",\
-          \"echo BACKEND_IMAGE=${REGISTRY}:${IMAGE_TAG} >> .env\",\
-          \"echo API_DOMAIN=${API_DOMAIN} >> .env\",\
-          \"echo APP_DOMAIN=${APP_DOMAIN} >> .env\",\
-          \"echo AWS_REGION=${AWS_REGION} >> .env\",\
-          \"echo COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID} >> .env\",\
-          \"echo COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID} >> .env\",\
+          \"echo $ENV_B64 | base64 -d > .env\",\
           \"echo DATABASE_PASSWORD=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/database-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
           \"echo ENCRYPTION_KEY=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/encryption-key --with-decryption --query Parameter.Value --output text --region $AWS_REGION) >> .env\",\
-          \"echo NOTIFICATIONS_EMAIL_FROM=${NOTIFICATIONS_EMAIL_FROM} >> .env\",\
-          \"echo DEMO_EMAIL_TO=${DEMO_EMAIL_TO} >> .env\",\
-          \"echo DEMO_ACKNOWLEDGE_FROM=${DEMO_ACKNOWLEDGE_FROM} >> .env\",\
-          \"echo DEMO_BOOKING_URL=${DEMO_BOOKING_URL} >> .env\",\
-          \"echo DEMO_POLICY_URL=${DEMO_POLICY_URL} >> .env\",\
-          \"echo MAIL_HOST=${MAIL_HOST} >> .env\",\
-          \"echo MAIL_PORT=${MAIL_PORT} >> .env\",\
           \"echo DEMO_SLACK_WEBHOOK=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/demo-slack-webhook --with-decryption --query Parameter.Value --output text --region $AWS_REGION 2>/dev/null || true) >> .env\",\
           \"echo MAIL_USERNAME=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/mail-username --with-decryption --query Parameter.Value --output text --region $AWS_REGION 2>/dev/null || true) >> .env\",\
           \"echo MAIL_PASSWORD=\$(aws ssm get-parameter --name /freezehub-${ENVIRONMENT}/mail-password --with-decryption --query Parameter.Value --output text --region $AWS_REGION 2>/dev/null || true) >> .env\",\
