@@ -129,7 +129,7 @@ export function ScheduleTimeline({
         * a screen reader gets instead of a chart it cannot see.
         */}
       <p className={styles.summary}>
-        {runwaySentence(runways.length === 0 ? null : runways[0])}
+        {runwaySentence(runways.length === 0 ? null : runways[0], now)}
         {beyond > 0 && (
           <>
             {' '}
@@ -143,9 +143,17 @@ export function ScheduleTimeline({
   )
 }
 
-function runwaySentence(first: { start: number; duration: string } | null): string {
+/**
+ * <b>Takes `now`, and must.</b> This read the real clock (`FZ-191`), which made the component
+ * only partly deterministic: every other calculation went through the injected `now` and this
+ * one did not. Its test passed on the day it was written — the fixed `now` and the real clock
+ * agreed to within a minute — and began failing five days later, on `master`, blocking every
+ * pull request. A component that accepts a clock and then ignores it is worse than one that
+ * never offered: the tests look deterministic and are not.
+ */
+function runwaySentence(first: { start: number; duration: string } | null, now: Date): string {
   if (first === null) return `Every day in the next ${TIMELINE_DAYS} is covered by a hard freeze.`
-  const startsNow = first.start <= Date.now() + 60_000
+  const startsNow = first.start <= now.getTime() + 60_000
   return startsNow
     ? `Clear for ${first.duration} from now.`
     : `Next clear runway: ${first.duration} from ${formatShort(new Date(first.start).toISOString())}.`
