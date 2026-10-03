@@ -32,6 +32,32 @@ node legal/check-placeholders.js --strict # exits non-zero if any remain
 
 ## What must be filled in, and where to get it
 
+**Six of the ten were filled by `FZ-221`** from facts the operator supplied: the physical
+address, the city, the telephone, the privacy mailbox, the responsible area and the public
+URL of the Política. The table below is kept because it says what each field *is*, which is
+what matters the next time one of them changes.
+
+**Four remain**, and `node legal/check-placeholders.js` is the authority on which:
+
+| Still open | Why it cannot be filled from this repository |
+|---|---|
+| `«RAZÓN SOCIAL»` | Only the operator holds the registered name — and see the warning below |
+| `«NIT»` | Same; a tax identifier must be transcribed, never inferred |
+| `«FECHA DE ENTRADA EN VIGENCIA»` | The day it is published, which has not happened |
+| `«VIGENCIA DE LAS BASES DE DATOS»` | **Disputed.** `17-data-protection.md` §3 says `demo_request` should be kept 180 days unless converted; a longer period was proposed. That document wins by this file’s own rule, and no delete path exists either way (`OI-36`), so whatever is stated is unenforceable in code today |
+
+### The source column below assumes a company, and FreezeHub may not be one
+
+Four rows name the **certificado de existencia y representación legal** as the source. A
+*persona natural* has no such certificate, and no **razón social** either — the identifying
+details would be the operator’s own name, their cédula-derived NIT as it appears in the
+**RUT**, and, if one is registered, a *nombre comercial* from the Cámara de Comercio.
+
+This is not a formatting detail. Decreto 1377 Art. 13(a) requires these details to be
+published, so **as a persona natural the operator’s own name and home address go on a public
+page**. Incorporating as an S.A.S. with a registered domicile is the ordinary way out, and
+that decision belongs upstream of publishing this document rather than after it.
+
 | Placeholder | What it is | Where it comes from |
 |---|---|---|
 | `«RAZÓN SOCIAL»` | The operating company's registered legal name | Certificado de existencia y representación legal |
