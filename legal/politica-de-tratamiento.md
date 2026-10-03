@@ -1,10 +1,10 @@
 # Política de Tratamiento de Datos Personales
 
 **Responsable del Tratamiento:** «RAZÓN SOCIAL», NIT «NIT»
-**Domicilio:** «DOMICILIO», Colombia
-**Dirección:** «DIRECCIÓN FÍSICA»
-**Correo electrónico:** «CORREO DE PRIVACIDAD»
-**Teléfono:** «TELÉFONO»
+**Domicilio:** Cali, Colombia
+**Dirección:** Calle 50 # 99 - 74
+**Correo electrónico:** privacidad@freezehub.io
+**Teléfono:** +57 311 773 7625
 
 **Fecha de entrada en vigencia:** «FECHA DE ENTRADA EN VIGENCIA»
 **Vigencia de las bases de datos:** «VIGENCIA DE LAS BASES DE DATOS»
@@ -100,8 +100,8 @@ sobre ella.
 
 ## 5. Área responsable y procedimiento
 
-Las peticiones, consultas y reclamos se atienden por «ÁREA RESPONSABLE», en
-**«CORREO DE PRIVACIDAD»**.
+Las peticiones, consultas y reclamos se atienden por el Fundador, quien actúa
+directamente como Responsable del Tratamiento, en **privacidad@freezehub.io**.
 
 ### 5.1 Consulta
 
