@@ -6164,8 +6164,11 @@ Acceptance:
 - The check fails if `.env` is ever again assembled inside the remote script.
 - The check's own fixture contains characters a shell would act on.
 
-### FZ-222 — Five HIGHs Arrived Without a Commit
+### FZ-222 — Six HIGHs Arrived Without a Commit
 **Status:** DONE · **Found by** CI on `FZ-221`, a documentation-only branch that touched no code
+
+**Two layers, one cause.** Five in the dependency tree and one in the base image, found in
+that order because the dependency scan runs first and the job stops at the first failure.
 
 The `security` job failed on a pull request whose diff contained no `.java` file. `master`'s
 last Verify run was green on 2026-09-28; nothing was pushed between then and 2026-10-03.
@@ -6210,9 +6213,31 @@ build then runs on whatever `JAVA_HOME` points at — here Java 1.8 — and fail
 which reads like corrupted source rather than a wrong compiler. `CLAUDE.md` already says to
 ensure `JAVA_HOME` points at a Java 21 JDK; this is what ignoring it looks like.
 
+#### The base image, found only once the dependency scan passed
+
+With Jackson fixed, the same job failed one step later on `Scan the backend base image`:
+**`CVE-2026-84782`**, an information disclosure through DTLS handshake retransmission, in
+`libssl3t64` and `openssl` at `3.0.13-0ubuntu3.15` — fixed in `3.0.13-0ubuntu3.16`.
+
+**This is the Dockerfile working as designed, not failing.** Its own comment says a pinned
+digest does not pick up the base's security patches, and that `verify.yml` scanning exactly
+these digests is *“what turns the pin from a freeze into a decision somebody has to make”*.
+This is that decision, made.
+
+**Both stages moved**, not only the runtime one that ships and is scanned. The Dockerfile
+keeps build and runtime on the same distribution deliberately — one glibc, one set of CA
+certificates — and letting the digests drift apart would quietly give that up.
+
+The new image was checked before the pin was changed rather than after, because a digest bump
+only helps if upstream has actually rebuilt: `dpkg -l` in
+`eclipse-temurin:21-jre-noble@sha256:22138efd…` reports `3.0.13-0ubuntu3.16` for both
+packages.
+
 Acceptance:
 
 - `tools.jackson.core:jackson-core` and `:jackson-databind` resolve to `3.1.7`.
+- The shipped image reports `openssl` and `libssl3t64` at `3.0.13-0ubuntu3.16`.
+- `docker build` succeeds on the new build-stage JDK digest, not only the runtime one.
 - `./mvnw clean verify` passes with Java 21: **606 tests, 0 failures**.
 - No CVE is suppressed, ignored, or added to an allowlist.
 - The pin is a property, not two dependency overrides.
