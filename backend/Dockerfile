@@ -22,7 +22,7 @@
 # whose standard library carries the eight findings `FZ-127` had to baseline. Choosing the
 # variant removes them instead of suppressing them. This stage never ships — only the jar
 # is copied out — but it builds what does, so it is pinned too.
-FROM eclipse-temurin:21-jdk-noble@sha256:2fc8306f51cd8c1582b972213f3115300074084ec4f9060448454f04ecbd941b AS build
+FROM eclipse-temurin:21-jdk-noble@sha256:70898f0f893a6b772a0f29834d8b022e3ac20b6a0c33a922973cf66342ef56be AS build
 
 WORKDIR /build
 
@@ -43,7 +43,7 @@ RUN ./mvnw --batch-mode --no-transfer-progress clean package -DskipTests
 # The base that actually ships. Same distribution as the build stage on purpose: one glibc,
 # one set of CA certificates, one thing to reason about when something behaves differently
 # in the image than it did in the build.
-FROM eclipse-temurin:21-jre-noble@sha256:d35199d74a3b2dff1bfb435d9adde4ef974e74a7d2a4fcb3079063c55926edb5 AS runtime
+FROM eclipse-temurin:21-jre-noble@sha256:22138efd69393501fccd8176ae16b01791ed71ff801b28f0359415389b17c766 AS runtime
 
 # Not root. A container that does not need to write anywhere should not be able to.
 RUN groupadd --system freezehub && useradd --system --gid freezehub freezehub

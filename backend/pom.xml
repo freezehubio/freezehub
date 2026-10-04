@@ -25,6 +25,14 @@
             because the alternative is shipping them or suppressing them.
         -->
         <tomcat.version>11.0.25</tomcat.version>
+
+        <!--
+            Ahead of the Boot 4.1.1 default of 3.1.5, which carries five HIGHs: four
+            denial-of-service paths in jackson-core and jackson-databind, all reachable
+            by parsing untrusted JSON (FZ-222). 3.1.7 is the lowest version that fixes
+            every one of them, so this stays inside 3.1.x rather than moving to 3.2.
+        -->
+        <jackson-bom.version>3.1.7</jackson-bom.version>
     </properties>
 
     <dependencies>
