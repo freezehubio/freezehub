@@ -1,6 +1,6 @@
 # Política de Tratamiento de Datos Personales
 
-**Responsable del Tratamiento:** «RAZÓN SOCIAL», NIT «NIT»
+**Responsable del Tratamiento:** Camilo Andres Hurtado Carvajal
 **Domicilio:** Cali, Colombia
 **Dirección:** Calle 50 # 99 - 74
 **Correo electrónico:** privacidad@freezehub.io
@@ -20,30 +20,30 @@ tributaria para los registros de facturación
 
 ## 1. Alcance, y por qué esta distinción va primero
 
-«RAZÓN SOCIAL» opera FreezeHub, un servicio que permite a organizaciones declarar y consultar
-restricciones de despliegue de software. Frente a los datos personales que trata,
-«RAZÓN SOCIAL» actúa en **dos calidades distintas**, y de cuál se trate depende a quién debe
-dirigirse el Titular.
+Camilo Andres Hurtado Carvajal opera FreezeHub, un servicio que permite a organizaciones
+declarar y consultar restricciones de despliegue de software. Frente a los datos personales que
+trata, Camilo Andres Hurtado Carvajal actúa en **dos calidades distintas**, y de cuál se trate
+depende a quién debe dirigirse el Titular.
 
 ### 1.1 Como Responsable
 
-Respecto de los datos que «RAZÓN SOCIAL» recoge para sus propios fines:
+Respecto de los datos que Camilo Andres Hurtado Carvajal recoge para sus propios fines:
 
 - los datos de contacto de quien solicita una demostración del producto;
 - los datos de registro de quien crea una cuenta, antes de que exista una organización;
 - los identificadores de facturación asociados a un contrato;
 - los registros operativos del servicio.
 
-Sobre estos datos «RAZÓN SOCIAL» decide la finalidad, responde directamente al Titular y es a
-quien deben dirigirse las consultas y reclamos.
+Sobre estos datos Camilo Andres Hurtado Carvajal decide la finalidad, responde directamente al
+Titular y es a quien deben dirigirse las consultas y reclamos.
 
 ### 1.2 Como Encargado
 
-Respecto de los datos que una organización cliente introduce en el producto —las cuentas de
-sus propios usuarios, sus registros de auditoría, sus consultas de despliegue, sus catálogos e
-integraciones— **la organización cliente es el Responsable** y «RAZÓN SOCIAL» es Encargado.
-«RAZÓN SOCIAL» los trata únicamente siguiendo las instrucciones de esa organización y no los
-utiliza para ninguna finalidad propia.
+Respecto de los datos que una organización cliente introduce en el producto —las cuentas de sus
+propios usuarios, sus registros de auditoría, sus consultas de despliegue, sus catálogos e
+integraciones— **la organización cliente es el Responsable** y Camilo Andres Hurtado Carvajal
+es Encargado. Camilo Andres Hurtado Carvajal los trata únicamente siguiendo las instrucciones
+de esa organización y no los utiliza para ninguna finalidad propia.
 
 **Consecuencia práctica para el Titular:** si usted es usuario de una organización que utiliza
 FreezeHub, la solicitud sobre sus datos debe dirigirse a esa organización. Si nos llega a
@@ -164,7 +164,7 @@ bases de datos.
 
 Conforme al parágrafo del artículo 16 de la Ley 1581 de 2012, el Titular sólo podrá elevar
 queja ante la Superintendencia de Industria y Comercio una vez haya agotado el trámite de
-consulta o reclamo ante «RAZÓN SOCIAL».
+consulta o reclamo ante Camilo Andres Hurtado Carvajal.
 
 ## 6. Transmisión internacional
 
@@ -181,8 +181,9 @@ calendario se ofrece a quien solicita una demostración.
 
 ## 7. Medidas de seguridad
 
-«RAZÓN SOCIAL» adopta medidas técnicas y administrativas para procurar la seguridad de los
-datos y evitar su adulteración, pérdida, consulta, uso o acceso no autorizado. Entre ellas:
+Camilo Andres Hurtado Carvajal adopta medidas técnicas y administrativas para procurar la
+seguridad de los datos y evitar su adulteración, pérdida, consulta, uso o acceso no autorizado.
+Entre ellas:
 
 - cifrado en tránsito y en reposo, incluido el cifrado de los valores secretos almacenados;
 - aislamiento de los datos de cada organización cliente;
@@ -195,10 +196,10 @@ Ninguna medida elimina el riesgo por completo, y este documento no afirma lo con
 
 ## 8. Atención de incidentes
 
-Ante un incidente de seguridad que afecte datos personales, «RAZÓN SOCIAL» lo contiene, lo
-evalúa y, cuando actúa como Encargado, informa sin dilación indebida a cada organización
-Responsable afectada. Cuando actúa como Responsable, informa a la Superintendencia de
-Industria y Comercio en los términos aplicables. Todo incidente se registra, sea o no
+Ante un incidente de seguridad que afecte datos personales, Camilo Andres Hurtado Carvajal lo
+contiene, lo evalúa y, cuando actúa como Encargado, informa sin dilación indebida a cada
+organización Responsable afectada. Cuando actúa como Responsable, informa a la Superintendencia
+de Industria y Comercio en los términos aplicables. Todo incidente se registra, sea o no
 notificable.
 
 ## 9. Vigencia y modificaciones

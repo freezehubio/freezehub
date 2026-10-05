@@ -18,7 +18,7 @@ See `politica-de-tratamiento.md` § 2.1 for the basis and its two stated limits.
 > conforme al artículo 10 de la Ley 1581 de 2012 y a nuestra
 > [Política de Tratamiento](https://app.freezehub.io/legal/politica).
 >
-> Responsable: «RAZÓN SOCIAL», NIT «NIT» · Calle 50 # 99 - 74, Cali, Colombia ·
+> Responsable: Camilo Andres Hurtado Carvajal · Calle 50 # 99 - 74, Cali, Colombia ·
 > privacidad@freezehub.io · +57 311 773 7625
 >
 > Si responde «no», no volvemos a escribirle. Si prefiere que eliminemos sus datos,
@@ -31,7 +31,7 @@ See `politica-de-tratamiento.md` § 2.1 for the basis and its two stated limits.
 > Article 10 of Colombia's Law 1581 of 2012 and our
 > [Privacy Policy](https://app.freezehub.io/legal/politica).
 >
-> Controller: «RAZÓN SOCIAL», tax ID «NIT» · Calle 50 # 99 - 74, Cali, Colombia ·
+> Controller: Camilo Andres Hurtado Carvajal · Calle 50 # 99 - 74, Cali, Colombia ·
 > privacidad@freezehub.io · +57 311 773 7625
 >
 > Reply "no" and we will not write again. If you would rather we deleted your data, email

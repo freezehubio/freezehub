@@ -6349,6 +6349,36 @@ advertising email. No footer cures that, and the German contact is the operator'
 does not replace counsel (`OI-51`), and the dato-público treatment of a work email is the
 first thing to ask about. Three placeholders remain, all facts only the operator holds.
 
+#### The NIT was not a missing fact, it was a mistake
+
+Filling the razón social raised a question worth asking before transcribing anything: does a
+**persona natural** have one? It does, and it is their own name as it appears on the cédula —
+not the words "persona natural", which name a legal category. FreezeHub is the *nombre
+comercial*, optional and protected by use rather than registration. Both are usable; they are
+not interchangeable.
+
+**Checking the statute changed the answer on the NIT.** Decreto 1377 Art. 13(1) requires
+exactly *nombre o razón social, domicilio, dirección, correo electrónico y teléfono*, and **no
+tax or identity number appears anywhere in Art. 13.** For a persona natural the NIT *is* the
+cédula, so the drafts would have published a national identity number on an indexed page to
+meet an obligation that does not exist — alongside the full name and home address Art. 13 does
+require, which is the exact combination used for *suplantación de identidad*.
+
+So the NIT is now absent from the Política, both Avisos and all 19 outreach footers, and
+present only in `data-processing-agreement.md`: a contract handed to a counterparty, never
+published, where identifying a party by tax ID is ordinary. The reasoning is recorded in
+`legal/README.md` rather than only in this entry, because the failure mode is somebody
+helpfully adding it back.
+
+The verification digit was computed with the DIAN modulo-11 algorithm and the implementation
+checked against a published worked example before being trusted — the first three fixtures
+tried were recalled rather than looked up, and two of them were wrong, which is why they were
+replaced with a sourced one.
+
+**One limit that cannot be closed the same way:** Art. 13(1) does require `domicilio` and
+`dirección`, so an address must be published. Where that address is a home, a coworking or
+agent address meets the same requirement with less exposure. Noted as a decision, not fixed.
+
 Acceptance:
 
 - § 2.1 carries a prospecting row, and the Art. 10 basis is stated in prose rather than
@@ -6358,3 +6388,6 @@ Acceptance:
 - A Spanish quotation is not reported as a placeholder; an upper-case token still is.
 - The outreach list appears in the `17-data-protection.md` map, marked as outside the product.
 - Nothing claims the send is lawful in Germany.
+- The razón social is the operator’s legal name, not the phrase "persona natural".
+- The cédula appears in exactly one file, and that file is not published.
+- `node legal/check-placeholders.js` reports **one**: the publication date.
