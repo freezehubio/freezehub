@@ -58,6 +58,13 @@ personal data about someone who never became a customer.
 | Application logs | P4 | responsable | no personal data by rule | unchanged | — |
 | PostgreSQL volume | all | both | encrypted EBS, not published to host | unchanged | — |
 | Nightly `pg_dump` to S3 | all | both | **`FZ-155` — restore never drilled** | lifecycle expiry, drilled | lags by the expiry window |
+| Browser `sessionStorage` | P1 | encargado | session token + PKCE state, same origin, cleared when the tab closes | unchanged | cleared on sign-out |
+
+**No cookie is set anywhere, and that is a position rather than an accident** (`D-38`).
+The session token lives in `sessionStorage` on our own origin; `document.cookie` appears
+nowhere in `frontend/src`; and `index.html` loads no third-party script or hosted font. This
+is why FreezeHub ships no cookie banner — and why adding Google Analytics or a Google-hosted
+font is a data-protection change, not a frontend one.
 
 ### Four things the map surfaces
 

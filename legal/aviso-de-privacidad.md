@@ -11,8 +11,8 @@ product anyone can sign up for does not get to choose where its data subjects li
 
 ## Español
 
-**Responsable:** «RAZÓN SOCIAL», NIT «NIT» · «DIRECCIÓN FÍSICA», «DOMICILIO», Colombia
-«CORREO DE PRIVACIDAD» · «TELÉFONO»
+**Responsable:** «RAZÓN SOCIAL», NIT «NIT» · Calle 50 # 99 - 74, Cali, Colombia
+privacidad@freezehub.io · +57 311 773 7625
 
 **Tratamiento y finalidad.** Sus datos de identificación y contacto se tratan para atender su
 solicitud, crear y administrar su cuenta, prestarle el servicio, facturarlo y cumplir las
@@ -27,8 +27,8 @@ gratuitamente a ellos; y presentar quejas ante la Superintendencia de Industria 
 
 **Cómo consultar la Política.** La Política de Tratamiento de Datos Personales completa, y
 cualquier cambio sustancial que se le introduzca, está disponible de forma permanente en
-«URL DE LA POLÍTICA». Los cambios sustanciales se comunicarán por el canal de contacto que
-usted haya proporcionado, antes de su entrada en vigencia.
+https://app.freezehub.io/legal/politica. Los cambios sustanciales se comunicarán
+por el canal de contacto que usted haya proporcionado, antes de su entrada en vigencia.
 
 Al enviar este formulario usted declara haber leído este aviso y autoriza de manera previa,
 expresa e informada el tratamiento de sus datos en los términos descritos.
@@ -37,8 +37,8 @@ expresa e informada el tratamiento de sus datos en los términos descritos.
 
 ## English
 
-**Data controller:** «RAZÓN SOCIAL», tax ID «NIT» · «DIRECCIÓN FÍSICA», «DOMICILIO», Colombia
-«CORREO DE PRIVACIDAD» · «TELÉFONO»
+**Data controller:** «RAZÓN SOCIAL», tax ID «NIT» · Calle 50 # 99 - 74, Cali, Colombia
+privacidad@freezehub.io · +57 311 773 7625
 
 **What we do with your data.** Your identification and contact details are used to answer your
 request, create and administer your account, provide the service, invoice you, and meet our
@@ -54,8 +54,9 @@ If you are in the EEA or the UK, the equivalent rights under the GDPR are honour
 channel and within the same deadlines, whichever are shorter.
 
 **Where to read the full policy.** The full Data Processing Policy, and any substantial change
-to it, is permanently available at «URL DE LA POLÍTICA». Substantial changes are notified to
-you on the contact channel you provided, before they take effect.
+to it, is permanently available at https://app.freezehub.io/legal/politica.
+Substantial changes are notified to you on the contact channel you provided, before they
+take effect.
 
 By submitting this form you confirm you have read this notice and give prior, express and
 informed authorization for your data to be processed as described.

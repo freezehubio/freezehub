@@ -1109,3 +1109,60 @@ exactly the separation `OI-32` asked for and `D-36` deferred, at no credit cost.
 1. **Wiring up CI** — the trigger above.
 2. **A service outside the supported list.** Checked and not currently the case.
 3. **A second Region.** `D-32` says United States and one Region, so not soon.
+
+## D-38 — No cookie banner, because nothing sets a cookie
+
+**Date:** 2026-10-03 · **Specified by:** `FZ-221`
+
+### Decision
+
+FreezeHub ships **no cookie banner and no consent management platform**. The frontend sets no
+cookies, and a banner that asks consent for nothing is worse than no banner.
+
+This is a **constraint on future work**, not merely an observation. The position holds only
+while the three facts below stay true, so anything that breaks one of them reopens this
+decision rather than quietly invalidating it.
+
+### What the code actually does
+
+- `document.cookie` appears **nowhere** in `frontend/src`.
+- Authentication state is `sessionStorage` (`features/auth/AuthProvider.tsx`), as are the PKCE
+  verifier, the OAuth `state` and the post-sign-in return path (`features/auth/cognito.ts`).
+  Same origin, cleared when the tab closes.
+- `frontend/index.html` loads **no third-party script and no hosted font** — only
+  `/favicon.svg` and its own module. Nothing reaches a domain the user did not visit.
+
+### Why a banner would be wrong rather than merely unnecessary
+
+Colombia has no ePrivacy-style cookie-consent statute. The consent obligation is Ley 1581
+Art. 9's *autorización previa, expresa e informada*, and it attaches to the **treatment of
+personal data**, not to a storage mechanism. Own-origin `sessionStorage` holding the session
+token of a user who has just signed in is strictly necessary to deliver the service they
+asked for; there is no second purpose to consent to and no third party receiving anything.
+
+A banner would also misinform. It implies tracking that is not happening, and it spends the
+one moment of a visitor's attention on a dialog with no content — while the thing Ley 1581
+*does* require at that moment, the Aviso de Privacidad at the point of collection, is what
+`OI-51` says is actually missing.
+
+### What is not covered by this
+
+**Cognito's Hosted UI sets its own cookies** on
+`freezehub-beta.auth.us-east-2.amazoncognito.com` during sign-in. That is AWS's domain under
+AWS's control, reached only by a user who has chosen to sign in, and AWS is already disclosed
+in `legal/subprocessors.md`. It is a subprocessor disclosure, not a consent prompt.
+
+### What ends this
+
+Any of these, and the decision must be revisited **before** the change ships:
+
+- **Google Analytics, Google Tag Manager, or any analytics that sets an identifier.** This is
+  the likely one — `FZ-221`'s traffic question found that CloudFront metrics cannot tell a
+  prospect from a scanner, and the obvious fix is analytics.
+- **A Google-hosted font, an embedded video, a chat widget, or a map.** Each is a third-party
+  request carrying an IP address and often a cookie, and none is visible in a stylesheet diff.
+- **Any move of the session token from `sessionStorage` into a cookie**, even a first-party one.
+
+Cookieless analytics — Plausible, Umami — set no identifier and **preserve this position**.
+That is the deciding argument for them over Google Analytics, and it is a bigger consideration
+than the feature comparison.

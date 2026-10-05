@@ -35,10 +35,17 @@ site went live was authorised against nothing.
 
 **Four things block publishing, and only one of them is ours:**
 
-1. **Ten company facts** — legal name, NIT, address, telephone, a monitored privacy mailbox,
-   the area answerable for requests, the effective date, the database validity period.
-   `legal/README.md` lists each and where it comes from; `node legal/check-placeholders.js`
-   prints what is still missing.
+1. **Ten company facts** — `FZ-221` filled six of them (address, city, telephone, the
+   privacy mailbox `privacidad@freezehub.io`, the responsible area, the Política URL).
+   **Four remain:** legal name, NIT, the effective date, and the database validity period —
+   the last of these disputed, since `17-data-protection.md` §3 says 180 days for
+   `demo_request` and a longer period was proposed. `node legal/check-placeholders.js` is the
+   authority on what is still missing.
+
+   `FZ-221` also found that the README named the *certificado de existencia y representación
+   legal* as the source for four of these. A **persona natural** has none, and Art. 13(a)
+   would publish the operator's own name and home address — so the S.A.S. question sits
+   upstream of publishing, not after it.
 2. **Colombian counsel.** These are drafts written by a non-lawyer.
 3. **The RNBD threshold**, which turns on total assets in UVT and must be checked against the
    current DIAN resolution rather than against anything written in this repository.
@@ -46,6 +53,10 @@ site went live was authorised against nothing.
    organization deletion anywhere in the product, so signing it as drafted would be a
    contractual promise the system cannot keep. The draft says so in its own §12 rather than in
    a covering note, so it cannot be sent by accident.
+
+**`DEMO_POLICY_URL` is also unset**, so the acknowledgement email `FZ-217` sends to every
+prospect has its policy link stripped — collection with no notice in front of it, which is
+this issue in its most literal form.
 
 **The first three are unblocked today.** The fourth decides whether the DPA ships as written,
 ships weakened, or waits.

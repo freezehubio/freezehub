@@ -6164,6 +6164,54 @@ Acceptance:
 - The check fails if `.env` is ever again assembled inside the remote script.
 - The check's own fixture contains characters a shell would act on.
 
+### FZ-221 — Six of Ten, and a Banner Nobody Needs
+**Status:** DONE · **Raised by** the operator: "privacy notice, terms and conditions, and cookies management — we are lacking of these aspects"
+
+Three things were named as missing. They turned out to be in three different states, and only
+one of them was what it looked like.
+
+**Cookies needed nothing built.** `document.cookie` appears nowhere in `frontend/src`;
+authentication state, the PKCE verifier and the OAuth `state` all live in `sessionStorage`
+(`features/auth/AuthProvider.tsx`, `features/auth/cognito.ts`); and `index.html` loads no
+third-party script and no hosted font. Colombia has no ePrivacy-style cookie statute, and
+Ley 1581 Art. 9's autorización attaches to personal data rather than to a storage mechanism —
+so there is nothing to consent to. Recorded as **`D-38`**, deliberately framed as a constraint
+on future work rather than an observation, because the position is one line of HTML away from
+being false and a stylesheet diff would not show it.
+
+**The privacy notices existed and were blocked** — `OI-51`, already raised by `FZ-210`. This
+story closed the only part of that blocker that is engineering work: six of the ten company
+facts. The other four cannot come from this repository.
+
+**Terms and conditions are genuinely absent** and tracked nowhere — `OI-51` covers privacy
+only. Left for its own story, because a ToS allocates liability and the *persona natural*
+versus S.A.S. question is still open; drafting liability terms before that is settled would
+produce a document that has to be rewritten.
+
+Found while looking: **`DEMO_POLICY_URL` is not set** as a repository variable. The
+acknowledgement template's `<!--POLICY_START-->` block is therefore stripped, so every
+prospect email sent since `FZ-217` carried no privacy link while their name, email and company
+sat in `demo_request`. That is `OI-51`'s own argument — the gap is not a missing page, it is
+authorisation against nothing — and it belongs to the publishing story.
+
+**One conflict is reported rather than resolved.** The operator chose a retention period of
+two years for prospects. `docs/17-data-protection.md` §3 states 180 days for `demo_request`
+unless converted, and `legal/README.md` makes that document authoritative over these drafts.
+Ley 1581's finalidad principle also cuts against the longer period. The placeholder is left
+unfilled; `legal/README.md` records both positions. No delete path exists for `demo_request`
+or `users` either way (`OI-36`), so any stated period is currently unenforceable in code.
+
+Also corrected: `legal/README.md` named the **certificado de existencia y representación
+legal** as the source for four facts. A persona natural has no such certificate and no razón
+social, and Art. 13(a) means the operator's own name and home address would be published.
+
+Acceptance:
+
+- `node legal/check-placeholders.js` reports four placeholders, not ten.
+- No placeholder is filled with a value this repository inferred rather than was given.
+- The no-banner position names what would end it, including a Google-hosted font.
+- `17-data-protection.md` §3 lists browser storage, which it previously omitted entirely.
+
 ### FZ-222 — Six HIGHs Arrived Without a Commit
 **Status:** DONE · **Found by** CI on `FZ-221`, a documentation-only branch that touched no code
 
