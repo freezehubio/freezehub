@@ -1,12 +1,17 @@
 # Política de Tratamiento de Datos Personales
 
 **Responsable del Tratamiento:** Camilo Andres Hurtado Carvajal
+
 **Domicilio:** Cali, Colombia
+
 **Dirección:** Calle 50 # 99 - 74
+
 **Correo electrónico:** privacidad@freezehub.io
+
 **Teléfono:** +57 311 773 7625
 
 **Fecha de entrada en vigencia:** «FECHA DE ENTRADA EN VIGENCIA»
+
 **Vigencia de las bases de datos:** mientras subsista la finalidad que justifica cada base,
 con los períodos máximos del numeral 2.1: 180 días para datos de prospección y para
 solicitudes de demostración que no se convierten en cliente; la vigencia de la relación más
