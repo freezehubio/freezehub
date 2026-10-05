@@ -10,6 +10,7 @@ is a defect; where it disagrees with the code, the code is right and both are de
 | `politica-de-tratamiento.md` | **Política de Tratamiento de Datos Personales**. Statutory under Decreto 1377 Art. 13 — not an optional courtesy | Any *titular*; the SIC, if it ever asks |
 | `aviso-de-privacidad.md` | **Aviso de Privacidad**, Decreto 1377 Art. 14. The short form shown at the moment data is collected, when showing the whole Política is not practical | Anyone using the signup or demo form |
 | `data-processing-agreement.md` | The DPA. For Colombian law it is the **contrato de transmisión** Art. 25 requires; for a customer's procurement team it is the document they mean when they say "send us your DPA" | Customers, before they sign |
+| `aviso-prospeccion.md` | The **Art. 12** disclosure for a cold outreach email footer. Not the Aviso: there is no collection moment, so the first message is where the duty to inform is discharged (`FZ-223`) | Anyone receiving unsolicited outreach |
 | `subprocessors.md` | Who else receives personal data, and what each one gets | Customers; referenced by the DPA |
 
 ## Read this before publishing any of them
@@ -37,14 +38,18 @@ address, the city, the telephone, the privacy mailbox, the responsible area and 
 URL of the Política. The table below is kept because it says what each field *is*, which is
 what matters the next time one of them changes.
 
-**Four remain**, and `node legal/check-placeholders.js` is the authority on which:
+**Three remain**, and `node legal/check-placeholders.js` is the authority on which:
 
 | Still open | Why it cannot be filled from this repository |
 |---|---|
 | `«RAZÓN SOCIAL»` | Only the operator holds the registered name — and see the warning below |
 | `«NIT»` | Same; a tax identifier must be transcribed, never inferred |
 | `«FECHA DE ENTRADA EN VIGENCIA»` | The day it is published, which has not happened |
-| `«VIGENCIA DE LAS BASES DE DATOS»` | **Disputed.** `17-data-protection.md` §3 says `demo_request` should be kept 180 days unless converted; a longer period was proposed. That document wins by this file’s own rule, and no delete path exists either way (`OI-36`), so whatever is stated is unenforceable in code today |
+
+**`«VIGENCIA DE LAS BASES DE DATOS»` was filled by `FZ-223`, and the document settled it, not
+a preference.** § 2.1 already said *180 días si no se convierte en cliente*, so the two-year
+period that had been proposed would have contradicted the Política’s own purposes table. It
+now states the § 2.1 periods by reference. No delete path exists yet either way (`OI-36`).
 
 ### The source column below assumes a company, and FreezeHub may not be one
 

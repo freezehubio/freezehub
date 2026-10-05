@@ -6289,3 +6289,72 @@ Acceptance:
 - `./mvnw clean verify` passes with Java 21: **606 tests, 0 failures**.
 - No CVE is suppressed, ignored, or added to an allowlist.
 - The pin is a property, not two dependency overrides.
+
+### FZ-223 — The Finalidad That Was Not in the Política
+**Status:** DONE · **Raised by** the operator, holding a ready-to-send outreach pack: "let's handle legal aspects before doing this"
+
+A 19-contact cold outreach pack was ready to send — script reviewed, emails written, contacts
+at named companies across the US, UK, Germany, Ukraine, Israel, Brazil, Mexico, Panama and
+Colombia. The question was whether the legal side permitted it.
+
+**It did not, and the reason was structural rather than a missing field.** § 2.1 of the
+Política listed four processing activities as Responsable — demo requests, signups, billing
+identifiers, operational logs — and **all four are data the person handed over**. Contact data
+obtained by research had no row, no finalidad and no basis. § 3 compounded it: authorization
+is sought *"en el momento de la recolección"* with proof kept under Art. 8(b), which for these
+19 people does not exist and cannot be created after the fact.
+
+So the pack was not blocked on a document being unpublished. It was blocked on the document
+not describing what was about to happen.
+
+**The basis now stated, with its limits.** Ley 1581 Art. 10 exempts *datos de naturaleza
+pública* from authorization, and Decreto 1377 Art. 3 counts data about a person's *oficio o
+profesión* among them. Name, role and employer, published by that employer or the person, rest
+on that. Two limits are declared rather than left to be discovered:
+
+- **A work email address is the weakest part of the claim**, so the data is used only to
+  address the person in their role — never to build a profile, never for another purpose.
+- **Art. 10 removes the authorization, not the duty to inform.** Art. 12 still applies, and
+  the first message is the only moment it can be discharged — hence
+  `legal/aviso-prospeccion.md`, a footer block carrying the Responsable's identity, NIT,
+  physical address, the public-source statement, the Política link, and both the opt-out and
+  the separate right to deletion.
+
+**`legal/aviso-prospeccion.md` is deliberately not the Aviso de Privacidad.** That one is
+Decreto 1377 Art. 14's short form, shown when somebody hands over data. Here nobody hands over
+anything, so a different instrument was needed rather than a reused one. It carries a table
+naming what requires each line, so none of them is later cut as clutter.
+
+**The retention dispute closed on the document's own evidence.** A two-year period for
+prospects had been proposed; § 2.1 already read *180 días si no se convierte en cliente*, so
+the longer figure would have contradicted the Política's own purposes table.
+«VIGENCIA DE LAS BASES DE DATOS» now states the § 2.1 periods by reference, and § 9 points at
+them instead of repeating a number that could drift.
+
+**`17-data-protection.md` § 3 gained the row that is not a database.** The prospect list is a
+CSV beside a Python script on the operator's laptop, so no control in that document reaches
+it — not the encrypted volume, not the nightly dump, not the retention the code enforces. It
+is personal data of non-customers held as Responsable, and nothing but memory bounds it.
+
+**Found by breaking it: the placeholder guard could not survive Spanish.** Guillemets are the
+normal quotation mark in Spanish, so `responda «no»` was reported as an unfilled field, and
+`--strict` would have failed forever the first time any document quoted anybody. Every real
+placeholder is an upper-case name, so that is now the discriminator. The guard that exists to
+catch a document which looks finished and is not had acquired the opposite failure.
+
+**What this story does not do.** It does not make the send lawful everywhere: Art. 10 governs
+whether the data may be *processed* here, while whether a message may be *sent* belongs to the
+recipient's country, and Germany's UWG § 7 requires prior consent for unsolicited B2B
+advertising email. No footer cures that, and the German contact is the operator's call. It
+does not replace counsel (`OI-51`), and the dato-público treatment of a work email is the
+first thing to ask about. Three placeholders remain, all facts only the operator holds.
+
+Acceptance:
+
+- § 2.1 carries a prospecting row, and the Art. 10 basis is stated in prose rather than
+  implied by a table cell.
+- `node legal/check-placeholders.js` reports **three**, all of them facts the repository
+  cannot know.
+- A Spanish quotation is not reported as a placeholder; an upper-case token still is.
+- The outreach list appears in the `17-data-protection.md` map, marked as outside the product.
+- Nothing claims the send is lawful in Germany.

@@ -7,7 +7,11 @@
 **Teléfono:** +57 311 773 7625
 
 **Fecha de entrada en vigencia:** «FECHA DE ENTRADA EN VIGENCIA»
-**Vigencia de las bases de datos:** «VIGENCIA DE LAS BASES DE DATOS»
+**Vigencia de las bases de datos:** mientras subsista la finalidad que justifica cada base,
+con los períodos máximos del numeral 2.1: 180 días para datos de prospección y para
+solicitudes de demostración que no se convierten en cliente; la vigencia de la relación más
+30 días para las cuentas de usuario; y el período que exija la normativa contable y
+tributaria para los registros de facturación
 
 > Documento adoptado en cumplimiento de la Ley 1581 de 2012 y del artículo 13 del Decreto
 > 1377 de 2013.
@@ -52,10 +56,30 @@ unilateralmente datos de los que no somos Responsable.
 
 | Datos | Finalidad | Conservación |
 |---|---|---|
+| Nombre, cargo, empresa y correo electrónico profesional obtenidos de fuentes de acceso público | Contacto comercial dirigido a la organización en la que la persona ejerce su oficio | 180 días desde el último contacto, o de inmediato si la persona pide no ser contactada |
 | Nombre, correo electrónico, empresa y mensaje de quien solicita una demostración | Atender la solicitud y contactar al interesado | 180 días si no se convierte en cliente; en caso contrario, según el numeral siguiente |
 | Nombre, correo electrónico y organización de quien se registra | Crear la cuenta y prestar el servicio | Mientras exista la relación, más 30 días |
 | Identificadores de facturación | Facturación, cobro y cumplimiento tributario | El período que exija la normativa contable y tributaria |
 | Registros operativos del servicio | Seguridad, disponibilidad y diagnóstico | Según el período técnico de conservación |
+
+**La primera finalidad es la única que no se apoya en una autorización, y conviene decir por
+qué.** El artículo 10 de la Ley 1581 de 2012 exceptúa del requisito de autorización los datos
+de naturaleza pública, y el artículo 3 del Decreto 1377 de 2013 cuenta entre ellos los
+relativos al oficio o profesión de una persona. El nombre, el cargo y la organización de
+quien ejerce un rol profesional, publicados por esa organización o por la persona misma, se
+tratan sobre esa base.
+
+**La excepción cubre la autorización, no el deber de informar.** El artículo 12 sigue
+aplicando: en el primer mensaje se identifica al Responsable, se indica su dirección, se
+enlaza esta Política y se ofrece dejar de escribir. Los derechos del numeral 4 se ejercen
+igual, y una solicitud de supresión se atiende de inmediato.
+
+**Dos límites que se declaran en lugar de descubrirse.** El correo electrónico profesional es
+la parte más discutible de esta base, por lo que se trata únicamente para dirigirse a la
+persona en su rol y nunca para construir perfiles ni para fines distintos. Y esta Política
+rige el tratamiento bajo la ley colombiana: no desplaza las normas del país del destinatario,
+algunas de las cuales exigen consentimiento previo para *enviar* comunicaciones comerciales
+aunque el tratamiento del dato sea lícito aquí.
 
 **No se tratan datos sensibles** en el sentido del artículo 5 de la Ley 1581 de 2012, ni datos
 de niñas, niños y adolescentes. El servicio no está dirigido a menores de edad.
@@ -73,6 +97,12 @@ El Tratamiento requiere la **autorización previa, expresa e informada** del Tit
 solicita en el momento de la recolección, y se conserva constancia de ella —incluida la fecha
 y el texto exacto que fue presentado— de modo que el Titular pueda solicitar prueba de la
 autorización otorgada, como lo permite el literal b) del artículo 8.
+
+**La única finalidad que se apoya en el artículo 10 es el contacto comercial del numeral
+2.1.** Para ella no hay autorización que probar, por lo que se conserva en su lugar el
+registro de la fuente pública de donde se obtuvo cada dato y la fecha en que se obtuvo. Así
+el Titular puede conocer el origen de sus datos y ejercer los derechos del numeral 4, que es
+el interés que protege el literal b) del artículo 8 cuando sí hay autorización.
 
 ## 4. Derechos del Titular
 
@@ -174,8 +204,8 @@ notificable.
 ## 9. Vigencia y modificaciones
 
 Esta Política rige desde «FECHA DE ENTRADA EN VIGENCIA». Las bases de datos se conservarán por
-«VIGENCIA DE LAS BASES DE DATOS», o mientras subsista la finalidad que justificó su
-recolección y los deberes legales de conservación.
+los períodos señalados en el numeral 2.1, o mientras subsista la finalidad que justificó su
+recolección y los deberes legales de conservación, si este plazo fuera menor.
 
 Cualquier modificación sustancial se comunicará a los Titulares antes de su entrada en
 vigencia, por el canal de contacto que hayan proporcionado.
