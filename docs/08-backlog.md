@@ -6442,6 +6442,25 @@ as mush. `breaks: true` would have fixed it and turned every hard-wrapped prose 
 documents into a forced break, so the fix is in the markdown: one paragraph per fact. The same
 collapse was in both Avisos' contact blocks.
 
+#### The last placeholder, and the gate it was blocking
+
+The effective date was filled with **5 de octubre de 2026**, the day the pages went in. It
+was the last of the ten `FZ-210` left behind, and it is the one that could never have been
+filled earlier: it exists only at publication.
+
+Three occurrences, three different forms, which is why a blanket substitution would have been
+wrong. `subprocessors.md` is in English and dates things ISO, so it took `2026-10-05`. The
+Política’s header field took the bare Spanish date. Its § 9 sentence reads *"rige desde …"*
+and needed the article — `desde el 5 de octubre de 2026`.
+
+**With nothing left, the gate `legal/README.md` has always described became enforceable.**
+`verify.yml` now runs `check-placeholders.js --strict` in the **frontend** job, because that
+is the job that compiles these documents into the bundle. Adding it earlier would have made
+every pull request red over a placeholder that was correctly still there.
+
+The gate was checked in both directions rather than assumed: a Spanish quotation alone exits
+`0`, an upper-case token exits `1`. A gate that only ever passes is not a gate.
+
 Acceptance:
 
 - `/legal/politica` renders the Política, and is reachable without a token.
@@ -6449,6 +6468,8 @@ Acceptance:
 - The published set is exactly two documents, and the DPA is not one of them.
 - No published document contains an identity-document-length digit run.
 - Each Art. 13(1) detail renders on its own line.
+- `check-placeholders.js --strict` exits 0, and CI fails if it ever stops doing so.
+- The gate rejects an upper-case placeholder and accepts a Spanish quotation.
 
 Not in this story: the Aviso at the **moment of collection** on the demo form, which is
 `OI-51`'s actual complaint. A consent checkbox changes the form's submit semantics and the

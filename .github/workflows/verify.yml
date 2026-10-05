@@ -75,6 +75,13 @@ jobs:
         working-directory: frontend
         run: npm run test
 
+      # The frontend compiles `legal/*.md` straight into the bundle (`FZ-224`), so an
+      # unfilled placeholder is no longer a draft left lying about — it ships to whoever
+      # follows the link in a statutory notice. This is the gate `legal/README.md` has
+      # always described and could not enforce while a placeholder legitimately remained.
+      - name: No legal document may ship with a placeholder
+        run: node legal/check-placeholders.js --strict
+
       # Type errors only surface here: `tsc -b` runs as part of the build, not the tests.
       - name: Build
         working-directory: frontend

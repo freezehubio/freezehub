@@ -38,12 +38,14 @@ address, the city, the telephone, the privacy mailbox, the responsible area and 
 URL of the Política. The table below is kept because it says what each field *is*, which is
 what matters the next time one of them changes.
 
-**One remains.** `FZ-223` filled the razón social and resolved the NIT, which turned out not
-to be a missing fact at all — see below.
+**Nothing remains.** `FZ-224` filled the last one — the effective date, **5 de octubre de
+2026** — and filling it was the act of publishing, since the date exists only at that moment.
 
-| Still open | Why it cannot be filled from this repository |
-|---|---|
-| `«FECHA DE ENTRADA EN VIGENCIA»` | The day it is published, which has not happened |
+**The rule this file has always stated is now enforced.** `verify.yml` runs
+`check-placeholders.js --strict` in the frontend job, which is where it belongs: the frontend
+compiles `legal/*.md` into the bundle (`FZ-224`), so a placeholder no longer sits in a draft —
+it ships to whoever follows the link in a statutory notice. The gate could not be added while
+one legitimately remained, because it would have made every pull request red.
 
 **`«VIGENCIA DE LAS BASES DE DATOS»` was filled by `FZ-223`, and the document settled it, not
 a preference.** § 2.1 already said *180 días si no se convierte en cliente*, so the two-year
