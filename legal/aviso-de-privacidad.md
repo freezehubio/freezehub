@@ -12,6 +12,7 @@ product anyone can sign up for does not get to choose where its data subjects li
 ## Español
 
 **Responsable:** Camilo Andres Hurtado Carvajal · Calle 50 # 99 - 74, Cali, Colombia
+
 privacidad@freezehub.io · +57 311 773 7625
 
 **Tratamiento y finalidad.** Sus datos de identificación y contacto se tratan para atender su
@@ -38,6 +39,7 @@ expresa e informada el tratamiento de sus datos en los términos descritos.
 ## English
 
 **Data controller:** Camilo Andres Hurtado Carvajal · Calle 50 # 99 - 74, Cali, Colombia
+
 privacidad@freezehub.io · +57 311 773 7625
 
 **What we do with your data.** Your identification and contact details are used to answer your

@@ -5,6 +5,13 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+
+  /*
+   * The legal pages import `legal/*.md` from the repository root, which is outside this
+   * project. The build inlines them, but the dev server refuses to read above the root
+   * unless told to (`FZ-224`). Scoped to the parent, not widened further.
+   */
+  server: { fs: { allow: ['..'] } },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

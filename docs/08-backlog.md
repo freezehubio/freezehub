@@ -6391,3 +6391,65 @@ Acceptance:
 - The razón social is the operator’s legal name, not the phrase "persona natural".
 - The cédula appears in exactly one file, and that file is not published.
 - `node legal/check-placeholders.js` reports **one**: the publication date.
+
+### FZ-224 — A Statutory Reference to a 404
+**Status:** DONE · **Found by** `curl` returning `200` for a page that does not exist
+
+Every one of the 19 outreach emails carries an Art. 12 footer naming
+`https://app.freezehub.io/legal/politica` as where the Política can be read. That URL
+answered **`HTTP 200`**, and it was empty:
+
+```text
+/legal/politica  ->  459 bytes
+/nonsense-xyz    ->  459 bytes   (byte-identical)
+```
+
+CloudFront rewrites 403 and 404 to `200 /index.html` for SPA routing (`infra/shared/frontend.tf`),
+and `router.tsx` had no legal route, so `path: '*'` caught it. A recipient clicking the link
+in a statutory disclosure landed on **Page not found**. The status code made it look healthy —
+the same rewrite that made `FZ-221`'s traffic figures unreadable.
+
+**Two routes now serve the documents**, `/legal/politica` and `/legal/aviso`, publicly: Art. 14
+obliges the Aviso to say where the Política can be read, and a page behind a sign-in cannot be
+read by the person that obligation protects.
+
+**The page imports the markdown; it does not copy it.** `legal/*.md` is what counsel reviews,
+and a hand-written page would drift from it — a published policy disagreeing with the reviewed
+one is worse than no page. Vite's `?raw` inlines it at build time.
+
+**What is published is an allowlist, and that is the whole safety property.** `legal/` also
+holds the DPA, which carries the operator's NIT — for a persona natural, their cédula
+(`FZ-223`). An `import.meta.glob('legal/*.md')` would publish a national identity number while
+looking like a tidier version of the same file. Two tests guard it: the published set is
+exactly `aviso` and `politica`, and no published document contains an 8–10 digit run.
+
+**`marked` is the one dependency added**, 14 kB gzipped, no transitive dependencies. The
+documents use headings, tables, blockquotes, lists and emphasis; hand-rolling that is ~150
+lines of fragile regex over content already trusted. Loaded eagerly rather than behind
+`React.lazy`, because the router has no lazy routes and one would be a new pattern for 14 kB —
+a worthwhile trade only alongside splitting the bundle generally, which the build now warns
+about at 507 kB.
+
+`dangerouslySetInnerHTML` is used, and the reason it is safe is written where it is used
+rather than assumed: the input is a repository file resolved through the allowlist, and no
+visitor supplies any of it. If that ever changes, a sanitiser is needed before the change
+lands.
+
+**Found only by looking at the rendered page.** Art. 13(1)'s identifying details — name,
+domicilio, dirección, correo, teléfono — were five consecutive markdown lines, which collapse
+into a single run-on paragraph. The most legally load-bearing block in the document rendered
+as mush. `breaks: true` would have fixed it and turned every hard-wrapped prose line in both
+documents into a forced break, so the fix is in the markdown: one paragraph per fact. The same
+collapse was in both Avisos' contact blocks.
+
+Acceptance:
+
+- `/legal/politica` renders the Política, and is reachable without a token.
+- An unknown slug renders the 404 rather than an empty document shell.
+- The published set is exactly two documents, and the DPA is not one of them.
+- No published document contains an identity-document-length digit run.
+- Each Art. 13(1) detail renders on its own line.
+
+Not in this story: the Aviso at the **moment of collection** on the demo form, which is
+`OI-51`'s actual complaint. A consent checkbox changes the form's submit semantics and the
+authorization record the backend keeps, so it is `FZ-225`.

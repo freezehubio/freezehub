@@ -15,6 +15,7 @@ import { CreateRestrictionPage } from '../features/restrictions/CreateRestrictio
 import { RestrictionDetailPage } from '../features/restrictions/RestrictionDetailPage'
 import { EditRestrictionPage } from '../features/restrictions/EditRestrictionPage'
 import { LandingPage } from '../features/marketing/LandingPage'
+import { LegalPage } from '../features/legal/LegalPage'
 
 /**
  * MVP routes per 05-frontend.md. Routes arrive with the story that builds their page:
@@ -30,6 +31,17 @@ import { LandingPage } from '../features/marketing/LandingPage'
  */
 export const routes = [
   { path: '/', element: <LandingPage /> },
+
+  /*
+   * Public, and it has to be: Decreto 1377 Art. 14 requires the Aviso to say where the
+   * Política can be read, and a page behind a sign-in cannot be read by the person the
+   * statute protects (`FZ-224`).
+   *
+   * `/legal/politica` is written into every outreach email's Art. 12 footer. Sent email
+   * cannot be edited, so this path is permanent — changing it turns a statutory
+   * reference into a 404.
+   */
+  { path: '/legal/:slug', element: <LegalPage /> },
   { path: '/signin', element: <SignInPage /> },
   { path: '/signup', element: <SignUpPage /> },
   {

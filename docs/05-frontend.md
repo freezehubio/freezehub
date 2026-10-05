@@ -33,10 +33,22 @@ Accepted trade-off: multi-select UX is basic. Revisit if usability testing shows
 /settings                  -> Integrations, API keys, advance warning (FZ-045, FZ-038)
 /deployment-checks         -> Deployment checks    (FZ-071)
 /audit                     -> Audit trail         (FZ-039)
+/legal/:slug               -> Published legal document, public (FZ-224)
 *                          -> Not found
 ```
 
-Every route except the dev sign-in is authenticated: without a token the app redirects to sign-in rather than rendering an empty page.
+Every route under the authenticated tree requires a token: without one the app redirects to
+sign-in rather than rendering an empty page. The public ones are `/` (the landing page,
+`FZ-111`), `/signin`, `/signup` and `/legal/:slug`.
+
+**`/legal/:slug` is public because the law requires it to be** (`FZ-224`). Decreto 1377
+Art. 14 obliges the Aviso to say where the full Política can be read, and a page behind a
+sign-in cannot be read by the person that obligation protects. The slug `politica` is also
+printed in the Art. 12 footer of outreach email, which cannot be edited once sent — so that
+path is permanent, and changing it turns a statutory reference into a 404.
+
+Which documents are served is an **allowlist** in `features/legal/documents.ts`, never a
+glob: `legal/` also holds the DPA, which carries the operator’s cédula.
 
 Added after Milestone 3, each with its own backlog item: catalog management (`FZ-036`), integrations (`FZ-045`), API keys and organization settings (`FZ-038`), the deployment checks console (`FZ-071`), and the audit screen (`FZ-039`).
 

@@ -26,7 +26,14 @@ Severity is about consequence if it reaches beta, not effort:
 **Severity:** Blocker (legal) · **Owner:** the operator — this is not engineering work · **Raised:** 2026-09-23, `FZ-210`
 
 `legal/` now holds a Política de Tratamiento, an Aviso de Privacidad, a DPA and a subprocessor
-list. **Nothing serves them, and `app.freezehub.io` is collecting personal data today.**
+list. **`FZ-224` serves the first two** at `/legal/politica` and `/legal/aviso` — until then
+the Art. 12 footer of every outreach email pointed at a URL that answered `200` and rendered
+*Page not found*.
+
+**The remaining gap is narrower but is the original one:** `app.freezehub.io` still collects
+personal data through the demo form without the Aviso in front of the person at the moment of
+collection. A page existing is not the same as a notice being shown, which is what Art. 9
+means by *informada*. That is `FZ-225`.
 
 Under Ley 1581 Art. 9 the autorización must be *previa, expresa e informada*. Informed means
 the Aviso has to be in front of the person **at the moment of collection** — so the gap is not
@@ -66,9 +73,8 @@ site went live was authorised against nothing.
    contractual promise the system cannot keep. The draft says so in its own §12 rather than in
    a covering note, so it cannot be sent by accident.
 
-**`DEMO_POLICY_URL` is also unset**, so the acknowledgement email `FZ-217` sends to every
-prospect has its policy link stripped — collection with no notice in front of it, which is
-this issue in its most literal form.
+~~**`DEMO_POLICY_URL` is also unset**~~ — set by `FZ-224` to the published Política, so the
+acknowledgement email stops stripping its policy block. It reaches the box on the next deploy.
 
 **The first three are unblocked today.** The fourth decides whether the DPA ships as written,
 ships weakened, or waits.
