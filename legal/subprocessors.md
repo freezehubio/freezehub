@@ -4,7 +4,7 @@ Who else receives personal data from FreezeHub, and what each one receives. Refe
 `legal/data-processing-agreement.md` §5, which commits to **30 days' notice** before this list
 changes.
 
-**Last updated:** «FECHA DE ENTRADA EN VIGENCIA» · Google added 2026-09-28 (`FZ-218`)
+**Last updated:** 2026-10-05 · Google added 2026-09-28 (`FZ-218`)
 
 ## Current
 

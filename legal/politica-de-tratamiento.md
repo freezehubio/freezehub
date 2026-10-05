@@ -10,7 +10,7 @@
 
 **Teléfono:** +57 311 773 7625
 
-**Fecha de entrada en vigencia:** «FECHA DE ENTRADA EN VIGENCIA»
+**Fecha de entrada en vigencia:** 5 de octubre de 2026
 
 **Vigencia de las bases de datos:** mientras subsista la finalidad que justifica cada base,
 con los períodos máximos del numeral 2.1: 180 días para datos de prospección y para
@@ -209,7 +209,7 @@ notificable.
 
 ## 9. Vigencia y modificaciones
 
-Esta Política rige desde «FECHA DE ENTRADA EN VIGENCIA». Las bases de datos se conservarán por
+Esta Política rige desde el 5 de octubre de 2026. Las bases de datos se conservarán por
 los períodos señalados en el numeral 2.1, o mientras subsista la finalidad que justificó su
 recolección y los deberes legales de conservación, si este plazo fuera menor.
 
