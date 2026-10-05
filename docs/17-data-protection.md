@@ -50,6 +50,7 @@ personal data about someone who never became a customer.
 | `deployment_check.actor` | P1 | encargado | 7–3650d, enforced since `FZ-114` | unchanged | pseudonymize in place |
 | `deployment_check.reference`, `.source` | P2 | encargado | same window | unchanged | retained |
 | `demo_request` | P1+P2 | **responsable** | **no rule, no delete path** | 180d unless converted | hard delete |
+| Outreach list (`contacts.csv`) | P1 | **responsable** | **not in the product at all** — a CSV on the operator's laptop | 180d from last contact, and somewhere with a backup | delete the row and the sent log entry |
 | `subscription` billing ids | P4→P1 at the processor | **responsable** | no rule | statutory invoice period | **cannot erase** |
 | `integration.config` | P3, +P1 when `EMAIL` | encargado | AES-256-GCM, integration life | unchanged | deleted with integration |
 | `integration.signing_secret` | P3 | encargado | AES-256-GCM | unchanged | deleted with integration |
@@ -59,6 +60,14 @@ personal data about someone who never became a customer.
 | PostgreSQL volume | all | both | encrypted EBS, not published to host | unchanged | — |
 | Nightly `pg_dump` to S3 | all | both | **`FZ-155` — restore never drilled** | lifecycle expiry, drilled | lags by the expiry window |
 | Browser `sessionStorage` | P1 | encargado | session token + PKCE state, same origin, cleared when the tab closes | unchanged | cleared on sign-out |
+
+**The outreach list is the only row that is not in a database, and that is the point of
+listing it** (`FZ-223`). Cold prospecting data sits in a CSV beside a Python script, so none
+of this document's controls reach it: not the encrypted volume, not the nightly dump, not
+the retention windows the code enforces. It is personal data of people who are not customers,
+held as **responsable**, and the only thing standing between it and an unbounded retention is
+somebody remembering. Said plainly here because `OI-51` is about documents and this is not a
+document problem.
 
 **No cookie is set anywhere, and that is a position rather than an accident** (`D-38`).
 The session token lives in `sessionStorage` on our own origin; `document.cookie` appears

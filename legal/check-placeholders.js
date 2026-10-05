@@ -15,7 +15,16 @@ const path = require('path');
 
 const dir = __dirname;
 const strict = process.argv.includes('--strict');
+/*
+ * Guillemets are also the normal quotation mark in Spanish, and these documents are mostly
+ * in Spanish — `responda «no»` is correct typography, not an unfilled field (`FZ-223`).
+ * Every real placeholder is an upper-case name, so that is the discriminator: a token with
+ * any lower-case letter in it is a quotation and is ignored. Without this, --strict fails
+ * forever the first time a document quotes somebody, which is the failure mode this guard
+ * exists to prevent, arriving by the back door.
+ */
 const PLACEHOLDER = /«([^»]+)»/g;
+const isPlaceholder = (token) => /\p{Lu}/u.test(token) && token === token.toUpperCase();
 
 const found = new Map();
 let files = 0;
@@ -28,6 +37,7 @@ for (const name of fs.readdirSync(dir).sort()) {
   files += 1;
   const text = fs.readFileSync(path.join(dir, name), 'utf8');
   for (const [, token] of text.matchAll(PLACEHOLDER)) {
+    if (!isPlaceholder(token)) continue;
     if (!found.has(token)) found.set(token, new Set());
     found.get(token).add(name);
   }

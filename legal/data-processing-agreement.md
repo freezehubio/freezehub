@@ -1,6 +1,6 @@
 # Data Processing Agreement
 
-Between **«RAZÓN SOCIAL»**, NIT «NIT», of Cali, Colombia (the **Processor**), and the
+Between **Camilo Andres Hurtado Carvajal**, NIT 1144074925-9, of Cali, Colombia (the **Processor**), and the
 customer organization identified in the order form (the **Controller**).
 
 Under Colombian law this is the **contrato de transmisión** that Decreto 1377 Art. 25 requires

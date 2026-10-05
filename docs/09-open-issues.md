@@ -37,15 +37,27 @@ site went live was authorised against nothing.
 
 1. **Ten company facts** — `FZ-221` filled six of them (address, city, telephone, the
    privacy mailbox `privacidad@freezehub.io`, the responsible area, the Política URL).
-   **Four remain:** legal name, NIT, the effective date, and the database validity period —
-   the last of these disputed, since `17-data-protection.md` §3 says 180 days for
-   `demo_request` and a longer period was proposed. `node legal/check-placeholders.js` is the
-   authority on what is still missing.
+   **One remains: the effective date.** `FZ-223` filled the razón social (a persona natural
+   has one, and it is their own name) and established that the NIT is **not** an Art. 13
+   requirement at all — it is absent from every public document by design and carried only in
+   the DPA, which is never published. `FZ-223` filled the database
+   validity period and the dispute over it is closed — the Política’s own § 2.1 already said
+   *180 días si no se convierte en cliente*, so the longer period proposed would have
+   contradicted its purposes table. `node legal/check-placeholders.js` is the authority on
+   what is still missing.
 
-   `FZ-221` also found that the README named the *certificado de existencia y representación
-   legal* as the source for four of these. A **persona natural** has none, and Art. 13(a)
-   would publish the operator's own name and home address — so the S.A.S. question sits
-   upstream of publishing, not after it.
+   **`FZ-223` also added what the documents did not describe at all:** cold prospecting. § 2.1
+   covered only data people hand over, so emailing a list obtained by research was a
+   processing activity with no entry and no basis. It now rests on Ley 1581 Art. 10 (*datos de
+   naturaleza pública*) with the Art. 12 duty to inform discharged by
+   `legal/aviso-prospeccion.md`. **The treatment of a work email address as a dato público is
+   the load-bearing claim and the first question for counsel.**
+
+   The *certificado de existencia y representación legal* that `FZ-221` found named as the
+   source does not exist here: it is confirmed a **persona natural**. Art. 13(1) still
+   requires the name and a physical address, so the operator’s own name and address are
+   published either way — which keeps the S.A.S. question upstream of publishing rather than
+   after it, and is now the only identity exposure left that a decision could remove.
 2. **Colombian counsel.** These are drafts written by a non-lawyer.
 3. **The RNBD threshold**, which turns on total assets in UVT and must be checked against the
    current DIAN resolution rather than against anything written in this repository.
