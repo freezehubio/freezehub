@@ -6626,3 +6626,10 @@ Acceptance:
 - The record for a derived address says it was derived, not that it was found.
 - All nineteen messages offer the opt-out, deletion, and the record.
 - No more than ten are scheduled on any day.
+
+**Germany decided, after the fact.** The operator removed `chris.pieper@commercetools.com`
+rather than rely on the disclosure. The right call: UWG § 7 prohibits the **sending**, not the
+processing, so no amount of transparency in the footer reaches it — the footer answers a
+Colombian obligation to inform, and the German prohibition is not about information. The row
+is gone from `contacts.csv` and the email deleted from `emails/`, so the pack now contains
+exactly what will be sent and nothing else. **Eighteen contacts, 10 then 8.**
