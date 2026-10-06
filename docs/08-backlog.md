@@ -6633,3 +6633,34 @@ processing, so no amount of transparency in the footer reaches it — the footer
 Colombian obligation to inform, and the German prohibition is not about information. The row
 is gone from `contacts.csv` and the email deleted from `emails/`, so the pack now contains
 exactly what will be sent and nothing else. **Eighteen contacts, 10 then 8.**
+
+#### A carriage return split every row in two, and only running it found that
+
+Python 3.10 turned out to be installed already at `/usr/local/bin/python3.10` — bare `python3`
+resolves to a broken Xcode shim, which is why it had looked absent. With a working interpreter
+the real `--dry-run` ran for the first time and crashed:
+
+```text
+TypeError: join() argument must be str, bytes, or os.PathLike object, not 'NoneType'
+```
+
+`contacts.csv` had been written with **CRLF** line endings. Editing it here with
+`split("\n")` left a `\r` on what was then the final field, and appending the `source` and
+`source_date` columns pushed that `\r` **into the middle of the line**. Python's `csv` module
+treats a lone CR as a line terminator, so all 18 rows silently parsed as 36 — alternating a
+3-field fragment with the remainder. `DictReader` filled the missing keys with `None`, and the
+first use of one blew up.
+
+**The check that was supposed to catch this had been replicating the bug.** The
+preflight-equivalent written in Node split on `\n` and `,` exactly as the broken edit had, so
+the stray `\r` landed inside a field value it never inspected and every row passed. An
+equivalent is only as good as its disagreement with the original, and this one agreed in the
+wrong place.
+
+`send.py`'s preflight now reports a malformed row by name instead of raising from
+`os.path.join`, so a damaged file reads as a damaged file rather than as a bug in the script.
+
+Verified afterwards by running the thing itself: `py_compile` passes, `--dry-run` writes
+**18 previews**, the schedule is 10 then 8, no row is malformed, every row has a source, and
+the rendered plain-text part carries the inference wording, the Política URL and the deletion
+address.
