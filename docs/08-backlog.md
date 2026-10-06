@@ -6474,3 +6474,64 @@ Acceptance:
 Not in this story: the Aviso at the **moment of collection** on the demo form, which is
 `OI-51`'s actual complaint. A consent checkbox changes the form's submit semantics and the
 authorization record the backend keeps, so it is `FZ-225`.
+
+### FZ-226 — English Paths, Both Languages, and the Last Free Moment to Rename
+**Status:** DONE · **Raised by** the operator: "I don't want to mix languages"
+
+Spanish slugs in an English codebase, a Spanish-only Política linked from eleven English
+emails, and no way for a reader to change language.
+
+**The rename was possible only because nothing had been sent.** `/legal/politica` is printed in
+the Art. 12 footer of all nineteen outreach emails, and `documents.ts` had already recorded
+that the slug is permanent *because sent mail cannot be edited*. The pack's `sent_log.csv` does
+not exist, so zero have gone out — this was the last moment the URL was free. It is now
+`/legal/privacy-policy` and `/legal/privacy-notice`, and after the first send it is fixed for
+good.
+
+**The language travels in the URL, not in component state.** `contacts.csv` records a language
+per recipient — eleven English, eight Spanish — so an English prospect's footer links to
+`?lang=en` and a Spanish one to the bare URL. A toggle holding state only in the page could
+not be linked to, would not survive a reload, and would land eleven of nineteen recipients on
+a document they cannot read. The toggle writes the same parameter, with `replace` so the back
+button does not walk through language changes.
+
+**It defaults to Spanish rather than reading `Accept-Language`.** The Spanish text is the
+authoritative one; guessing would show a Colombian Titular with an English-configured laptop
+the non-binding version by default.
+
+**The Spanish prevails, and every English file says so.** These are statutory instruments under
+Ley 1581 and Decreto 1377, and a Colombian Responsable is bound by the Spanish wording. Each
+`.en.md` opens with a blockquote stating it is a courtesy translation — not decoration: without
+it, which text binds is ambiguous, and a translation slip becomes a compliance defect rather
+than a typo. A test asserts the line is present.
+
+**A structural guard against half-translation.** Both languages must carry the same numbered
+sections *and* the same count of bold lead-ins. Headings alone would have compared two empty
+lists for the Aviso, which has none — Art. 14's four required elements are four bold
+paragraphs — so the test also asserts the signature is non-trivial. A guard that passes by
+comparing nothing is the failure it exists to prevent.
+
+#### Found while splitting: the Aviso was publishing its own internal notes
+
+`FZ-224` served `aviso-de-privacidad.md` verbatim, and that file carried an editorial preamble
+*and* a section headed **"Note for whoever wires this into the product"**, citing `OI-37` —
+live on a public page from the moment it went up. Published documents now contain the
+publishable text and nothing else; the editorial material moved to `legal/README.md`, and a
+test asserts no published document mentions an `OI-` or `FZ-` identifier.
+
+#### The footer
+
+The duplicate **Sign in** link is gone, as asked. It was there deliberately — the test said so:
+*"A visitor who has read to the bottom should not have to scroll back up."* That cost is real
+and is now paid knowingly; the comment records it, and restoring the link is one line if the
+scroll-back proves worse than the incongruity of a sign-in link beside the legal notices.
+
+Acceptance:
+
+- Both paths are English, and both documents render in both languages.
+- `?lang=en` renders English; anything else renders Spanish.
+- Switching language updates the URL, so it can be linked and survives a reload.
+- Every `.en.md` states that the Spanish prevails.
+- A section added to one language and not the other fails the build.
+- No published document contains an internal issue reference.
+- The eight Spanish emails link to the bare URL and the eleven English ones to `?lang=en`.

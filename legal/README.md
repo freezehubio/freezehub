@@ -13,6 +13,43 @@ is a defect; where it disagrees with the code, the code is right and both are de
 | `aviso-prospeccion.md` | The **Art. 12** disclosure for a cold outreach email footer. Not the Aviso: there is no collection moment, so the first message is where the duty to inform is discharged (`FZ-223`) | Anyone receiving unsolicited outreach |
 | `subprocessors.md` | Who else receives personal data, and what each one gets | Customers; referenced by the DPA |
 
+## Each published document is two files, and only the text is in them
+
+`FZ-226` split every published instrument into a Spanish file and an `.en.md` sibling:
+
+```text
+politica-de-tratamiento.md      politica-de-tratamiento.en.md
+aviso-de-privacidad.md          aviso-de-privacidad.en.md
+```
+
+**The Spanish is authoritative.** These are statutory instruments under Ley 1581 and
+Decreto 1377; a Colombian Responsable is bound by the Spanish wording. Every `.en.md` opens
+with a blockquote saying so, and that line is not decoration — without it, it is ambiguous
+which text binds, and a translation slip becomes a compliance defect rather than a typo.
+
+**They contain the publishable text and nothing else.** The frontend serves these files
+verbatim (`FZ-224`), so an editorial aside in one is an editorial aside on a public page.
+The Aviso previously carried its own preamble *and* a section headed "Note for whoever wires
+this into the product", citing `OI-37` — all of it served to the public from the moment the
+page went live. That material now lives here:
+
+- **What the Aviso is for.** The short notice shown **at the moment data is collected** — on
+  the signup and demo request forms — where showing the whole Política is not practical.
+  Decreto 1377 Art. 14 requires it, and its four required elements are the four paragraphs of
+  the document. It is published in both languages deliberately: `POST /api/signup` is
+  self-serve, and a product anyone can sign up for does not get to choose where its data
+  subjects live.
+- **The gap it cannot close by itself** (`OI-37`). The text shown must be *stored with* the
+  authorization, not merely displayed: Art. 8(b) gives the Titular the right to request proof
+  of the authorization given, and proof means the timestamp and the exact wording that was on
+  screen — not a boolean. `demo_request` has no column for either and the form has no such
+  control, so a checkbox alone would not close it. The notice can be published today; the
+  authorization it describes still cannot be proven.
+
+A structural check in the frontend tests asserts both language versions of a document carry
+the same numbered sections, so a section added to one and forgotten in the other fails the
+build rather than going out half-translated.
+
 ## Read this before publishing any of them
 
 **These are drafts, and they are not legal advice.** I am not a lawyer and neither is this
@@ -89,7 +126,7 @@ satisfies the same requirement with less exposure. That is a decision, not a def
 | `«ÁREA RESPONSABLE»` | The person or area answerable for those requests, per Art. 13(d) | The company |
 | `«FECHA DE ENTRADA EN VIGENCIA»` | The date the Política takes effect | The day it is published, after review |
 | `«VIGENCIA DE LAS BASES DE DATOS»` | How long the databases will be kept, per Art. 13(f) | Follows the retention table in `docs/17-data-protection.md` §3, but must be stated as a period |
-| `«URL DE LA POLÍTICA»` | The public address the full Política is served from. Art. 14 requires the Aviso to say where the Política can be read | Decided when it is published — likely `https://app.freezehub.io/legal/politica` |
+| `«URL DE LA POLÍTICA»` | The public address the full Política is served from. Art. 14 requires the Aviso to say where the Política can be read | **Filled.** `https://app.freezehub.io/legal/privacy-policy`, with `?lang=en` for the English text (`FZ-226`) |
 
 ## The RNBD question, which is not answered here
 
