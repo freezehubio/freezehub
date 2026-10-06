@@ -35,7 +35,8 @@ profile — and states plainly that the address was worked out. See `politica-de
 > Recibe este correo porque su nombre, cargo y correo profesional figuran en una fuente de
 > acceso público y trabaja en un área a la que FreezeHub puede servir. Tratamos esos datos
 > conforme al artículo 10 de la Ley 1581 de 2012 y a nuestra
-> [Política de Tratamiento](https://app.freezehub.io/legal/privacy-policy).
+> [Política de Tratamiento](https://app.freezehub.io/legal/privacy-policy); conservamos el
+> registro de cómo se obtuvo cada dato y puede pedírnoslo.
 >
 > Responsable: Camilo Andres Hurtado Carvajal · Calle 50 # 99 - 74, Cali, Colombia ·
 > privacidad@freezehub.io · +57 311 773 7625
@@ -48,7 +49,8 @@ profile — and states plainly that the address was worked out. See `politica-de
 > You are receiving this because your name, role and work address appear in a publicly
 > available source, and you work in an area FreezeHub can serve. We process that data under
 > Article 10 of Colombia's Law 1581 of 2012 and our
-> [Privacy Policy](https://app.freezehub.io/legal/privacy-policy?lang=en).
+> [Privacy Policy](https://app.freezehub.io/legal/privacy-policy?lang=en); we keep a record of
+> how each item was obtained and you can ask us for it.
 >
 > Controller: Camilo Andres Hurtado Carvajal · Calle 50 # 99 - 74, Cali, Colombia ·
 > privacidad@freezehub.io · +57 311 773 7625

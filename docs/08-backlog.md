@@ -6587,3 +6587,42 @@ Acceptance:
 - The Política's § 2.1 and § 3 describe what is actually retained, in both languages.
 - The four published contacts keep version A unchanged.
 - Both language versions stay structurally in step, so the existing guard still passes.
+
+### FZ-228 — Sending Anyway, With the Whole Story
+**Status:** DONE · **Decided by** the operator, knowingly
+
+The operator chose to write to all nineteen contacts — including the fifteen whose addresses
+were never published — on the basis that each message says exactly how the address was
+obtained, how it was computed, and how to stop it and have the record deleted.
+
+**That is a decision, not a compliance position, and it is recorded as one.** `FZ-227`
+established there is no authorization and no Art. 10 cover for a derived address, and Ley 1581
+has no legitimate-interest limb (`17-data-protection.md` § 4). Nothing here changes that. What
+changes is that the risk is now taken with the facts stated to the recipient rather than
+concealed from them, which is the difference between a defensible position and an indefensible
+one even where it is not a lawful basis.
+
+**All nineteen now offer the same three rights**, which they did not before. Version A — the
+four whose addresses were genuinely published — told them less than version B did: it offered
+the opt-out and deletion but not the right to ask for the record of how their data was
+obtained. The Política promises that record to everyone, so withholding it from four of them
+was an inconsistency that would be harder to explain than either version on its own.
+
+**Paced at ten a day**, down from a limit of twenty. Nineteen cold emails in one morning from a
+mailbox with no sending history is how a new domain gets filtered, and the whole list arriving
+together would have put the domain's reputation at risk on day one — the same domain that
+carries the demo acknowledgements, the freeze notifications and the billing notices.
+
+```text
+2026-10-07  10 contacts
+2026-10-08   9 contacts
+```
+
+Both are working days in every timezone on the list, including Israel's Sunday–Thursday week.
+
+Acceptance:
+
+- Every contact has a `source` and a `source_date`, so the preflight no longer refuses.
+- The record for a derived address says it was derived, not that it was found.
+- All nineteen messages offer the opt-out, deletion, and the record.
+- No more than ten are scheduled on any day.
