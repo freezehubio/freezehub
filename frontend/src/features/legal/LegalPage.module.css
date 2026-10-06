@@ -15,9 +15,48 @@
   padding: 2.5rem 1.5rem 6rem;
 }
 
+/*
+ * The wordmark and the language switch share a line, so the switch is at the top of the
+ * document rather than at the end of it — a reader who cannot read Spanish should not have
+ * to scroll a statutory text to discover there is an English version.
+ */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 2.5rem;
+}
+
+.languages {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.language {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fh-accent-ink);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* The language being read is stated, not merely styled — aria-pressed carries it too. */
+.language[aria-pressed='true'] {
+  color: var(--fh-text-muted);
+  text-decoration: none;
+  cursor: default;
+}
+
 .back {
   display: inline-block;
-  margin-bottom: 2.5rem;
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
   font-size: 1.25rem;

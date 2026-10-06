@@ -20,13 +20,33 @@ describe('LandingPage', () => {
   })
 
   test('every sign-in affordance points at sign-in', () => {
-    // Two of them, deliberately: the nav button and the footer link. A visitor who has
-    // read to the bottom should not have to scroll back up.
+    /*
+     * One of them now: the nav button.
+     *
+     * There were two. The footer carried a second, on the stated reasoning that a visitor who
+     * has read to the bottom should not have to scroll back up — which is a real cost, and is
+     * paid here knowingly (`FZ-226`). The operator found a sign-in link beside the legal
+     * notices incongruous, and the footer now carries only those. Restoring it is one line if
+     * the scroll-back proves to be the bigger annoyance.
+     */
     renderRoute(<LandingPage />, { token: null })
 
     const links = screen.getAllByRole('link', { name: 'Sign in' })
-    expect(links).toHaveLength(2)
+    expect(links).toHaveLength(1)
     links.forEach((link) => expect(link).toHaveAttribute('href', '/signin'))
+  })
+
+  test('the footer offers the legal notices and nothing else', () => {
+    renderRoute(<LandingPage />, { token: null })
+
+    expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute(
+      'href',
+      '/legal/privacy-policy',
+    )
+    expect(screen.getByRole('link', { name: 'Privacy Notice' })).toHaveAttribute(
+      'href',
+      '/legal/privacy-notice',
+    )
   })
 
   test('sends a signed-in reader to the dashboard rather than back through sign-in', () => {

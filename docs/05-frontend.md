@@ -33,7 +33,7 @@ Accepted trade-off: multi-select UX is basic. Revisit if usability testing shows
 /settings                  -> Integrations, API keys, advance warning (FZ-045, FZ-038)
 /deployment-checks         -> Deployment checks    (FZ-071)
 /audit                     -> Audit trail         (FZ-039)
-/legal/:slug               -> Published legal document, public (FZ-224)
+/legal/:slug?lang=        -> Published legal document, public, ES/EN (FZ-224, FZ-226)
 *                          -> Not found
 ```
 
@@ -45,7 +45,16 @@ sign-in rather than rendering an empty page. The public ones are `/` (the landin
 Art. 14 obliges the Aviso to say where the full Política can be read, and a page behind a
 sign-in cannot be read by the person that obligation protects. The slug `politica` is also
 printed in the Art. 12 footer of outreach email, which cannot be edited once sent — so that
-path is permanent, and changing it turns a statutory reference into a 404.
+path is permanent, and changing it turns a statutory reference into a 404. The slugs are
+English like every other path (`FZ-226`); they were renamed from Spanish while nothing had
+been sent, which was the last moment that was free.
+
+**The language is a query parameter, not component state** (`FZ-226`). `contacts.csv` records
+a language per recipient, so an English prospect’s footer links to `?lang=en` and a Spanish
+one to the bare URL. A toggle holding state only in the page could not be linked to and would
+not survive a reload. It defaults to Spanish rather than reading `Accept-Language`, because
+the Spanish text is the authoritative one and a reader should not be shown the non-binding
+translation by accident.
 
 Which documents are served is an **allowlist** in `features/legal/documents.ts`, never a
 glob: `legal/` also holds the DPA, which carries the operator’s cédula.

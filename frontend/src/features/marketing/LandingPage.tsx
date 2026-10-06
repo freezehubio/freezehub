@@ -210,9 +210,8 @@ export function LandingPage() {
 
       <footer className={styles.footer}>
         <span>FreezeHub</span>
-        <Link to="/signin">Sign in</Link>
-        <Link to="/legal/politica">Política de Tratamiento</Link>
-        <Link to="/legal/aviso">Aviso de Privacidad</Link>
+        <Link to="/legal/privacy-policy">Privacy Policy</Link>
+        <Link to="/legal/privacy-notice">Privacy Notice</Link>
       </footer>
     </div>
   )
