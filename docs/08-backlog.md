@@ -6535,3 +6535,55 @@ Acceptance:
 - A section added to one language and not the other fails the build.
 - No published document contains an internal issue reference.
 - The eight Spanish emails link to the bare URL and the eleven English ones to `?lang=en`.
+
+### FZ-227 — The Footer Said Something the Evidence Contradicted
+**Status:** DONE · **Found by** the operator's own sources record
+
+The Art. 12 footer written in `FZ-223` told every recipient their *"correo profesional figura
+en una fuente de acceso público"*. A sources record produced for the current list showed that
+**15 of 19 addresses had never been published anywhere** — Hunter derived them from the
+employer's naming convention, and the `fuente_url` recorded for each of those fifteen is a
+Google search query, which is a way of looking for something rather than a record of where it
+was found.
+
+So the one sentence whose job is to answer *"how did you get my address?"* was false for
+fifteen of nineteen people, and the Política promised a record of a public source that does
+not exist for them.
+
+**Two footer versions now, chosen per contact from the record.** Art. 12 requires telling this
+person how their data was obtained, so the wording follows the evidence rather than the other
+way round. Version B states plainly that the address was not published and was worked out from
+the employer's convention, and cites Art. 10 **only** for the name, role and employer — which
+are published, on the person's own professional profile.
+
+**The Política was wrong in the same place and is corrected in both languages.** § 2.1's first
+row no longer claims the address comes from a public source; § 3 now says what is actually
+kept — the public source where the datum was published, *and* the fact of the derivation and
+the convention applied where it was not; and the "dos límites" paragraph states outright that
+Art. 10 does not cover a derived address.
+
+**What this does not do, stated because the distinction is the whole point.** An honest
+description of an inference makes the *disclosure* truthful. It does not make the inferred
+address a *dato público*, and Ley 1581 has no legitimate-interest limb to fall back on
+(`17-data-protection.md` § 4). For those fifteen there is no authorization and no Art. 10 cover
+for the address itself.
+
+**Two external arguments were checked and neither closes it.** A suggestion to rely on
+*interés legítimo B2B* is GDPR reasoning that Colombian law does not have. **SIC concepto
+23-571469 is real** — it places *"los datos corporativos de una persona jurídica tales como
+correo institucional, celular corporativo, dirección de contacto"* outside Ley 1581 — but that
+is the **legal entity's** data. A role address like `contacto@empresa.com` is squarely covered;
+an address identifying a named natural person is not what that wording describes, and a
+*concepto* is advisory guidance rather than binding law.
+
+That reading does surface a genuinely clean channel nobody had considered: **role addresses are
+outside Ley 1581 entirely**, needing no authorization, no Art. 10 argument and no sources
+record.
+
+Acceptance:
+
+- No email claims a published source for an address the record says was derived.
+- Version B cites Art. 10 for the name, role and employer, and not for the address.
+- The Política's § 2.1 and § 3 describe what is actually retained, in both languages.
+- The four published contacts keep version A unchanged.
+- Both language versions stay structurally in step, so the existing guard still passes.

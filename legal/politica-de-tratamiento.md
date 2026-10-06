@@ -61,7 +61,7 @@ unilateralmente datos de los que no somos Responsable.
 
 | Datos | Finalidad | Conservación |
 |---|---|---|
-| Nombre, cargo, empresa y correo electrónico profesional obtenidos de fuentes de acceso público | Contacto comercial dirigido a la organización en la que la persona ejerce su oficio | 180 días desde el último contacto, o de inmediato si la persona pide no ser contactada |
+| Nombre, cargo y empresa obtenidos de fuentes de acceso público, y el correo profesional cuando está publicado o, en su defecto, deducido de la nomenclatura de la empresa | Contacto comercial dirigido a la organización en la que la persona ejerce su oficio | 180 días desde el último contacto, o de inmediato si la persona pide no ser contactada |
 | Nombre, correo electrónico, empresa y mensaje de quien solicita una demostración | Atender la solicitud y contactar al interesado | 180 días si no se convierte en cliente; en caso contrario, según el numeral siguiente |
 | Nombre, correo electrónico y organización de quien se registra | Crear la cuenta y prestar el servicio | Mientras exista la relación, más 30 días |
 | Identificadores de facturación | Facturación, cobro y cumplimiento tributario | El período que exija la normativa contable y tributaria |
@@ -81,7 +81,10 @@ igual, y una solicitud de supresión se atiende de inmediato.
 
 **Dos límites que se declaran en lugar de descubrirse.** El correo electrónico profesional es
 la parte más discutible de esta base, por lo que se trata únicamente para dirigirse a la
-persona en su rol y nunca para construir perfiles ni para fines distintos. Y esta Política
+persona en su rol y nunca para construir perfiles ni para fines distintos. **Cuando la
+dirección no estaba publicada y se dedujo de la nomenclatura de la empresa, el artículo 10 no
+la cubre:** cubre el nombre, el cargo y la empresa, que sí son públicos. Esa diferencia se
+registra por contacto y se declara en el primer mensaje. Y esta Política
 rige el tratamiento bajo la ley colombiana: no desplaza las normas del país del destinatario,
 algunas de las cuales exigen consentimiento previo para *enviar* comunicaciones comerciales
 aunque el tratamiento del dato sea lícito aquí.
@@ -104,8 +107,10 @@ y el texto exacto que fue presentado— de modo que el Titular pueda solicitar p
 autorización otorgada, como lo permite el literal b) del artículo 8.
 
 **La única finalidad que se apoya en el artículo 10 es el contacto comercial del numeral
-2.1.** Para ella no hay autorización que probar, por lo que se conserva en su lugar el
-registro de la fuente pública de donde se obtuvo cada dato y la fecha en que se obtuvo. Así
+2.1.** Para ella no hay autorización que probar, por lo que se conserva en su lugar, por
+contacto, el registro de dónde se obtuvo cada dato y cuándo: la fuente pública cuando el dato
+estaba publicado, y el hecho de la deducción y la nomenclatura aplicada cuando la dirección no
+lo estaba. Así
 el Titular puede conocer el origen de sus datos y ejercer los derechos del numeral 4, que es
 el interés que protege el literal b) del artículo 8 cuando sí hay autorización.
 
