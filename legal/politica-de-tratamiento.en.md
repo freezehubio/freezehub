@@ -64,7 +64,7 @@ modify data for which we are not the Controller.
 
 | Data | Purpose | Retention |
 |---|---|---|
-| Name, role, company and work email obtained from publicly available sources | Commercial contact directed at the organization where the person practises their profession | 180 days from the last contact, or immediately if the person asks not to be contacted |
+| Name, role and company obtained from publicly available sources, and the work email where it is published or, failing that, derived from the company’s address convention | Commercial contact directed at the organization where the person practises their profession | 180 days from the last contact, or immediately if the person asks not to be contacted |
 | Name, email, company and message of anyone requesting a demonstration | Answering the request and contacting the enquirer | 180 days if they do not become a customer; otherwise, as in the following row |
 | Name, email and organization of anyone registering | Creating the account and providing the service | For the life of the relationship, plus 30 days |
 | Billing identifiers | Invoicing, collection and tax compliance | The period required by accounting and tax law |
@@ -83,7 +83,10 @@ acted on immediately.
 
 **Two limits declared rather than left to be discovered.** A work email address is the most
 debatable part of this basis, so it is used solely to address the person in their professional
-role and never to build profiles or for any other purpose. And this Policy governs processing
+role and never to build profiles or for any other purpose. **Where the address was not
+published and was derived from the company’s convention, article 10 does not cover it:** it
+covers the name, role and company, which are public. That difference is recorded per contact
+and stated in the first message. And this Policy governs processing
 under Colombian law: it does not displace the rules of the recipient's own country, some of
 which require prior consent to *send* commercial communications even where processing the data
 is lawful here.
@@ -106,8 +109,9 @@ presented — so that the data subject can request proof of the consent given, a
 allows.
 
 **The only purpose founded on article 10 is the commercial contact in section 2.1.** For that
-purpose there is no consent to prove, so what is retained instead is a record of the public
-source each item of data came from and the date it was obtained. This allows the data subject
+purpose there is no consent to prove, so what is retained instead, per contact, is a record of
+where each item of data came from and when: the public source where the data was published,
+and the fact of the derivation and the convention applied where the address was not. This allows the data subject
 to learn the origin of their data and exercise the rights in section 4, which is the interest
 article 8(b) protects where consent does exist.
 
