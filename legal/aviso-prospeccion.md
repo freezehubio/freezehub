@@ -92,6 +92,46 @@ profile — and states plainly that the address was worked out. See `politica-de
 
 ---
 
+## Saying no has to be easier than ignoring it
+
+`FZ-229`. The footer used to say *"responde «no»"*, which asks the recipient to compose a
+message. Enough friction that the honest answer for most people is to delete the email
+instead — and an opt-out nobody uses is not an opt-out, it is a sentence about one.
+
+Every message now carries **two buttons**, one per right, because they are different rights
+and have always been described as such here:
+
+| Button | What it is | Subject it produces |
+|---|---|---|
+| **No me interesa** / **Not interested** | Art. 8(e), stop writing | `Remover - <their address>` |
+| **Eliminar mis datos** / **Delete my data** | Art. 8(e), supresión | `Suprimir datos - <their address>` |
+
+Both are `mailto:` links with the subject **and body pre-filled**, so a click opens the
+recipient’s own mail app already written and they press send. Nothing is hosted, nothing is
+tracked, and no link identifies who clicked — which a hosted unsubscribe URL would, since it
+needs a per-recipient token to know who to remove.
+
+The recipient’s address is in the subject so a request can be actioned without opening it.
+
+**`&` must be written `&amp;` in those hrefs.** A bare ampersand in an HTML attribute starts
+an entity reference, and the `body` parameter is silently dropped — the same class of defect
+as `FZ-220`, in a different format.
+
+### And a `List-Unsubscribe` header
+
+RFC 2369, so Gmail and Outlook render their own unsubscribe control above the message, where
+people look for one. Two ways out, neither requiring a word to be typed.
+
+**No `List-Unsubscribe-Post`.** RFC 8058’s one-click flow requires an https endpoint that
+accepts a POST and there is none; advertising it with only a `mailto:` target would promise a
+capability that does not exist.
+
+**The header is kept short deliberately.** Python’s default email policy treats
+`List-Unsubscribe` as unstructured and RFC 2047-encodes it the moment the line needs folding
+past 78 characters — and an encoded-word is not valid in that header, so clients ignore it.
+Dropping the address from the subject keeps it under the limit; the request arrives *from*
+the person, so their address was never needed there.
+
 ## Why each line is there, so none of them is cut as clutter
 
 | Line | What requires it |

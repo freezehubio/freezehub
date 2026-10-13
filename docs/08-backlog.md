@@ -6626,3 +6626,58 @@ Acceptance:
 - The record for a derived address says it was derived, not that it was found.
 - All nineteen messages offer the opt-out, deletion, and the record.
 - No more than ten are scheduled on any day.
+
+### FZ-229 — An Opt-Out Nobody Uses Is Not an Opt-Out
+**Status:** DONE · **Raised by** the operator: make it easier to say no, without them writing anything
+
+The footer said *"responde «no» y no vuelvo a escribirte"*. That asks the recipient to compose
+a message — enough friction that the honest answer for most people is to delete the email
+instead. An opt-out that nobody exercises is not a safeguard, it is a sentence describing one,
+and the whole basis for writing to these people rests on the safeguard being real.
+
+**Two buttons now, one per right**, because they are different rights and this repository has
+said so throughout: **No me interesa** stops the mail (Art. 8(e)), **Eliminar mis datos**
+requests supresión. Both are `mailto:` links with subject *and body* pre-filled, so a click
+opens the recipient's own mail app already written and they press send.
+
+**Nothing hosted, nothing tracked.** A hosted unsubscribe URL would be one genuine click, but
+it needs a per-recipient token to know who to remove — which is a link that identifies who
+clicked, in a pack whose README says it does not track opens by design. A `mailto:` keeps that
+promise and still removes the writing.
+
+The recipient's address goes in the subject, so a request can be actioned without opening it.
+
+**Plus a `List-Unsubscribe` header** (RFC 2369), so Gmail and Outlook render their own
+unsubscribe control above the message, where people actually look. Two routes out, neither
+needing a word typed.
+
+#### Two defects avoided, both of a kind this repository keeps meeting
+
+**`&` had to be written `&amp;` in the hrefs.** A bare ampersand in an HTML attribute opens an
+entity reference and the `body` parameter is silently dropped — the same class of defect as
+`FZ-220`'s `.env`, in a different format. Verified by parsing the generated HTML the way a
+mail client would and reading the decoded query string back.
+
+**The `List-Unsubscribe` header came out RFC 2047-encoded** on the first attempt:
+
+```text
+List-Unsubscribe: =?utf-8?q?=3Cmailto=3Aprivacidad=40freezehub=2Eio=3Fsubjec?=
+```
+
+Python's default policy treats it as an unstructured header and encodes it the moment the line
+needs folding past 78 characters. An encoded-word is **not valid** in that header, so every
+client would have ignored it — and the header would have looked present while doing nothing.
+Dropping the address from its subject brings it under the limit; the request arrives *from*
+the person, so their address was never needed there.
+
+**No `List-Unsubscribe-Post`.** RFC 8058's one-click flow requires an https endpoint accepting
+a POST, and there is none. Advertising it with only a `mailto:` target would promise a
+capability that does not exist.
+
+Acceptance:
+
+- Both buttons produce a message with the subject and body already filled.
+- The decoded `body` parameter survives the HTML parser.
+- `List-Unsubscribe` appears raw, not as an encoded-word.
+- The plain-text alternative carries both links.
+- Nothing in the pack identifies who clicked.
