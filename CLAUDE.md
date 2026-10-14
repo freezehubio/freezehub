@@ -261,6 +261,24 @@ still answers when the application will not start.
 ./scripts/test-users.sh
 ```
 
+Two read-only scripts answer "is anyone out there" and need `aws login --profile admin`
+(`FZ-230`). They report different things and the difference matters:
+
+```bash
+# a daily REQUEST count from CloudWatch. Not visits: one page load is about four
+# requests, it is per-distribution not per-path, and the 404-to-200 rewrite means a
+# scanner counts the same as a reader. Good for a trend, useless for attribution.
+./scripts/landing-page-visits.sh 30
+
+# the access logs themselves: pages, edge locations, external referrers, and bots
+# separated from everything else. This is the one that can say an email worked.
+./scripts/landing-page-logs.sh
+```
+
+Logging began on 2026-10-13, so neither script can say anything about traffic before
+that date. Standard logs carry no country field — only the paid real-time ones do, and
+`x-edge-location` is the nearest substitute.
+
 Provisioning is a script and not an admin console on purpose (`D-23`), so it needs database
 access — which in a deployed environment means an operator with production credentials.
 

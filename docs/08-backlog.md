@@ -6789,3 +6789,52 @@ Acceptance:
 **Needs the operator, and the tier cannot be bought until it is done:** two Stripe prices,
 monthly and annual, mapped as `TEAM_MONTHLY` and `TEAM_ANNUAL` in `StripeProperties`. Checkout
 throws without them.
+
+### FZ-232 — The Script Reported User Agents as Referrers
+**Status:** DONE · **Found by** running it against real logs for the first time
+
+`scripts/landing-page-logs.sh` was written before any log file existed, against the CloudFront
+field layout from memory. The first real run showed what that costs: it labelled **field 10
+"country" and field 11 "referrer"**, and the actual order is
+
+```text
+8 cs-uri-stem   9 sc-status   10 cs(Referer)   11 cs(User-Agent)
+```
+
+So the section headed *"referrers that are not '-' : this is what tells you an email worked"*
+was printing **user agents**. It looked like meaningful output — long strings, varied, plenty
+of them — which is the worst kind of wrong, and the sort a reader would act on.
+
+**There is no country field in standard logs at all.** It exists only in real-time logs, which
+are a paid product. The script was promising something CloudFront does not deliver.
+`x-edge-location` is the nearest substitute and locates the edge, not the person.
+
+Both scripts are now in `scripts/` and documented in `CLAUDE.md`, including the thing a reader
+most needs to know: **`landing-page-visits.sh` counts requests and cannot attribute them**,
+while `landing-page-logs.sh` can. They answer different questions and were being treated as
+two views of one.
+
+#### The ten sent by hand are recorded
+
+The operator sent the first batch from webmail on 2026-10-07, before the SMTP problem was
+understood. `sent_log.csv` now carries all ten with `status=sent`, so the script will not mail
+them a second time — verified by evaluating the same `done` expression `send.py` uses: **ten
+skipped, eight remaining**.
+
+Their `message_id` is **blank on purpose**. A manually sent message's Message-ID exists only
+in the Sent folder and IMAP has never authenticated, so it cannot be recovered. A script-sent
+row always has one, which makes the empty value itself the record that this went out by hand.
+`build_message` now omits `In-Reply-To` and `References` when it is blank, rather than setting
+them to an empty string: a follow-up that threads badly is a nicety lost, a malformed header
+is a defect.
+
+The dry run also now says how many rows are already sent. It previews every row on purpose —
+you may want to reread one that has gone — but without that line a dry run reads as a queue,
+which is exactly how someone concludes nothing was sent.
+
+Acceptance:
+
+- The referrer section prints referrers.
+- Nothing claims to report a country.
+- `sent_log.csv` holds the ten, and the send filter skips exactly those ten.
+- A blank Message-ID produces no threading headers rather than empty ones.
