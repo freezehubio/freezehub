@@ -65,7 +65,7 @@ unilateralmente datos de los que no somos Responsable.
 | Nombre, correo electrónico, empresa y mensaje de quien solicita una demostración | Atender la solicitud y contactar al interesado | 180 días si no se convierte en cliente; en caso contrario, según el numeral siguiente |
 | Nombre, correo electrónico y organización de quien se registra | Crear la cuenta y prestar el servicio | Mientras exista la relación, más 30 días |
 | Identificadores de facturación | Facturación, cobro y cumplimiento tributario | El período que exija la normativa contable y tributaria |
-| Registros operativos del servicio | Seguridad, disponibilidad y diagnóstico | Según el período técnico de conservación |
+| Registros operativos del servicio, incluidos los registros de acceso del CDN (que contienen la dirección IP) | Seguridad, disponibilidad, diagnóstico y medición de audiencia | 90 días |
 
 **La primera finalidad es la única que no se apoya en una autorización, y conviene decir por
 qué.** El artículo 10 de la Ley 1581 de 2012 exceptúa del requisito de autorización los datos
