@@ -167,6 +167,9 @@ export function LandingPage() {
                 <th scope="row">Starter</th><td>yes</td><td>10</td><td>$99</td><td>90 days</td>
               </tr>
               <tr>
+                <th scope="row">Team</th><td>yes</td><td>25</td><td>$199</td><td>180 days</td>
+              </tr>
+              <tr>
                 <th scope="row">Growth</th><td>yes</td><td>50</td><td>$349</td><td>1 year</td>
               </tr>
               <tr>

@@ -6745,3 +6745,47 @@ Acceptance:
 - The log bucket blocks all public access and expires objects on a schedule.
 - The access-log row appears in `17-data-protection.md` § 3 marked P1.
 - Both Políticas state the retention period and that the logs contain an IP address.
+
+### FZ-231 — The Ladder Had a Hole Where the Customers Are
+**Status:** DONE · **Raised by** a pricing review the operator asked for
+
+The self-serve ladder went **10 applications to 50 with nothing in between**. At the tier caps
+the prices were sensible — Starter $9.90 an application, Growth $6.98 — which is why nothing
+looked wrong. The defect was in the gap: most organizations with a freeze problem run fifteen
+to thirty applications, and a company with twenty had to buy Growth at **$349**, or **$17.45**
+an application. Paying more per unit for growing into a tier is how a deal stalls and gets
+negotiated, and it is the modal customer who was being asked to do it.
+
+**`TEAM`: 25 applications, $199 a month, $1,990 a year.** That is $7.96 an application, below
+Starter's rate rather than above it, so every step up the ladder now lowers the unit price —
+which is the only shape a self-serve ladder should have. Ten API keys, ten notification
+destinations and 180-day check retention all sit between the tiers either side.
+
+**Nothing else had to change.** No `switch` over `Plan` is exhaustive anywhere in the
+backend, limits are read through accessors, and the enum carries its own numbers — so the new
+tier needed one enum constant, one table row and one pricing row.
+
+#### The test that would have caught it, and the one that would not
+
+`PlanLadderTest` asserts that **no tier allows more than four times the applications of the
+one below**. Run against the ladder as it was, `STARTER -> GROWTH` is **5.0x** and the test
+fails; with `TEAM` the widest gap is `GROWTH -> SCALE` at 4.0x and it passes.
+
+The obvious test — that price per application falls as the ladder rises — **would not have
+caught this**, because it was already true at every tier cap. It is kept, because it guards a
+different mistake, but it was written first and checked second, and checking it is what showed
+it was the wrong test.
+
+Four is deliberate rather than convenient: `GROWTH -> SCALE` is already 4x, which is the same
+defect one size smaller. It is tolerated here and named rather than silently blessed — the
+next candidate if customers stall at ninety applications.
+
+Acceptance:
+
+- `TEAM` sits between `STARTER` and `GROWTH` in every limit, and no limit shrinks going up.
+- A customer with twenty applications can buy a tier sized for twenty applications.
+- The gap test fails on the ladder as it was before this change.
+
+**Needs the operator, and the tier cannot be bought until it is done:** two Stripe prices,
+monthly and annual, mapped as `TEAM_MONTHLY` and `TEAM_ANNUAL` in `StripeProperties`. Checkout
+throws without them.

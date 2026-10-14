@@ -36,6 +36,19 @@ public enum Plan {
     FREE(5, 1, 1, 7),
 
     STARTER(10, 5, 3, 90),
+
+    /**
+     * The modal customer (`FZ-231`).
+     *
+     * <p>Most organizations with a freeze problem run fifteen to thirty applications, and
+     * the ladder went 10 to 50 with nothing between. At twenty applications a customer paid
+     * Growth's $349 — about $17 per application against Starter's $9.90 — which is the
+     * bracket where a deal stalls and gets negotiated. Twenty-five applications at $199 is
+     * $7.96, below Starter's rate rather than above it, so growing into the tier is a
+     * reward instead of a penalty.
+     */
+    TEAM(25, 10, 10, 180),
+
     GROWTH(50, 25, null, 365),
     SCALE(200, null, null, 365),
 

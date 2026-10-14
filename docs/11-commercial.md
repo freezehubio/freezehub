@@ -61,22 +61,29 @@ Price scales with the number of applications in the customer's catalog.
 
 ### Plans
 
-| | **Free** | **Starter** | **Growth** | **Scale** | **Enterprise** |
-|---|---|---|---|---|---|
-| **Freezes actually block** | **advisory only** | yes | yes | yes | yes |
-| Applications | 5 | 10 | 50 | 200 | unlimited |
-| Monthly | $0 | $99 | $349 | $899 | from $2,000 |
-| Annual (2 months free) | — | $990 | $3,490 | $8,990 | contract |
-| Users | unlimited | unlimited | unlimited | unlimited | unlimited |
-| Teams, environments, restrictions | unlimited | unlimited | unlimited | unlimited | unlimited |
-| Policy evaluations | unlimited | unlimited | unlimited | unlimited | unlimited |
-| API keys | 1 | 5 | 25 | unlimited | unlimited |
-| Notification destinations | 1, any type | 3 | unlimited | unlimited | unlimited |
-| Message templates | — | yes | yes | yes | yes |
-| Deployment-check retention | 7 days | 90 days | 1 year | 1 year | up to 10 years |
-| Audit trail retention | unlimited | unlimited | unlimited | unlimited | unlimited |
-| Support | docs | email | business hours | business hours | SLA |
-| Purchase | self-serve | self-serve | self-serve | self-serve | sales |
+| | **Free** | **Starter** | **Team** | **Growth** | **Scale** | **Enterprise** |
+|---|---|---|---|---|---|---|
+| **Freezes actually block** | **advisory only** | yes | yes | yes | yes | yes |
+| Applications | 5 | 10 | **25** | 50 | 200 | unlimited |
+| Monthly | $0 | $99 | **$199** | $349 | $899 | from $2,000 |
+| Annual (2 months free) | — | $990 | **$1,990** | $3,490 | $8,990 | contract |
+| Users | unlimited | unlimited | unlimited | unlimited | unlimited | unlimited |
+| Teams, environments, restrictions | unlimited | unlimited | unlimited | unlimited | unlimited | unlimited |
+| Policy evaluations | unlimited | unlimited | unlimited | unlimited | unlimited | unlimited |
+| API keys | 1 | 5 | **10** | 25 | unlimited | unlimited |
+| Notification destinations | 1, any type | 3 | **10** | unlimited | unlimited | unlimited |
+| Message templates | — | yes | yes | yes | yes | yes |
+| Deployment-check retention | 7 days | 90 days | **180 days** | 1 year | 1 year | up to 10 years |
+| Audit trail retention | unlimited | unlimited | unlimited | unlimited | unlimited | unlimited |
+| Support | docs | email | **email** | business hours | business hours | SLA |
+| Purchase | self-serve | self-serve | self-serve | self-serve | self-serve | sales |
+
+**Team exists because the ladder had a hole where the customers are** (`FZ-231`). Most
+organizations with a freeze problem run fifteen to thirty applications, and the ladder went
+10 to 50 with nothing in between: a company with twenty paid Growth’s $349, about **$17 per
+application** against Starter’s $9.90. Paying more per unit for growing into a tier is how a
+deal stalls. Twenty-five at $199 is **$7.96**, so every step up the ladder now lowers the
+unit price — which is the only shape a self-serve ladder should have.
 
 Every price is a starting position, not a finding. They are anchored on what an engineering organization already spends per month on a single mid-tier developer tool, and on the observation that a freeze tool is bought out of a manager's budget rather than a platform-team line item. Expect to move them once real deals happen; the point is to have a number to test, since a pricing page saying "contact us" converts nobody self-serve.
 
