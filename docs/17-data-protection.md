@@ -57,9 +57,17 @@ personal data about someone who never became a customer.
 | `api_key.token_hash` | P3 | encargado | SHA-256, raw never stored | unchanged | not personal data |
 | `notification.last_error` | P4 | encargado | **unbounded TEXT, no rule** | bounded and truncated | — |
 | Application logs | P4 | responsable | no personal data by rule | unchanged | — |
+| CloudFront access logs | **P1** | responsable | path, referrer, user agent and **IP address**; 90-day expiry (`FZ-230`) | unchanged | expires on the lifecycle |
 | PostgreSQL volume | all | both | encrypted EBS, not published to host | unchanged | — |
 | Nightly `pg_dump` to S3 | all | both | **`FZ-155` — restore never drilled** | lifecycle expiry, drilled | lags by the expiry window |
 | Browser `sessionStorage` | P1 | encargado | session token + PKCE state, same origin, cleared when the tab closes | unchanged | cleared on sign-out |
+
+**The access-log row is the one that breaks the row above it** (`FZ-230`). Application logs
+carry no personal data *by rule* — that is a rule this codebase can keep, because it writes
+them. A CDN access log is not ours to write: an IP address is in every line and there is no
+configuration that removes it. So it is personal data held as **responsable**, and the only
+control available is how long it is kept, which is why the lifecycle expiry is part of the
+same change rather than a later tidy-up.
 
 **The outreach list is the only row that is not in a database, and that is the point of
 listing it** (`FZ-223`). Cold prospecting data sits in a CSV beside a Python script, so none

@@ -6,3 +6,7 @@ crash.log
 
 # .terraform.lock.hcl is deliberately NOT ignored: it pins provider hashes, so an apply
 # from CI resolves the same versions a developer verified.
+
+# Plan files embed values read from state, including secrets. They are a local
+# artefact of a review, never a thing to commit (FZ-230).
+*.tfplan

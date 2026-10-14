@@ -68,7 +68,7 @@ modify data for which we are not the Controller.
 | Name, email, company and message of anyone requesting a demonstration | Answering the request and contacting the enquirer | 180 days if they do not become a customer; otherwise, as in the following row |
 | Name, email and organization of anyone registering | Creating the account and providing the service | For the life of the relationship, plus 30 days |
 | Billing identifiers | Invoicing, collection and tax compliance | The period required by accounting and tax law |
-| Service operational logs | Security, availability and diagnostics | As required by the technical retention period |
+| Service operational logs, including CDN access logs (which contain the IP address) | Security, availability, diagnostics and audience measurement | 90 days |
 
 **The first purpose is the only one not founded on consent, and it is worth saying why.**
 Article 10 of Ley 1581 de 2012 exempts data of a public nature from the consent requirement,

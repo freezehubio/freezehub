@@ -206,6 +206,16 @@ resource "aws_cloudfront_distribution" "frontend" {
   # the narrower one was serving Bogotá from Miami.
   price_class = "PriceClass_All"
 
+  # Access logs (`FZ-230`). The CloudWatch Requests metric counts requests, not visits, and
+  # cannot tell a prospect from a scanner — see frontend-logs.tf for why that matters.
+  logging_config {
+    bucket = aws_s3_bucket.frontend_logs.bucket_domain_name
+    prefix = "cloudfront/"
+    # Query strings are logged: `?lang=en` is how we learn which language a reader chose,
+    # and it is the only parameter the site uses. No personal data is ever put in a URL.
+    include_cookies = false
+  }
+
   origin {
     origin_id                = "frontend"
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name

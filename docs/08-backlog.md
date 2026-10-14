@@ -6681,3 +6681,67 @@ Acceptance:
 - `List-Unsubscribe` appears raw, not as an encoded-word.
 - The plain-text alternative carries both links.
 - Nothing in the pack identifies who clicked.
+
+### FZ-230 — Requests Are Not Visits
+**Status:** DONE (plan only; the apply is the operator's) · **Raised by** the operator: "does this script let me know how many visits my page had for x day?"
+
+It does not, and could not. `scripts/landing-page-visits.sh` reads CloudFront's `Requests`
+metric, which counts **requests**: one page load is about four of them, the figure is
+per-distribution rather than per-path, and because the distribution rewrites 403 and 404 to
+`200 /index.html` for SPA routing (`FZ-224`), a scanner probing `/wp-login.php` is
+indistinguishable from a prospect reading the pitch.
+
+The question mattered more than usual this week. Eighteen outreach emails point at
+`app.freezehub.io`, and without logs there is no way to learn whether anyone followed one,
+which company they came from, or whether they read the Política before deciding.
+
+**Standard logging is enabled on the distribution**, with path, referrer, user agent and
+country. Three details that are not obvious and each of which fails *silently*:
+
+- **Bucket ACLs have to be re-enabled.** CloudFront's standard log delivery writes with an
+  ACL grant, and buckets created today have ACLs disabled (`BucketOwnerEnforced`). Without
+  `BucketOwnerPreferred` and a grant to the `awslogsdelivery` canonical user, the
+  distribution accepts the configuration and then delivers nothing, with no error anywhere.
+- **AES256, not KMS.** CloudFront cannot write standard logs to a bucket encrypted with a
+  customer managed key, and again fails quietly.
+- **Not retroactive.** Logging delivers what happens after it is on, which is why this was
+  written the day the first batch was due rather than after it.
+
+#### The cost is two cents; the price is a new category of personal data
+
+Delivery is free, expiration is free, and at the observed 94 requests a day the logs add
+about 197 KB a month — roughly 600 KB held at 90 days. The largest line item is S3 PUT
+requests at about **$0.02 a month**, and a hundredfold increase in traffic still costs under a
+cent of storage.
+
+**What it actually costs is that FreezeHub starts holding IP addresses it did not hold
+before.** `17-data-protection.md` § 3 asserted *"Application logs — no personal data by
+rule"*. That rule holds for logs this codebase writes; a CDN access log is not ours to write,
+an IP is on every line, and no setting removes it. The map now carries it as **P1,
+responsable**, the note says plainly which row it contradicts, and both Políticas name
+**90 days** for operational records and disclose that the CDN logs contain the IP. The
+lifecycle expiry is in the same change rather than a later tidy-up, because "we will bound it
+later" is how unbounded retention happens.
+
+#### The plan reads as three changes and is one
+
+`terraform plan` reports **6 to add, 3 to change, 0 to destroy**. Only one change is real:
+`logging_config` on the distribution. `aws_s3_bucket_policy.frontend` and
+`aws_iam_role_policy.github_deploy[0]` both re-render because their policy documents
+interpolate `aws_cloudfront_distribution.frontend.arn` (`frontend.tf:59`,
+`github-oidc.tf:160`), and Terraform cannot resolve a data source that depends on a changing
+resource. The distribution is updated **in place**, its ARN is known and unchanged, so both
+policies will apply byte-identical. Verified from the plan JSON rather than assumed.
+
+Found in passing: `terraform init` with `AWS_PROFILE=admin` fails with *"No valid credential
+sources found"*. `~/.aws/config` already explains why — the SDKs cannot read the session
+`aws login` keeps in the CLI's own cache, and `admin-tf` exists to re-export it. Its comment
+notes this is how `FZ-175`'s wrong-account apply happened.
+
+Acceptance:
+
+- `terraform validate` passes and `terraform fmt -check` is clean on both touched files.
+- The plan destroys nothing and replaces nothing.
+- The log bucket blocks all public access and expires objects on a schedule.
+- The access-log row appears in `17-data-protection.md` § 3 marked P1.
+- Both Políticas state the retention period and that the logs contain an IP address.
