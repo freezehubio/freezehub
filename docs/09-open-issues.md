@@ -22,6 +22,27 @@ Severity is about consequence if it reaches beta, not effort:
 
 ## Open
 
+### OI-52 — The upgrade button can only ever buy one plan
+**Severity:** Defect · **Owner:** needs a story · **Raised:** 2026-10-14, `FZ-233`
+
+`BillingSection.tsx` calls `createCheckoutSession(token, 'GROWTH', 'MONTHLY')` with the plan
+and period **hardcoded**. The pricing page offers five self-serve plans and two billing
+periods; the product can select exactly one combination of them.
+
+A customer on Starter who wants Team, a customer who wants annual, or anyone who wants Scale,
+has no way to say so. They would have to be upgraded by hand — which is the current plan for
+the first customers anyway (`13-validation.md` §3), so this is harmless today and will not
+stay harmless.
+
+**`FZ-231` made it worse** by adding `TEAM` between Starter and Growth: a tier created
+specifically for the modal customer, which that customer cannot pick. The pricing page is now
+further ahead of the product than it was.
+
+Not fixed when found, deliberately. A plan picker is worth building against a checkout that
+works, and there is no payment rail at all until `FZ-149` — Stripe is unavailable in Colombia
+(`D-34`) and the Paddle account does not exist yet. Building the picker first would mean
+testing it against a checkout that throws.
+
 ### OI-51 — The notices exist and none of them is published
 **Severity:** Blocker (legal) · **Owner:** the operator — this is not engineering work · **Raised:** 2026-09-23, `FZ-210`
 
