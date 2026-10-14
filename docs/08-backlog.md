@@ -3187,6 +3187,39 @@ now would be building against an account that does not exist yet for a flow nobo
 **Blocked on one human action first:** a Paddle account, opened and approved. `D-34` says why
 that comes before the code rather than after it.
 
+#### Two things have changed since this was written (`FZ-233`)
+
+**The gating stories have landed.** This says it becomes due at the first self-serve payment,
+"which needs `FZ-082`, which needs `FZ-046`" — both are now **DONE**. Signup works and
+creates a 14-day trial. The only gate left is the Paddle account itself.
+
+**The broken path is reachable today, by a real person.** `BillingSection.tsx` renders an
+upgrade button whenever `canUpgradeSelfServe`, and it calls `createCheckoutSession`, which
+reaches a Stripe account that does not exist. An administrator at the end of a trial clicks
+it and gets an error rather than a payment page. That is not a hypothetical a cold email
+might one day cause — eighteen went out in October (`FZ-228`), signup is open, and the trial
+is fourteen days.
+
+**There are now five self-serve plans, not four** (`FZ-231`). Whatever replaces
+`StripeProperties`' price map needs **ten** identifiers rather than eight — monthly and
+annual for Starter, Team, Growth and Scale — plus whatever Enterprise is invoiced as.
+
+**And the upgrade button cannot reach four of the five.** It is hardcoded:
+
+```ts
+createCheckoutSession(token, 'GROWTH', 'MONTHLY')
+```
+
+So a customer who wants Team, Starter, Scale or annual billing cannot choose it in the
+product, whatever rail is behind it. That predates `TEAM` and `FZ-231` made it worse by
+adding a tier the product cannot select. Raised as `OI-52` rather than fixed here, because a
+plan picker is only worth building against a checkout that works.
+
+**The cheapest honest thing, available today:** make the upgrade button say what is true —
+that billing is handled by invoice while the rail is being set up — instead of throwing. A
+few hours, reversible, and it matches `13-validation.md` §3, which invoices the first
+customers by hand precisely so no payment rail sits on the critical path.
+
 ### FZ-150 — The README Still Argued for the NAT
 **Status:** DONE
 
@@ -6789,3 +6822,32 @@ Acceptance:
 **Needs the operator, and the tier cannot be bought until it is done:** two Stripe prices,
 monthly and annual, mapped as `TEAM_MONTHLY` and `TEAM_ANNUAL` in `StripeProperties`. Checkout
 throws without them.
+
+### FZ-233 — Paddle Was Already Decided, and the Advice Was Wrong
+**Status:** DONE · **Raised by** the operator: "No stripe. We are going to use paddle."
+
+Not a new decision. `D-34` chose Paddle as merchant of record on 2026-09-16, after `FZ-148`
+verified against Stripe's own availability page that **Stripe does not operate in Colombia**.
+`FZ-149` is the replacement and is correctly deferred.
+
+**This story exists because `FZ-231` gave advice that could not be acted on.** It said the
+Team tier was blocked on creating two Stripe prices. There is no Stripe account to create
+them in and there never could be — the constraint was documented in this repository a month
+before, and reading the commercial model's own § 6 heading, *"The rail is Paddle, and
+FreezeHub is not the seller"*, would have caught it.
+
+`FZ-149` is updated with what has changed since it was written: `FZ-082` and `FZ-046` have
+both landed, so signup works and the only remaining gate is the Paddle account; there are now
+five self-serve plans rather than four, so the price map needs ten identifiers; and the broken
+checkout is **reachable today** from Settings → Billing, not hypothetical.
+
+**`OI-52` raised:** the upgrade button hardcodes `('GROWTH', 'MONTHLY')`, so four of five
+plans and both annual options cannot be chosen in the product at all. `FZ-231` made that worse
+by adding a tier the product cannot select. Not fixed here — a plan picker is worth building
+against a checkout that works, and there is no rail until `FZ-149`.
+
+Acceptance:
+
+- `FZ-149` names the Paddle account as the only remaining gate.
+- The five-plan price map and the reachable broken path are both recorded.
+- `OI-52` exists and says why it was not fixed when found.
