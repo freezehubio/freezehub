@@ -1,52 +1,41 @@
 #!/bin/sh
-# What CloudFront's access logs say about who visited (FZ-230).
+# What CloudFront's access logs say about who visited (FZ-230, restructured by FZ-234).
 #
-# Field numbers are from CloudFront's standard log format, which is tab-separated:
-#
-#   1 date  2 time  3 x-edge-location  4 sc-bytes  5 c-ip  6 cs-method  7 cs(Host)
-#   8 cs-uri-stem  9 sc-status  10 cs(Referer)  11 cs(User-Agent)  12 cs-uri-query
-#
-# There is NO country field in standard logs — that exists only in real-time logs, which
-# cost money. `x-edge-location` is the nearest thing: the edge that served the request, so
-# BOG50 is Bogotá and LHR3 is London. It locates the edge, not the person.
+# Downloads the most recent log files and hands them to traffic-report.js, which does the
+# judging. Field positions are read from the log's own `#Fields:` header rather than
+# assumed — hard-coding them is what made an earlier version print user agents under a
+# heading that said "referrers".
 #
 # Delivery is not immediate. AWS says within 24 hours and it is usually far sooner, so an
 # empty result shortly after a visit means "not yet", not "nobody came".
+#
+#   ./scripts/landing-page-logs.sh        # the last 40 log files
+#   ./scripts/landing-page-logs.sh 200    # a wider window
 export AWS_PROFILE=admin
 BUCKET=freezehub-beta-frontend-logs-668471252983
-FILES=${1:-20}
+FILES=${1:-40}
+HERE=$(cd "$(dirname "$0")" && pwd)
 
-n=$(aws s3 ls "s3://$BUCKET/cloudfront/" 2>/dev/null | wc -l | tr -d ' ')
-echo "log files delivered: $n"
-[ "$n" = "0" ] && { echo "Nothing yet. Re-run in an hour."; exit 0; }
+# "No log files" and "no credentials" look identical once stderr is discarded, and the
+# second must never be reported as the first — an empty listing would read as "nobody came".
+if ! aws sts get-caller-identity >/dev/null 2>&1; then
+  echo "Cannot reach AWS: the session has expired or the profile is wrong." >&2
+  echo "Run: aws login --profile admin" >&2
+  exit 2
+fi
+
+listing=$(aws s3 ls "s3://$BUCKET/cloudfront/" 2>/dev/null)
+n=$(printf '%s\n' "$listing" | grep -c '\.gz$')
+if [ "$n" -eq 0 ]; then
+  echo "No log files delivered yet. CloudFront can take up to an hour; re-run later."
+  exit 0
+fi
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-aws s3 ls "s3://$BUCKET/cloudfront/" | tail -"$FILES" | awk '{print $4}' | while read -r f; do
+printf '%s\n' "$listing" | grep '\.gz$' | tail -"$FILES" | awk '{print $4}' | while read -r f; do
   aws s3 cp "s3://$BUCKET/cloudfront/$f" "$tmp/$f" --quiet
 done
-gzcat "$tmp"/*.gz 2>/dev/null | grep -v '^#' > "$tmp/all.tsv"
-echo "requests in the last $FILES files: $(wc -l < "$tmp/all.tsv" | tr -d ' ')"
 
-echo
-echo "--- pages asked for (ignoring assets) ---"
-awk -F'\t' '$8 !~ /^\/(assets|favicon)/ {print $8}' "$tmp/all.tsv" | sort | uniq -c | sort -rn | head -10
-
-echo
-echo "--- edge locations, a rough guide to where from ---"
-awk -F'\t' '{print substr($3,1,3)}' "$tmp/all.tsv" | sort | uniq -c | sort -rn | head -8
-
-echo
-echo "--- EXTERNAL referrers: anyone arriving from somewhere that is not us ---"
-ext=$(awk -F'\t' '$10 != "-" && $10 !~ /app\.freezehub\.io/ {print $10}' "$tmp/all.tsv" | sort | uniq -c | sort -rn)
-[ -n "$ext" ] && echo "$ext" || echo "  none — every referrer is either absent or our own pages"
-
-echo
-echo "--- obvious bots, so they are not mistaken for readers ---"
-awk -F'\t' 'tolower($11) ~ /bot|crawl|spider|virustotal|curl|wget|scan/ {print $11}' "$tmp/all.tsv" \
-  | sed 's/%20/ /g' | cut -c1-60 | sort | uniq -c | sort -rn | head -6
-
-echo
-echo "--- everything else, by user agent ---"
-awk -F'\t' 'tolower($11) !~ /bot|crawl|spider|virustotal|curl|wget|scan/ {print $11}' "$tmp/all.tsv" \
-  | sed 's/%20/ /g' | cut -c1-70 | sort | uniq -c | sort -rn | head -6
+echo "$n log files delivered; reading the most recent $FILES."
+gzcat "$tmp"/*.gz 2>/dev/null | node "$HERE/traffic-report.js"

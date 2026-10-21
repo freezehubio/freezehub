@@ -6838,3 +6838,74 @@ Acceptance:
 - Nothing claims to report a country.
 - `sent_log.csv` holds the ten, and the send filter skips exactly those ten.
 - A blank Message-ID produces no threading headers rather than empty ones.
+
+### FZ-234 — The Traffic Report Published Verdicts It Could Not Support
+**Status:** DONE · **Found by:** using it
+
+`FZ-232` fixed the log reader's field offsets. What it left was worse than a mislabelled
+column: a report whose main output was a **verdict per address** — `A PERSON`,
+`PROBABLY A PERSON`, `UNCLEAR`, `PROBABLY A SYSTEM` — produced by a scoring function, with
+the evidence summarised underneath it.
+
+**It was wrong in both directions, and the ground truth was available.** The operator
+visited the landing page from a known address at a known time: `/` plus three assets, two
+seconds, Bogotá edge, residential Colombian IP, Mac Chrome. The score reads one page (`-1`),
+no language toggle, no second day, no external referrer, and two seconds is under the
+twenty-second "spent time reading" threshold — nothing positive. **A visit known to be real
+came out as `PROBABLY A SYSTEM`.** In the other direction an address was reported as
+`PROBABLY A PERSON` on the strength of touching two pages, when the two requests shared a
+single timestamp.
+
+The scoring rewarded dwell time and multi-page navigation because those feel like what a
+person does. A single page read in two seconds is also what a person does, and the rule had
+no way to say so.
+
+**Two of the five classification rules were guesses presented as facts.** A datacenter list
+by first octet, and a behavioural score. Both are gone. What remains is three rules, each a
+fact about the log rather than an inference about intent:
+
+1. the address asked for a known exploit path;
+2. it asked for a path this application does not have — which catches the random-string
+   probes a named-exploit list cannot anticipate, because `custom_error_response` rewrites
+   403 and 404 to `200 /index.html` and every probe therefore succeeds;
+3. its user agent declares itself a tool.
+
+Removing the two guesses moved 51 addresses out of `AUTOMATED`. **They are not reclassified
+as people.** The column is named `REST`, and the report states in its own output that it
+means nothing in the log proves otherwise — not that anyone was there. The words `human` and
+`visitor` are gone from the output entirely; they were guesses being counted.
+
+**What replaced the verdict is the transcript.** Per address: edge, protocol version, user
+agent, request count and span; then every request as time, status, what the edge did in
+words, bytes, latency, the full URL and its referrer. Three fields that were being discarded
+carry most of the new signal — `x-edge-result-type` distinguishes a real file from the SPA
+rewrite, a `304` is a browser that already had the asset and therefore a return visit, and
+`cs-protocol-version` separates a browser negotiating HTTP/2 from a tool falling back to 1.1.
+
+**`landing-page-visits.sh` had attributed every day to the wrong date since `FZ-230`.** The
+CLI renders a bucket's timestamp in local time with an offset — `2026-10-14T19:00:00-05:00`
+is the bucket beginning `2026-10-15T00:00:00Z` — and the formatter took the first ten
+characters. At `-05:00` that crosses midnight, so every row was labelled one day early. The
+observed consequence: a 342-request spike was reported on the day an outreach batch went
+out, when it was the day after.
+
+It was found by cross-checking the two independent sources for one day, seeing `118`
+attributed to different dates by each, and not accepting the coincidence. **That
+cross-check is now the thing worth trusting, rather than either script alone** — three
+defects have reached this pair of scripts and all three produced plausible output.
+
+Also: a bare `Java/1.8.0_332` client passed every filter, so `Java/`, `okhttp`,
+`apache-httpclient`, `axios`, `node-fetch`, `guzzle` and `restsharp` join the tool rule; and
+both scripts already refuse to report on an unusable credential rather than print an empty
+result that reads as silence.
+
+Acceptance:
+
+- No verdict, score or ranking of addresses is printed. The only sentence in the output
+  naming a person is the disclaimer that the log does not show one.
+- The words `human` and `visitor` appear in no printed line. They survive only in the
+  header comment recording why they were removed.
+- Every request is printed with its status, edge result, size, latency and full URL.
+- A day label from the metrics script equals the `date` field the access logs report for the
+  same traffic.
+- A bare HTTP client is filtered by rule 3.
