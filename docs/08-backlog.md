@@ -6838,3 +6838,184 @@ Acceptance:
 - Nothing claims to report a country.
 - `sent_log.csv` holds the ten, and the send filter skips exactly those ten.
 - A blank Message-ID produces no threading headers rather than empty ones.
+
+## Candidate Directions
+
+**Nothing here is a story.** These entries deliberately carry no `FZ-` id, no status and no
+acceptance criteria, so `next-story` cannot see them and nothing can be picked up by
+mistake. They are directions that came out of discussion and are worth not losing — each one
+records its shape, the thing that makes it viable or awkward, and what would have to be
+decided before it became a story.
+
+They are listed roughly in the order I would take them, which is not the order of their size.
+
+### A principle that applies to all of the AI entries below
+
+**AI proposes configuration. It never participates in a verdict.**
+
+The product's value is that the answer is deterministic: `D-21` keeps a billing state from
+changing a policy answer, evaluation derives "in force" from `startsAt`/`endsAt` and nothing
+else, and the connector fails closed. A model anywhere in the evaluation path destroys the
+thing customers are buying, and it would destroy it invisibly — the answer would still look
+like an answer.
+
+Every entry below therefore puts the model at configuration time or at explanation time, on
+the customer's side of the boundary, and never between a deploy and its verdict. Worth
+promoting to a recorded decision in `07-decisions.md` before any of this is built, because
+it is the constraint that will come under pressure once a demo is involved.
+
+`CLAUDE.md` currently lists AI features under what not to introduce unless asked. That line
+needs amending rather than quietly contradicting if any of this is scheduled.
+
+### An MCP server for customers
+
+**Shape.** A read-only MCP server a customer runs locally, so an engineer can ask the agent
+already open in their terminal: may I deploy `payments-api` to production, why was yesterday's
+deploy blocked, when does the next window open.
+
+**Why it fits better than it looks.** It is a thin wrapper over the policy API, which already
+returns a structured verdict with a reason — no new domain logic. The model does not even
+propose here: the deterministic API decides and the agent relays, which makes it the safest
+AI integration available and the easiest to explain to a security reviewer. And the
+credential story is already right: a policy API key is scoped to the policy boundary and
+useless anywhere else, so *the key you hand your coding agent can only ask whether you may
+deploy* is true today without changing anything.
+
+**Read-only, and the line matters.** An agent that can create a freeze can halt an
+organisation's deployments, and a misparsed scope does it silently. That is the core
+invariant handed to a probabilistic caller with no human in the loop. If writes are ever
+added they need confirmation per call; read-only ships first and finds out whether anyone
+asks.
+
+**The snag to decide.** "What is frozen this week" reads the restrictions API, which
+authenticates a user session rather than an API key, so a policy key cannot reach it. Either
+a read-scoped key type or a "what applies to me" extension on the policy boundary. Not hard,
+but it is a decision.
+
+**The honest reason to do it.** It will not make anyone buy the product — freeze enforcement
+is what they buy. But it is the kind of artifact that gets listed, shared and tried by
+exactly this audience, and the current bottleneck is not features. Twelve days of CloudFront
+logs (`FZ-230`, `FZ-234`) contain one confirmed human visit, and it was the operator's own.
+This is a distribution asset, which is the thing actually failing.
+
+### Recurring freezes, and the distinction they expose
+
+**Shape.** A rule — weekly on given days, monthly on an nth weekday, monthly on a date —
+anchored to an organisation timezone, which a scheduled job materialises into concrete
+`change_restriction` rows ahead of time.
+
+**Generate ahead, do not evaluate a rule at query time.** `FZ-050` formalised deriving "in
+force" from `startsAt`/`endsAt` after a computed status let a deployment through during a
+freeze. Expanding occurrences in advance means policy evaluation never learns recurrence
+exists and keeps reading plain windows; evaluating a rule in the request path puts
+recurrence arithmetic in the one endpoint that must not slow down, and makes "which
+occurrences exist" unanswerable — which breaks the timeline, the audit trail and the ability
+to cancel a single Friday. `FZ-025`'s lifecycle reconciler and `SchedulerLock` are the
+machinery this needs.
+
+**The data model already allowed for it.** `03-data-model.md` declines a
+`UNIQUE (organization_id, name)` precisely because *a recurring freeze ("Black Friday
+Freeze") legitimately reuses a name year over year*.
+
+**Timezone is the detail that will bite.** "No deploys on Fridays" means Friday *where*. A
+rule stored as UTC instants shifts an hour twice a year and freezes a Bogotá team at 19:00
+on Thursday for half of it. The frontend test suite already pins `TZ: 'America/Bogota'`
+deliberately for this class of bug; here the blast radius is larger.
+
+**And it exposes a distinction the domain does not have.** An *event* freeze — Black Friday,
+a migration, an incident — is news, and broadcasting it is the point. A *standing policy* —
+no Friday deploys, no deploys during month-end close — is not news, it is how the company
+works, and announcing it weekly is how a Slack channel gets muted. A muted channel is how
+the next real freeze gets missed. Same enforcement, opposite communication: a second axis
+orthogonal to `ADVISORY` / `HARD_FREEZE`, and it belongs in the domain rather than hidden as
+a notification toggle.
+
+Suggested split: a series announces when created and when changed; occurrences do not;
+exceptions do, because a cancelled Friday is news. And a standing policy nobody announced is
+invisible to a new joiner until it blocks them — so it needs permanent placement on the
+dashboard rather than a slot in the timeline.
+
+**What recurrence unlocks that one-off freezes cannot.** For a recurring policy the next
+allowed window is computable, so a blocked pipeline can be told *deploys are paused on
+Fridays — standing policy, not an incident; next window Monday 09:00, in 62 hours*. "When
+does it lift" is already one of the four questions the landing page promises to answer; this
+answers the better one, which is when the engineer holding a blocked deploy can ship.
+`PolicyEvaluationResponse.message` already reaches every blocked deploy with no new
+dependency, which makes improving that line the cheapest win in this entry.
+
+### The freeze retro
+
+**Shape.** When a freeze lifts, generate the summary an engineering manager would forward:
+how many deploys were blocked, across how many teams, how many were retried within minutes
+of it lifting, which application waited longest, whether any exemption was requested.
+
+Cheap, low risk, and it makes a freeze read as a managed event rather than an obstacle. Of
+everything on this list it is the one most likely to be shown to someone who can sign.
+
+### A Slack bot that answers where the question is asked
+
+*"Can I deploy?"* is asked in Slack, not in the console. A bot that answers in-channel with
+the reason, the lift time and the freeze's owner puts the product where the behaviour
+already is. The Slack integration and the policy answer both exist; this is mostly plumbing.
+
+Delivery paths in order of reliability: the build-log line, which already reaches every
+blocked deploy; the bot answering on demand, which needs no identity resolution and also
+serves the manager who is waiting rather than deploying; and a direct message to the person
+blocked, which is the best experience and needs a mapping from a CI actor string to a Slack
+identity that does not exist yet — new work, and a new class of personal data for the
+privacy notice to cover.
+
+### Pattern detection from the customer's own history
+
+*You have blocked 38% of deploys on Fridays after 15:00 for three months, always manually —
+want a recurring freeze?* Reads `deployment_check` history, which nobody else has. Depends on
+recurring freezes existing first, and on a customer having enough history to read.
+
+### Conflict and blind-spot detection
+
+At creation time: *this freeze covers `ledger-worker`, but no notification destination
+reaches that team — four people will be blocked without being told.* It is the product's own
+thesis as a feature, and it is the kind of check that makes a tool more trusted rather than
+more clever.
+
+### Natural-language freeze creation
+
+*"Freeze everything customer-facing from 20 December to 2 January, except hotfixes."* Demos
+well. Only safe if it never saves what was said, only what was confirmed: resolve the scope,
+show the applications, environments and teams it came to, and require a click. The model
+proposes; the human commits.
+
+### A client-side catalog agent
+
+**Shape.** `npx freezehub init` reads the customer's repository *on their machine*, proposes
+applications, environments and teams from workflow matrices, compose services and
+`CODEOWNERS`, shows what it found, and pushes the confirmed catalog to the API with their own
+key.
+
+**Why client-side is the only shape available.** `OI-50` already declined catalog sync for
+inverting the trust direction, and `gtm/customer/security-brief.md` states to prospects that
+FreezeHub holds no credential into their systems and that *there is nothing for FreezeHub to
+reach into*. A server-side agent would break a published claim. Running on the customer's
+side preserves it — and if the model call uses their key or a local model, it also adds no
+subprocessor to disclose under the Política.
+
+**The problem it solves is real.** `D-14` blocks deployments for unregistered applications,
+and `OI-50` itself calls registering a catalog by hand *the dullest part of onboarding
+and the one most likely to be left half-done* — which means a half-done catalog is a broken
+pipeline on day one. Interpreting a monorepo with a build file per service, a workflow
+matrix, Helm values and a `CODEOWNERS` is also genuinely beyond regexes, and getting it
+slightly wrong is cheap because a human confirms before anything is written.
+
+**Open question.** Whose model and whose key. Customer-supplied is cleaner for trust and for
+subprocessor terms, and is friction at exactly the moment the entry exists to remove
+friction.
+
+### Deterministic by design, said out loud
+
+Not a feature: a positioning decision. Publish that the decision path contains no model at
+all — same input, same answer, auditable, forever.
+
+The buyer is a compliance-adjacent engineering manager for whom *an LLM decides whether you
+may deploy* is a nightmare. In a market where everything is becoming probabilistic, the
+absence is turning into a differentiator, and it is only credible if the principle at the
+top of this section is actually held.
